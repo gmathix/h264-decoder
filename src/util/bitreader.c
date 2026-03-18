@@ -1,7 +1,7 @@
 //
 // Created by gmathix on 3/12/26.
 //
-#include "bitreader.h"
+#include "../bitreader.h"
 
 #include <stdio.h>
 #include <string.h>

@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "../src/bitreader.h"
+#include "../src/util/bitreader.h"
 #include "../src/annexb.h"
 
 int main(void) {

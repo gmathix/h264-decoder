@@ -8,7 +8,7 @@
 #include <stdlib.h>
 
 #include "../src/annexb.h"
-#include "../src/bitreader.h"
+#include "../src/util/bitreader.h"
 #include "../src/common.h"
 #include "../src/ps.h"
 

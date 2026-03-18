@@ -12,7 +12,7 @@
 #include <limits.h>
 #include <math.h>
 
-#include "expgolomb.h"
+#include "util/expgolomb.h"
 
 
 

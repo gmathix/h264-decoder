@@ -6,9 +6,9 @@
 #include <stdint.h>
 #include <assert.h>
 
-#include "../src/bitreader.h"
+#include "../src/util/bitreader.h"
 #include "../src/annexb.h"
-#include "../src/expgolomb.h"
+#include "../src/util/expgolomb.h"
 
 
 /* ========================= */

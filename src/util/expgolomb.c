@@ -2,7 +2,7 @@
 // Created by gmathix on 3/18/26.
 //
 
-#include "expgolomb.h"
+#include "../expgolomb.h"
 
 
 

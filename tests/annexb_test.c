@@ -7,7 +7,7 @@
 #include "../src/annexb.h"
 
 int main(void) {
-    char *path = "videos/output.h264";
+    char *path = "../videos/output.h264";
 
     FILE *f = fopen(path, "rb");
     if (!f) {

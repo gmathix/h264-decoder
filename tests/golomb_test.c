@@ -11,13 +11,6 @@
 #include "../src/expgolomb.h"
 
 
-static BitReader make_br(const uint8_t *data, int size) {
-    BitReader br;
-    bitreader_init(&br, data, size);
-    return br;
-}
-
-
 /* ========================= */
 /*        read_ue tests      */
 /* ========================= */

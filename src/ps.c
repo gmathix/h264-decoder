@@ -9,6 +9,7 @@
 
 #include "ps.h"
 
+#include <assert.h>
 #include <limits.h>
 #include <math.h>
 
@@ -19,6 +20,8 @@
 
 #define MIN_LOG2_MAX_FRAME_NUM    4
 #define MAX_LOG2_MAX_FRAME_NUM    (12 + MIN_LOG2_MAX_FRAME_NUM)
+
+
 
 int decode_sps(BitReader *br, ParamSets *ps) {
     SPS *sps = calloc(1, sizeof(SPS));
@@ -108,6 +111,8 @@ int decode_sps(BitReader *br, ParamSets *ps) {
     }
 
 
+
+    /* unused for now */
     uint32_t num_ref_frames = read_ue(br);
     int32_t gaps_in_frame_num_value_allowed_flag = read_u(br, 1);
 
@@ -160,6 +165,7 @@ int decode_sps(BitReader *br, ParamSets *ps) {
     }
 
 
+    /* unused for now */
     int vui_params_present = read_u(br, 1);
     if (vui_params_present) {
         // vui params not supported yet so we'll ignore them ;
@@ -190,8 +196,80 @@ int decode_sps(BitReader *br, ParamSets *ps) {
     return 0;
 }
 
-int decode_pps(BitReader *br, ParamSets *ps, int bit_legnth) {
+int decode_pps(BitReader *br, ParamSets *ps) {
+    PPS *pps = calloc(1, sizeof(PPS));
 
+    pps->size = br->size;
+
+
+    if (pps->size > sizeof(pps->buf)) {
+        printf("[SPS] truncating likely oversized SPS \n");
+        pps->size = sizeof(pps->buf);
+    }
+    memcpy(pps->buf, br->data, pps->size);
+
+    if (!bitreader_byte_aligned(br)) {
+        printf("[SPS] bitreader not aligned, cannot read sps\n");
+        return -1;
+    }
+
+
+    pps->pps_id = read_ue(br);
+    if (pps->pps_id > 255) {
+        printf("pps id out of range 0-255: %d\n", pps->pps_id);
+        return -1;
+    }
+    pps->sps_id = read_ue(br);
+    if (pps->sps_id >= MAX_SPS_COUNT || !ps->sps_list[pps->sps_id]) {
+        printf("invalid sps referenced : %d\n", pps->sps_id);
+        return -1;
+    }
+
+    pps->entropy_coding_mode_flag = read_u(br, 1);
+    if (pps->entropy_coding_mode_flag == 1) {
+        printf("CABAC not supported for now\n");
+        return -1;
+    }
+
+    pps->bottom_field_pic_order_in_frame_present_flag = read_u(br, 1);
+
+    pps->num_slice_groups_minus1 = read_ue(br);
+    assert(pps->num_slice_groups_minus1 == 0); // no slice groups for now, nobody uses them anyway
+
+
+    /* unused for now */
+    uint32_t num_ref_idx_l0_default_active_minus1 = read_ue(br);
+    uint32_t num_ref_idx_l1_default_active_minus1 = read_ue(br);
+    int weighted_pred_flag                        = read_u(br, 1);
+    int weighted_bipred_icd                       = read_u(br, 2);
+
+
+
+    pps->pic_init_qp_minus26                    = read_se(br);
+    pps->pic_init_qs_minus26                    = read_se(br);
+    pps->chroma_qp_index_offset                 = read_se(br);
+
+    pps->deblocking_filter_control_present_flag = read_u(br, 1);
+    pps->constrained_intra_pred_flag            = read_u(br, 1);
+    pps->redundant_pic_cnt_present_flag         = read_u(br, 1);
+
+
+    /* derive */
+    pps->num_slice_groups = pps->num_slice_groups_minus1 + 1;
+    pps->pic_init_qp      = pps->pic_init_qp_minus26 + 26;
+    pps->pic_init_qs      = pps->pic_init_qs_minus26 + 26;
+
+    printf("pps:%u sps:%u %s qp:%d/%d/%d %s %s %s\n",
+        pps->pps_id, pps->sps_id,
+        pps->entropy_coding_mode_flag ? "CABAC" : "CAVLC",
+        pps->pic_init_qp, pps->pic_init_qs, pps->chroma_qp_index_offset,
+        pps->deblocking_filter_control_present_flag ? "LPAR" : "",
+        pps->constrained_intra_pred_flag            ? "CONSTR" : "",
+        pps->redundant_pic_cnt_present_flag         ? "REDU" : "");
+
+    ps->pps_list[pps->pps_id] = pps;
+
+    return 0;
 }
 
 

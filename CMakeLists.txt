@@ -39,7 +39,7 @@ add_executable(golomb_test tests/golomb_test.c
 )
 
 
-add_executable(sps_test tests/sps_test.c
+add_executable(sps_test tests/sps_pps_test.c
         src/util/bitreader.h
         src/util/bitreader.c
         src/nal.c
@@ -50,5 +50,5 @@ add_executable(sps_test tests/sps_test.c
         src/ps.h
         src/ps.c
         src/common.h
-        tests/sps_test.c
+        tests/sps_pps_test.c
 )

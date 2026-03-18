@@ -13,7 +13,7 @@
 #include "../src/ps.h"
 
 int main(void) {
-    char *path = "../videos/output.h264";
+    char *path = "../videos/output-nvenc.h264";
     FILE *f = fopen(path, "rb");
     if (!f) {
         printf("file not found : %s", path);
@@ -39,16 +39,30 @@ int main(void) {
     fill_nal_units(data, size, nals, num_nals);
 
     ParamSets ps;
+    int num_pps = 0;
+    int num_sps = 0;
+
 
     for (int i = 0; i < num_nals; i++) {
         NalUnit nal = nals[i];
+        br = make_br(nal.data, nal.size);
         if (nal.type == NAL_SPS) {
-            BitReader nbr = make_br(nal.data, nal.size);
+            printf("Detected SPS Nal unit : \n   ");
+            int ret = decode_sps(&br, &ps);
+            printf("\n");
 
-            int ret = decode_sps(&nbr, &ps);
+            num_sps++;
+        }
+        if (nal.type == NAL_PPS) {
+            printf("Detected PPS Nal unit : \n   ");
+            int ret = decode_pps(&br, &ps);
+            printf("\n");
+
+            num_pps++;
         }
     }
 
+    printf("\n[INFO] scanned total of %d nal units, found %d SPS units, %d PPS units\n", num_nals, num_sps, num_pps);
 
     free(data);
     free(nals);

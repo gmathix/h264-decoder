@@ -72,8 +72,10 @@ typedef struct PPS {
 
     // RAW (from bitstream)
     int      entropy_coding_mode_flag;
-    uint32_t pic_init_qp_minus26;
-
+    int      bottom_field_pic_order_in_frame_present_flag;
+    uint32_t num_slice_groups_minus1;
+    int32_t  pic_init_qp_minus26;
+    int32_t  pic_init_qs_minus26;
     int32_t  chroma_qp_index_offset;
     int      deblocking_filter_control_present_flag;
     int      constrained_intra_pred_flag;
@@ -81,8 +83,9 @@ typedef struct PPS {
 
 
     // DERIVED
-    uint32_t pic_init_qp_minus_26;
-
+    uint32_t num_slice_groups;
+    int32_t  pic_init_qp;
+    int32_t  pic_init_qs;
 
 } PPS ;
 
@@ -100,7 +103,7 @@ typedef struct ParamSets {
 
 int  get_profile(ParamSets *ps);
 int  decode_sps(BitReader *br, ParamSets *ps);
-int  decode_pps(BitReader *br, ParamSets *ps, int bit_length);
+int  decode_pps(BitReader *br, ParamSets *ps);
 void ps_uninit(ParamSets *ps);
 
 

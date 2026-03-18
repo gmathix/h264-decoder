@@ -45,9 +45,9 @@ void bitreader_skip_bits(BitReader *br, int n) {
 
     if ((size_t)n > remaining) n = remaining;
 
-    size_t total_bits = br->byte_pos * 8 + br->bit_pos + n;
-    br->byte_pos = total_bits / 8;
-    br->bit_pos = total_bits % 8;
+    size_t totalBits = br->byte_pos * 8 + br->bit_pos + n;
+    br->byte_pos = totalBits / 8;
+    br->bit_pos = totalBits % 8;
 }
 
 void bitreader_rewind(BitReader *br, int n) {

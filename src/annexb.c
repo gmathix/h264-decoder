@@ -28,7 +28,7 @@ int count_nals(const uint8_t *buf, size_t size) {
 
 
 /* split the raw stream into NAL units with emulation prevention bytes removal */
-void fill_nal_units(const uint8_t *buf, size_t size, NalUnit *nal_units, int max_nals) {
+void fill_nal_units(const uint8_t *buf, size_t size, NalUnit *p_nalUnits, int maxNals) {
     size_t i = 0;
     int nal_count = 0;
 
@@ -56,7 +56,7 @@ void fill_nal_units(const uint8_t *buf, size_t size, NalUnit *nal_units, int max
                 next++;
             }
 
-            if (nal_count < max_nals) {
+            if (nal_count < maxNals) {
                 uint8_t header = buf[start];
 
                 /* new NAL unit */
@@ -73,7 +73,7 @@ void fill_nal_units(const uint8_t *buf, size_t size, NalUnit *nal_units, int max
                 unit.ref_idc = (header >> 5) & 0x03;
                 unit.type = header & 0x1F;
 
-                nal_units[nal_count] = unit;
+                p_nalUnits[nal_count] = unit;
             }
 
             nal_count++;
@@ -85,7 +85,7 @@ void fill_nal_units(const uint8_t *buf, size_t size, NalUnit *nal_units, int max
     }
 }
 
-uint8_t *nal_to_rbsp(const uint8_t *buf, size_t size, size_t *rbsp_size) {
+uint8_t *nal_to_rbsp(const uint8_t *buf, size_t size, size_t *p_rbspSize) {
     uint8_t *rbsp = malloc(size); // worst case : same size
     size_t j = 0;
 
@@ -105,7 +105,7 @@ uint8_t *nal_to_rbsp(const uint8_t *buf, size_t size, size_t *rbsp_size) {
         }
     }
 
-    *rbsp_size = j;
+    *p_rbspSize = j;
 
     return rbsp;
 }

@@ -22,6 +22,7 @@ add_executable(annexb_test tests/annexb_test.c
         src/expgolomb.c
         src/expgolomb.h
         tests/golomb_test.c
+        src/ps.h
 )
 
 

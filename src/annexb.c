@@ -6,23 +6,28 @@
 
 
 
+/* count start codes to find number of nal units */
 int count_nals(const uint8_t *buf, size_t size) {
     int count = 0;
 
     for (size_t i = 0; i + 3 < size; i++) {
+        // 00 00 01
         if (buf[i] == 0 && buf[i+1] == 0 && buf[i+2] == 0 && buf[i+3] == 1){
             count++;
             i += 2;
         }
-        if ((buf[i] == 0 && buf[i+1] == 0 && buf[i+2] == 1)) {
+
+        // 00 00 00 01
+        if (buf[i] == 0 && buf[i+1] == 0 && buf[i+2] == 1) {
             count++;
         }
-
     }
 
     return count;
 }
 
+
+/* split the raw stream into NAL units with emulation prevention bytes removal */
 void fill_nal_units(const uint8_t *buf, size_t size, NalUnit *nal_units, int max_nals) {
     size_t i = 0;
     int nal_count = 0;
@@ -42,7 +47,7 @@ void fill_nal_units(const uint8_t *buf, size_t size, NalUnit *nal_units, int max
                 i += 4;
             }
 
-            /* find next start code */
+            /* find next start code and calculate current NAL size */
             size_t next = i;
             while (next + 3 < size &&
                     !(buf[next] == 0 && buf[next+1] == 0 &&
@@ -54,11 +59,12 @@ void fill_nal_units(const uint8_t *buf, size_t size, NalUnit *nal_units, int max
             if (nal_count < max_nals) {
                 uint8_t header = buf[start];
 
+                /* new NAL unit */
                 NalUnit unit = {NULL, 0, 0, 0};
 
-                size_t rbsp_size = 0;
+                size_t rbsp_size = 0; // size after emulation prevention removal
                 unit.data = nal_to_rbsp(
-                    buf + start + 1, // nal unit payload without header
+                    buf + start + 1, // remove header byte from payload
                     next - start - 1,
                     &rbsp_size
                     );
@@ -72,7 +78,7 @@ void fill_nal_units(const uint8_t *buf, size_t size, NalUnit *nal_units, int max
 
             nal_count++;
             i = next;
-           }
+        }
         else {
             i++;
         }

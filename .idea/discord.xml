@@ -5,8 +5,8 @@
     <option name="description" value="h264 decoder" />
     <option name="applicationTheme" value="default" />
     <option name="iconsTheme" value="default" />
-    <option name="button1Title" value="" />
-    <option name="button1Url" value="" />
+    <option name="button1Title" value="Full spec PDF" />
+    <option name="button1Url" value="https://files.catbox.moe/ipg23v.pdf" />
     <option name="button2Title" value="" />
     <option name="button2Url" value="" />
     <option name="customApplicationId" value="" />

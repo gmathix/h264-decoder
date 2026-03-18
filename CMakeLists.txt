@@ -3,7 +3,16 @@ project(toy_h264 C)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(toy_h264 main.c
+add_executable(decoder main.c
+        src/bitreader.h
+        src/bitreader.c
+        src/common.h
+        src/nal.c
+        src/annexb.c
+        src/annexb.h
+)
+
+add_executable(annexb_test tests/annexb_test.c
         src/bitreader.h
         src/bitreader.c
         src/common.h

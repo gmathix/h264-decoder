@@ -28,17 +28,17 @@ typedef struct SPS {
 
     // RAW (from bitstream)
     int      profile_idc; // 66=baseline, 77=main, 100=high
-    int      chroma_format_idc;
+    uint32_t chroma_format_idc;
     int      bit_depth_luma_minus8;
     uint32_t bit_depth_chroma_minus8;
-    uint32_t log_max_frame_num_minus4;
+    uint32_t log2_max_frame_num_minus4;
     uint32_t pic_order_cnt_type;
+    uint32_t log2_max_pic_order_cnt_lsb_minus4;
     uint32_t pic_width_in_mbs_minus1;
     uint32_t pic_height_in_map_units_minus1;
     int      frame_mbs_only_flag;
     int      direct_8x8_inference_flag;
     int      frame_cropping_flag;
-
     uint32_t crop_left_offset;
     uint32_t crop_right_offset;
     uint32_t crop_top_offset;
@@ -69,8 +69,9 @@ typedef struct PPS {
     uint32_t pps_id;
     uint32_t sps_id;
 
+
     // RAW (from bitstream)
-    int      cabac; // entropy_coding_mode_flag
+    int      entropy_coding_mode_flag;
     uint32_t pic_init_qp_minus26;
 
     int32_t  chroma_qp_index_offset;
@@ -98,7 +99,7 @@ typedef struct ParamSets {
 
 
 int  get_profile(ParamSets *ps);
-int  decode_sps(BitReader *br, ParamSets *ps, int ignore_truncation);
+int  decode_sps(BitReader *br, ParamSets *ps);
 int  decode_pps(BitReader *br, ParamSets *ps, int bit_length);
 void ps_uninit(ParamSets *ps);
 

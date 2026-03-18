@@ -19,6 +19,9 @@ typedef struct {
     size_t         bit_pos; // 0..7 within current byte
 } BitReader ;
 
+
+
+
 void     bitreader_init(BitReader *br, const uint8_t *data, size_t size);
 uint32_t bitreader_peek_bits(BitReader *br, int n);
 uint32_t bitreader_read_bits(BitReader *br, int n);
@@ -26,6 +29,14 @@ void     bitreader_skip_bits(BitReader *br, int n);
 void     bitreader_rewind(BitReader *br, int n);
 bool     bitreader_byte_aligned(BitReader *br);
 size_t   bitreader_bits_remaining(BitReader *br);
+
+
+static BitReader make_br(const uint8_t *data, size_t size) {
+    BitReader br;
+    bitreader_init(&br, data, size);
+    return br;
+}
+
 
 
 #endif //TOY_H264_BITREADER_H

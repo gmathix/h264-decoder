@@ -13,7 +13,7 @@
 #include "../src/ps.h"
 
 int main(void) {
-    char *path = "../videos/output-nvenc.h264";
+    char *path = "../videos/output.h264";
     FILE *f = fopen(path, "rb");
     if (!f) {
         printf("file not found : %s", path);

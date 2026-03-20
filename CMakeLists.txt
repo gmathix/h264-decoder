@@ -11,6 +11,9 @@ add_executable(decoder main.c
         src/annexb.c
         src/annexb.h
         src/ps.c
+        src/util/expgolomb.c
+        src/util/expgolomb.h
+        src/decoder.c
 )
 
 add_executable(annexb_test tests/annexb_test.c

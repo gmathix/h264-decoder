@@ -4,9 +4,34 @@
 
 
 #include <stdio.h>
+#include <stdlib.h>
+
+#include "src/decoder.h"
+
 
 int main(void) {
-    printf("this will be the main decoder process! though, i'm far from this right now.");
+    const char *path = "../videos/output.h264";
+    FILE *file = fopen(path, "rb");
+    if (!file) {
+        printf("file not found : %s\n", path);
+        return 1;
+    }
+
+    fseek(file, 0, SEEK_END);
+    size_t size = ftell(file);
+    rewind(file);
+
+
+    uint8_t *data = malloc(size);
+    fread(data, 1, size, file);
+    fclose(file);
+
+
+    CodecContext *context = decoder_init(data, size);
+
+
+    decoder_run(context);
+
 
     return 0;
 }

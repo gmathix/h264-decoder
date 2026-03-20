@@ -56,10 +56,10 @@ char *NalUnitTypeToString(uint8_t nal_unit_type);
 
 
 typedef struct {
-    const uint8_t *data; // pointer into original buffer (after start code)
-    size_t        size;  // byte count AFTER emulation prevention removal
-    uint8_t       ref_idc; // nal unit nal_ref_icd (bits 5-6 of first byte)
-    uint8_t       type;  // nal_unit_type (low 5 bits of first byte)
+    const uint8_t *data;   // pointer into original buffer (after start code)
+    size_t        size;    // byte count AFTER emulation prevention removal
+    uint8_t       ref_idc; // nal_ref_icd (bits 5-6 of first byte)
+    uint8_t       type;    // nal_unit_type (low 5 bits of first byte)
 } NalUnit;
 
 

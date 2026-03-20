@@ -183,12 +183,12 @@ int decode_sps(BitReader *br, ParamSets *ps) {
 
 
     // log debug info
-    printf("sps:%u profile:%d/%d poc:%d poc_lsb:%d mb_width:%d mb_height:%d px_width:%d px_height:%d crop:%u/%u/%u/%u\n",
-        sps_id, sps->profile_idc, level_idc,
-        sps->pic_order_cnt_type, sps->log2_max_pic_order_cnt_lsb,
-        sps->pic_width_in_mbs, sps->pic_height_in_map_units,
-        sps->pic_width_in_mbs * 16, sps->pic_height_in_map_units * 16 - sps->crop_bottom_offset,
-        sps->crop_left_offset, sps->crop_right_offset, sps->crop_top_offset, sps->crop_bottom_offset);
+    // printf("sps:%u profile:%d/%d poc:%d poc_lsb:%d mb_width:%d mb_height:%d px_width:%d px_height:%d crop:%u/%u/%u/%u\n",
+    //     sps_id, sps->profile_idc, level_idc,
+    //     sps->pic_order_cnt_type, sps->log2_max_pic_order_cnt_lsb,
+    //     sps->pic_width_in_mbs, sps->pic_height_in_map_units,
+    //     sps->pic_width_in_mbs * 16, sps->pic_height_in_map_units * 16 - sps->crop_bottom_offset,
+    //     sps->crop_left_offset, sps->crop_right_offset, sps->crop_top_offset, sps->crop_bottom_offset);
 
 
     ps->sps_list[sps->sps_id] = sps;
@@ -259,13 +259,13 @@ int decode_pps(BitReader *br, ParamSets *ps) {
     pps->pic_init_qp      = pps->pic_init_qp_minus26 + 26;
     pps->pic_init_qs      = pps->pic_init_qs_minus26 + 26;
 
-    printf("pps:%u sps:%u %s qp:%d/%d/%d %s %s %s\n",
-        pps->pps_id, pps->sps_id,
-        pps->entropy_coding_mode_flag ? "CABAC" : "CAVLC",
-        pps->pic_init_qp, pps->pic_init_qs, pps->chroma_qp_index_offset,
-        pps->deblocking_filter_control_present_flag ? "LPAR" : "",
-        pps->constrained_intra_pred_flag            ? "CONSTR" : "",
-        pps->redundant_pic_cnt_present_flag         ? "REDU" : "");
+    // printf("pps:%u sps:%u %s qp:%d/%d/%d %s %s %s\n",
+    //     pps->pps_id, pps->sps_id,
+    //     pps->entropy_coding_mode_flag ? "CABAC" : "CAVLC",
+    //     pps->pic_init_qp, pps->pic_init_qs, pps->chroma_qp_index_offset,
+    //     pps->deblocking_filter_control_present_flag ? "LPAR" : "",
+    //     pps->constrained_intra_pred_flag            ? "CONSTR" : "",
+    //     pps->redundant_pic_cnt_present_flag         ? "REDU" : "");
 
     ps->pps_list[pps->pps_id] = pps;
 

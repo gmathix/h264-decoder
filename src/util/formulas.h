@@ -17,6 +17,7 @@ inline double  _min(double x, double y) { return x <= y ? x : y; }
 inline double  _max(double x, double y) { return x >= y ? x : y; }
 inline double  _log2(double x)          { return log2(x); }
 inline double  _log10(double x)         { return log10(x); }
+inline double  _sqrt(double x)          { return sqrt(x); }
 
 inline int32_t _floor(double x)         { return (int32_t) x; }
 inline int32_t _ceil(double x)          { return (int32_t)x + (x > (int32_t)x ? 1 : 0); }

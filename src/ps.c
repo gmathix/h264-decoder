@@ -240,8 +240,8 @@ int decode_pps(BitReader *br, ParamSets *ps) {
     /* unused for now */
     uint32_t num_ref_idx_l0_default_active_minus1 = read_ue(br);
     uint32_t num_ref_idx_l1_default_active_minus1 = read_ue(br);
-    int weighted_pred_flag                        = read_u(br, 1);
-    int weighted_bipred_icd                       = read_u(br, 2);
+    pps->weighted_pred_flag                        = read_u(br, 1);
+    pps->weighted_bipred_idc                       = read_u(br, 2);
 
 
 

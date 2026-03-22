@@ -14,6 +14,13 @@ add_executable(decoder main.c
         src/util/expgolomb.c
         src/util/expgolomb.h
         src/decoder.c
+        src/slice.c
+        src/slice.h
+        src/util/formulas.h
+        src/mb.c
+        src/mb.h
+        src/util/mbutil.h
+        src/util/predutil.h
 )
 
 add_executable(annexb_test tests/annexb_test.c
@@ -55,3 +62,4 @@ add_executable(sps_test tests/sps_pps_test.c
         src/common.h
         tests/sps_pps_test.c
 )
+add_executable(mb_test tests/mb_test.c)

@@ -46,7 +46,6 @@ int main(void) {
 
     printf("macroblock division took %.3fms\n", total);
 
-    printf("%d\n", (int32_t) 3.9999);
 
     free(frame);
 

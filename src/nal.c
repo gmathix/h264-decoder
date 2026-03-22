@@ -4,6 +4,7 @@
 
 
 #include "nal.h"
+#include "slice.h"
 
 #include <stdio.h>
 
@@ -13,8 +14,8 @@ int dispatch_nal_unit(NalUnit *nal_unit, ParamSets *ps) {
     BitReader br = make_br(nal_unit->data, nal_unit->size);
 
     switch (nal_unit->type) {
-        case NAL_SPS: printf("dispatching SPS unit\n"); return decode_sps(&br, ps);
-        case NAL_PPS: printf("dispatching PPS unit\n"); return decode_pps(&br, ps);
+        case NAL_SPS: return decode_sps(&br, ps);
+        case NAL_PPS: return decode_pps(&br, ps);
 
 
         case NAL_CODED_SLICE_OF_NON_IDR_PICTURE:
@@ -24,8 +25,7 @@ int dispatch_nal_unit(NalUnit *nal_unit, ParamSets *ps) {
         case NAL_CODED_SLICE_DATA_PARTITION_C:
         case NAL_CODED_SLICE_OF_AUX_CODED_PICTURE:
         case NAL_CODED_SLICE_EXTENSION:
-            printf("dispatching slice\n");
-            return -1; /// TODO: dispatch these to slice.c
+            decode_slice_header(nal_unit, &br, ps);
 
 
 

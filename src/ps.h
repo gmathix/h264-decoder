@@ -74,6 +74,8 @@ typedef struct PPS {
     int      entropy_coding_mode_flag;
     int      bottom_field_pic_order_in_frame_present_flag;
     uint32_t num_slice_groups_minus1;
+    int      weighted_pred_flag;
+    int      weighted_bipred_idc;
     int32_t  pic_init_qp_minus26;
     int32_t  pic_init_qs_minus26;
     int32_t  chroma_qp_index_offset;

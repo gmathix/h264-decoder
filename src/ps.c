@@ -23,6 +23,7 @@
 
 
 
+/* 7.3.2.1.1 */
 int decode_sps(BitReader *br, ParamSets *ps) {
     SPS *sps = calloc(1, sizeof(SPS));
 
@@ -102,6 +103,15 @@ int decode_sps(BitReader *br, ParamSets *ps) {
     if (sps->pic_order_cnt_type == 0) {
         sps->log2_max_pic_order_cnt_lsb_minus4 = read_ue(br);
     } else if (sps->pic_order_cnt_type == 1) {
+        sps->delta_pic_order_always_zero_flag      = read_u(br, 1);
+        sps->offset_for_non_ref_pic                = read_se(br);
+        sps->offset_for_top_to_bottom_field        = read_se(br);
+        sps->num_ref_frames_in_pic_order_cnt_cycle = read_ue(br);
+
+        sps->offset_for_ref_frame = malloc(sps->num_ref_frames_in_pic_order_cnt_cycle * sizeof(int32_t));
+        for (int i = 0; i < sps->num_ref_frames_in_pic_order_cnt_cycle; i++) {
+            sps->offset_for_ref_frame[i] = read_se(br);
+        }
         /// TODO: use cycles
         printf("poc type not supported : %d\n", sps->pic_order_cnt_type);
         return -1;
@@ -196,6 +206,8 @@ int decode_sps(BitReader *br, ParamSets *ps) {
     return 0;
 }
 
+
+/* 7.3.2.2 */
 int decode_pps(BitReader *br, ParamSets *ps) {
     PPS *pps = calloc(1, sizeof(PPS));
 
@@ -228,7 +240,7 @@ int decode_pps(BitReader *br, ParamSets *ps) {
     pps->entropy_coding_mode_flag = read_u(br, 1);
     if (pps->entropy_coding_mode_flag == 1) {
         printf("CABAC not supported for now\n");
-        return -1;
+
     }
 
     pps->bottom_field_pic_order_in_frame_present_flag = read_u(br, 1);
@@ -238,8 +250,8 @@ int decode_pps(BitReader *br, ParamSets *ps) {
 
 
     /* unused for now */
-    uint32_t num_ref_idx_l0_default_active_minus1 = read_ue(br);
-    uint32_t num_ref_idx_l1_default_active_minus1 = read_ue(br);
+    pps->num_ref_idx_l0_active_minus1              = read_ue(br);
+    pps->num_ref_idx_l1_active_minus1              = read_ue(br);
     pps->weighted_pred_flag                        = read_u(br, 1);
     pps->weighted_bipred_idc                       = read_u(br, 2);
 
@@ -255,9 +267,11 @@ int decode_pps(BitReader *br, ParamSets *ps) {
 
 
     /* derive */
-    pps->num_slice_groups = pps->num_slice_groups_minus1 + 1;
-    pps->pic_init_qp      = pps->pic_init_qp_minus26 + 26;
-    pps->pic_init_qs      = pps->pic_init_qs_minus26 + 26;
+    pps->num_slice_groups      = pps->num_slice_groups_minus1 + 1;
+    pps->num_ref_idx_l0_active = pps->num_ref_idx_l0_active_minus1 + 1;
+    pps->num_ref_idx_l1_active = pps->num_ref_idx_l1_active_minus1 + 1;
+    pps->pic_init_qp           = pps->pic_init_qp_minus26 + 26;
+    pps->pic_init_qs           = pps->pic_init_qs_minus26 + 26;
 
     // printf("pps:%u sps:%u %s qp:%d/%d/%d %s %s %s\n",
     //     pps->pps_id, pps->sps_id,

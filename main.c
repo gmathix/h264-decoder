@@ -10,7 +10,7 @@
 
 
 int main(void) {
-    const char *path = "../videos/output.h264";
+    const char *path = "../videos/outputgit .h264";
     FILE *file = fopen(path, "rb");
     if (!file) {
         printf("file not found : %s\n", path);

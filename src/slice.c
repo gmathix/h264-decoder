@@ -2,16 +2,24 @@
 // Created by gmathix on 3/20/26.
 //
 
+#include "mb.h"
 #include "util/expgolomb.h"
 #include "slice.h"
+
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
+
+void decode_slice(NalUnit *nal_unit, BitReader *br, ParamSets *ps) {
+    SliceHeader *s_h = decode_slice_header(nal_unit, br, ps);
+    decode_slice_data(s_h, nal_unit, br, ps);
+}
 
 /* 7.3.3 */
-void decode_slice_header(NalUnit *nal_unit, BitReader *br, ParamSets *ps) {
+SliceHeader *decode_slice_header(NalUnit *nal_unit, BitReader *br, ParamSets *ps) {
     SliceHeader *s_h = calloc(1, sizeof(SliceHeader));
 
 
@@ -28,6 +36,9 @@ void decode_slice_header(NalUnit *nal_unit, BitReader *br, ParamSets *ps) {
 
     PPS *pps = ps->pps_list[s_h->pps_id];
     SPS *sps = ps->sps_list[pps->sps_id];
+
+    s_h->pps = pps;
+    s_h->sps = sps;
 
 
 
@@ -118,12 +129,76 @@ void decode_slice_header(NalUnit *nal_unit, BitReader *br, ParamSets *ps) {
             s_h->slice_beta_offset_div2     = read_se(br);
         }
     }
+
+
+    // log debug info
+    printf("   HEADER : type:%s pps:%d frame_num:%d qp:%d",
+        slice_type_to_string(s_h->slice_type),
+        s_h->pps_id,
+        s_h->frame_num, s_h->slice_qp_delta);
+
+
+    return s_h;
 }
 
 
 /* 7.3.4 */
-void decode_slice_data(SliceHeader slice_header, NalUnit *nal_unit, BitReader *br, ParamSets *ps) {
+void decode_slice_data(SliceHeader *s_h, NalUnit *nal_unit, BitReader *br, ParamSets *ps) {
+    PPS *pps = ps->pps_list[s_h->pps_id];
+    SPS *sps = ps->sps_list[pps->sps_id];
 
+    if (pps->entropy_coding_mode_flag) {
+        while (!bitreader_byte_aligned(br)) {
+            bitreader_skip_bits(br, 1);
+        }
+    }
+
+    int mbaff_frame_flag = 0;
+    int currMbAddr = s_h->first_mb * (1 + mbaff_frame_flag);
+
+    int moreDataFlag = 1;
+    int prevMbSkipped = 0;
+
+
+    do {
+        if (!IS_I_SLICE(s_h->slice_type) && IS_SI_SLICE(s_h->slice_type)) {
+            if (!pps->entropy_coding_mode_flag) {
+                uint32_t mb_skip_run = read_ue(br);
+                prevMbSkipped = mb_skip_run > 0;
+                printf("%d\n", prevMbSkipped);
+
+                if (mb_skip_run > 0) {
+                    moreDataFlag = more_rbsp_data(br);
+                }
+            } else {
+                /* read with CABAC */
+            }
+        }
+        if (moreDataFlag) {
+            if (mbaff_frame_flag && (currMbAddr%2 == 0 ||
+                (currMbAddr%2 == 1 && prevMbSkipped))) {
+
+                int mb_field_decoding_flag = read_u(br, 1);
+            }
+            printf("\n   MACROBLOCK %d : ", currMbAddr);
+            // if (currMbAddr >= 1621) {
+            //     for (int i = 0; i < bitreader_bits_remaining(br); i++) {
+            //         bitreader_skip_bits(br, i);
+            //         printf("%d\n", bitreader_peek_bits(br, 1));
+            //         bitreader_rewind(br, i);
+            //     }
+            // }
+            decode_macroblock(s_h, nal_unit, br, ps);
+        }
+
+        if (!pps->entropy_coding_mode_flag) {
+            moreDataFlag = more_rbsp_data(br);
+        } else {
+            /* cabac shit */
+        }
+
+        currMbAddr += 1;
+    } while (moreDataFlag);
 }
 
 

@@ -7,26 +7,11 @@
 
 
 #include "util/bitreader.h"
+#include "util/sliceutil.h"
 #include "common.h"
 #include "ps.h"
 
 
-#define SLICE_P            0
-#define SLICE_B            1
-#define SLICE_I            2
-#define SLICE_SP           3
-#define SLICE_SI           4
-#define SLICE_P_BIS        5
-#define SLICE_B_BIS        6
-#define SLICE_I_BIS        7
-#define SLICE_SP_BIS       8
-#define SLICE_SI_BIS       9
-
-#define IS_P_SLICE(a)  (((a) == SLICE_P) || ((a) == SLICE_P_BIS))
-#define IS_B_SLICE(a)  (((a) == SLICE_B) || ((a) == SLICE_B_BIS))
-#define IS_I_SLICE(a)  (((a) == SLICE_I) || ((a) == SLICE_I_BIS))
-#define IS_SP_SLICE(a) (((a) == SLICE_SP) || ((a) == SLICE_SP_BIS))
-#define IS_SI_SLICE(a) (((a) == SLICE_SI) || ((a) == SLICE_SI_BIS))
 
 
 
@@ -64,11 +49,11 @@ typedef struct SliceHeader {
 } SliceHeader ;
 
 
-
-void decode_slice_header       (NalUnit *nal_unit, BitReader *br, ParamSets *ps);
-void decode_slice_data         (SliceHeader slice_header, NalUnit *nal_unit, BitReader *br, ParamSets *ps);
-void ref_pic_list_modification (uint8_t type, BitReader *br);
-void pred_weight_table         (uint8_t type, BitReader *br, SPS *sps, PPS *pps);
-void dec_ref_pic_marking       (int idr_pic_flag, BitReader *br, SPS *sps, PPS *pps);
+void         decode_slice              (NalUnit *nal_unit, BitReader *br, ParamSets *ps);
+SliceHeader *decode_slice_header       (NalUnit *nal_unit, BitReader *br, ParamSets *ps);
+void         decode_slice_data         (SliceHeader *s_h, NalUnit *nal_unit, BitReader *br, ParamSets *ps);
+void         ref_pic_list_modification (uint8_t type, BitReader *br);
+void         pred_weight_table         (uint8_t type, BitReader *br, SPS *sps, PPS *pps);
+void         dec_ref_pic_marking       (int idr_pic_flag, BitReader *br, SPS *sps, PPS *pps);
 
 #endif //TOY_H264_SLICE_H

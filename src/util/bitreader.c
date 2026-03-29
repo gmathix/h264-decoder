@@ -4,6 +4,7 @@
 #include "bitreader.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 
@@ -17,12 +18,14 @@ void bitreader_init(BitReader *br, const uint8_t *data, size_t size) {
 }
 
 uint32_t bitreader_peek_bits(BitReader *br, int n) {
+
     if (n < 1 || n > 32) return 0;
 
     uint32_t res = 0;
 
-    uint32_t total = br->size * 8;
-    uint32_t start = br->byte_pos*8 + br->bit_pos;
+    int32_t total = br->size * 8;
+    int32_t start = br->byte_pos*8 + br->bit_pos;
+
 
     for (int i = 0; i < n && start + i < total; i++) {
         uint32_t bit_index = start + i;
@@ -42,10 +45,13 @@ uint32_t bitreader_read_bits(BitReader *br, int n) {
     return res;
 }
 
-void bitreader_skip_bits(BitReader *br, int n) {
-    size_t remaining = bitreader_bits_remaining(br);
+void bitreader_skip_bits(BitReader *br, uint32_t n) {
+    int32_t remaining = bitreader_bits_remaining(br);
 
-    if ((size_t)n > remaining) n = remaining;
+    if (n > remaining) {
+        printf("bitreader overflow: requested %u, remaining %u\n", n, remaining);
+        exit(1);
+    }
 
     size_t totalBits = br->byte_pos * 8 + br->bit_pos + n;
     br->byte_pos = totalBits / 8;
@@ -66,6 +72,32 @@ bool bitreader_byte_aligned(BitReader *br) {
     return br->bit_pos == 0;
 }
 
-size_t bitreader_bits_remaining(BitReader *br) {
-    return (br->size - br->byte_pos) * 8 - br->bit_pos;
+int32_t bitreader_bits_remaining(BitReader *br) {
+    if ((int32_t)br->byte_pos >= (int32_t)br->size) return 0;
+    return ((int32_t)br->size - (int32_t)br->byte_pos) * 8 - (int32_t)br->bit_pos;
+}
+
+bool more_rbsp_data(BitReader *br) {
+    return bitreader_bits_remaining(br) > 16 && !rbsp_trailing_bits(br);
+}
+
+bool rbsp_trailing_bits(BitReader *br) {
+    int32_t rem = bitreader_bits_remaining(br);
+    // printf("\n   %d remaining\n", rem);
+    // printf("%d\n", bitreader_peek_bits(br, 10));
+
+    if (rem <= 0) return false;
+
+    // must start with '1'
+    if (bitreader_peek_bits(br, 1) != 1)
+        return false;
+
+    // after that, ALL remaining bits must be zero
+    for (int i = 1; i < rem; i++) {
+        if (bitreader_peek_bits(br, i+1) & 1) {
+            return false;
+        }
+    }
+
+    return true;
 }

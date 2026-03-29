@@ -11,7 +11,6 @@
 #include <stdint.h>
 
 
-
 typedef struct {
     const uint8_t *data; // pointer to the byte buffer
     size_t         size; // total bytes in buffer
@@ -21,14 +20,15 @@ typedef struct {
 
 
 
-
 void     bitreader_init(BitReader *br, const uint8_t *data, size_t size);
 uint32_t bitreader_peek_bits(BitReader *br, int n);
 uint32_t bitreader_read_bits(BitReader *br, int n);
-void     bitreader_skip_bits(BitReader *br, int n);
+void     bitreader_skip_bits(BitReader *br, uint32_t n);
 void     bitreader_rewind(BitReader *br, int n);
 bool     bitreader_byte_aligned(BitReader *br);
-size_t   bitreader_bits_remaining(BitReader *br);
+int32_t  bitreader_bits_remaining(BitReader *br);
+bool     more_rbsp_data(BitReader *br);
+bool     rbsp_trailing_bits(BitReader *br);
 
 
 static BitReader make_br(const uint8_t *data, size_t size) {

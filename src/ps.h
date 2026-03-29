@@ -49,6 +49,7 @@ typedef struct SPS {
     int      direct_8x8_inference_flag;
     int      frame_cropping_flag;
     int      frame_mbs_only_flag;
+    int      mb_aff_flag;
     int      profile_idc; // 66=baseline, 77=main, 100=high
 
 
@@ -59,7 +60,8 @@ typedef struct SPS {
     uint32_t log2_max_pic_order_cnt_lsb; // log2_max_pic_order_cnt_lbs_minus4 + 4
     uint32_t pic_width_in_mbs; // pic_width_in_mbs_minus1 + 1
     uint32_t pic_height_in_map_units; // (pic_height_in_map_units_minus1 + 1) * (2 - frame_mbs_only_flag)
-
+    uint32_t pic_width_samples_l;
+    uint32_t pic_height_samples_l;
 
 } SPS ;
 
@@ -89,6 +91,7 @@ typedef struct PPS {
     int      deblocking_filter_control_present_flag;
     int      entropy_coding_mode_flag;
     int      redundant_pic_cnt_present_flag;
+    int      transform_8x8_mode_flag;
     int      weighted_pred_flag;
     int      weighted_bipred_idc;
 

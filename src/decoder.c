@@ -39,12 +39,20 @@ CodecContext *decoder_init(const uint8_t *data, size_t size) {
 void decoder_run(CodecContext *context) {
     if (!context->initialized) return;
 
+
     int num_nals = count_nals(context->data, context->size);
     NalUnit *nal_units = malloc(num_nals * sizeof(NalUnit));
     fill_nal_units(context->data, context->size, nal_units, num_nals);
 
+    int total = 0;
+    for (int i =0 ; i < num_nals; i++) {
+        total += nal_units[i].size;
+    }
+
     int i = 0;
     while (i < num_nals) {
+        printf("\n");
+
         dispatch_nal_unit(&nal_units[i], context->ps);
 
         i++;

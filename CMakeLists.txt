@@ -3,6 +3,10 @@ project(toy_h264 C)
 
 set(CMAKE_C_STANDARD 11)
 
+add_compile_options(-fsanitize=address)
+add_link_options(-fsanitize=address)
+
+
 add_executable(decoder main.c
         src/util/bitreader.h
         src/util/bitreader.c
@@ -21,6 +25,7 @@ add_executable(decoder main.c
         src/mb.h
         src/util/mbutil.h
         src/util/predutil.h
+        src/util/sliceutil.h
 )
 
 add_executable(annexb_test tests/annexb_test.c

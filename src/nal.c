@@ -14,8 +14,8 @@ int dispatch_nal_unit(NalUnit *nal_unit, ParamSets *ps) {
     BitReader br = make_br(nal_unit->data, nal_unit->size);
 
     switch (nal_unit->type) {
-        case NAL_SPS: return decode_sps(&br, ps);
-        case NAL_PPS: return decode_pps(&br, ps);
+        case NAL_SPS: printf("*** DECODING SPS ***\n"); return decode_sps(&br, ps);
+        case NAL_PPS: printf("*** DECODING PPS ***\n"); return decode_pps(&br, ps);
 
 
         case NAL_CODED_SLICE_OF_NON_IDR_PICTURE:
@@ -25,7 +25,8 @@ int dispatch_nal_unit(NalUnit *nal_unit, ParamSets *ps) {
         case NAL_CODED_SLICE_DATA_PARTITION_C:
         case NAL_CODED_SLICE_OF_AUX_CODED_PICTURE:
         case NAL_CODED_SLICE_EXTENSION:
-            decode_slice_header(nal_unit, &br, ps);
+            printf("*** DECODING SLICE OF SIZE %lu ***\n", nal_unit->size);
+            decode_slice(nal_unit, &br, ps);
 
 
 

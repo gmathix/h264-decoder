@@ -5,6 +5,7 @@
 #ifndef TOY_H264_COMMON_H
 #define TOY_H264_COMMON_H
 
+
 #include <stdint.h>
 
 
@@ -55,12 +56,20 @@ enum NalUnitType : uint8_t {
 char *NalUnitTypeToString(uint8_t nal_unit_type);
 
 
-typedef struct {
+typedef struct NalUnit {
     const uint8_t *data;   // pointer into original buffer (after start code)
     size_t        size;    // byte count AFTER emulation prevention removal
     uint8_t       ref_idc; // nal_ref_icd (bits 5-6 of first byte)
     uint8_t       type;    // nal_unit_type (low 5 bits of first byte)
 } NalUnit;
+
+typedef struct Coord {
+    int32_t x;
+    int32_t y;
+} Coord ;
+
+
+
 
 
 #endif //TOY_H264_COMMON_H

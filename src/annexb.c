@@ -74,6 +74,7 @@ void fill_nal_units(const uint8_t *buf, size_t size, NalUnit *p_nalUnits, int ma
                     &rbsp_size
                     );
 
+
                 unit.size = rbsp_size;
                 unit.ref_idc = (header >> 5) & 0x03;
                 unit.type = header & 0x1F;
@@ -95,8 +96,11 @@ uint8_t *nal_to_rbsp(const uint8_t *buf, size_t size, size_t *rbsp_size) {
     size_t j = 0;
 
     for (size_t i = 0; i < size; i++) {
-        if (buf[i] == 0x00 && buf[i+1] == 0x00 && buf[i+2] == 0x03) { // skip emulation prevention byte
-            i += 3;
+        if (i+2 < size &&
+                buf[i] == 0x00 && buf[i+1] == 0x00 && buf[i+2] == 0x03) { // skip emulation prevention byte
+            rbsp[j++] = 0x00;
+            rbsp[j++] = 0x00;
+            i += 2;
             continue;
         }
 

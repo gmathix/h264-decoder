@@ -441,29 +441,29 @@ void coeff_token(Macroblock *mb_array, int mbAddr, int blkIdx, int bt, int *star
     if (availableFlagA) {
         int is_luma = (bt == LUMA_LEVEL_4x4 || bt == LUMA_INTRA_16x16_AC_LEVEL || bt == LUMA_INTRA_16x16_DC_LEVEL);
 
-        if (mb_array[mbAddrA].type == MB_TYPE_SKIP || ((is_luma && mb_array[mbAddrA].luma_total_coeffs[blkIdxA]   == 0) ||
-                                                        bt == CHROMA_AC_LEVEL && mb_array[mbAddrA].chroma_total_coeffs[blkIdxA] == 0)) {
+        if (mb_array[mbAddrA].type == MB_TYPE_SKIP || ((is_luma && mb_array[mbAddrA].residuals.luma_total_coeffs[blkIdxA]   == 0) ||
+                                                        bt == CHROMA_AC_LEVEL && mb_array[mbAddrA].residuals.chroma_total_coeffs[blkIdxA] == 0)) {
             nA = 0;
         } else if (mb_array[mbAddrA].type == MB_TYPE_INTRA_PCM) {
             nA = 16;
         } else {
             nA = is_luma
-                ? mb_array[mbAddrA].luma_total_coeffs[blkIdxA]
-                : mb_array[mbAddrA].chroma_total_coeffs[blkIdxA];
+                ? mb_array[mbAddrA].residuals.luma_total_coeffs[blkIdxA]
+                : mb_array[mbAddrA].residuals.chroma_total_coeffs[blkIdxA];
         }
     }
     if (availableFlagB) {
         int is_luma = (bt == LUMA_LEVEL_4x4 || bt == LUMA_INTRA_16x16_AC_LEVEL || bt == LUMA_INTRA_16x16_DC_LEVEL);
 
-        if (mb_array[mbAddrB].type == MB_TYPE_SKIP || ((is_luma  && mb_array[mbAddrB].luma_total_coeffs[blkIdxB]   == 0) ||
-                                                        bt == CHROMA_AC_LEVEL && mb_array[mbAddrB].chroma_total_coeffs[blkIdxB] == 0)) {
+        if (mb_array[mbAddrB].type == MB_TYPE_SKIP || ((is_luma  && mb_array[mbAddrB].residuals.luma_total_coeffs[blkIdxB]   == 0) ||
+                                                        bt == CHROMA_AC_LEVEL && mb_array[mbAddrB].residuals.chroma_total_coeffs[blkIdxB] == 0)) {
             nB = 0;
         } else if (mb_array[mbAddrB].type == MB_TYPE_INTRA_PCM) {
             nB = 16;
         } else {
             nB = is_luma
-                ? mb_array[mbAddrB].luma_total_coeffs[blkIdxB]
-                : mb_array[mbAddrB].chroma_total_coeffs[blkIdxB];
+                ? mb_array[mbAddrB].residuals.luma_total_coeffs[blkIdxB]
+                : mb_array[mbAddrB].residuals.chroma_total_coeffs[blkIdxB];
         }
     }
 
@@ -502,9 +502,9 @@ void coeff_token(Macroblock *mb_array, int mbAddr, int blkIdx, int bt, int *star
 
     /* luma 16x16 DC doesn't store totalCoeff */
     if (bt == LUMA_LEVEL_4x4 || bt == LUMA_INTRA_16x16_AC_LEVEL) {
-        mb_array[mbAddr].luma_total_coeffs[blkIdx] = (int16_t)*totalCoeff;
+        mb_array[mbAddr].residuals.luma_total_coeffs[blkIdx] = (int16_t)*totalCoeff;
     } else if (bt == CHROMA_AC_LEVEL) {
-        mb_array[mbAddr].chroma_total_coeffs[blkIdx] = (int16_t)*totalCoeff;
+        mb_array[mbAddr].residuals.chroma_total_coeffs[blkIdx] = (int16_t)*totalCoeff;
     }
 
 

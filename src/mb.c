@@ -197,11 +197,6 @@ void decode_macroblock(Macroblock *mb_array, int mbAddr, SliceHeader *sh, NalUni
 
 
 
-
-
-
-
-
     if (type == MB_TYPE_INTRA_PCM) {
         while (!bitreader_byte_aligned(br)) {
             bitreader_skip_bits(br, 1);
@@ -293,6 +288,7 @@ void mb_pred(Macroblock *mb_array, int mbAddr, int type, int pred_mode, SliceHea
             mb_array[mbAddr].intra_chroma_pred_mode = read_ue(br);
             print_slice_line_value((int32_t)mb_array[mbAddr].intra_chroma_pred_mode);
         }
+
     } else if (type != MB_TYPE_DIRECT2) {
 
     }
@@ -319,10 +315,10 @@ void residual(Macroblock *mb_array, int mbAddr, int type, int t_8x8_flag, int st
         for (int iCbCr = 0; iCbCr < 2; iCbCr++) {
             if ((cbp_chroma & 3) && startIdx == 0) {
                 /* chroma DC residual present */
-                (*residual_block)(mb_array, mbAddr, 0, CHROMA_DC_LEVEL, mb->chroma_DC[iCbCr], 0, 4*numC8x8-1, 4*numC8x8, sh, ctx);
+                (*residual_block)(mb_array, mbAddr, 0, CHROMA_DC_LEVEL, mb->residuals.chroma_DC[iCbCr], 0, 4*numC8x8-1, 4*numC8x8, sh, ctx);
             } else {
                 for (int i = 0; i < 4 * numC8x8; i++) {
-                    mb->chroma_DC[iCbCr][i] = 0;
+                    mb->residuals.chroma_DC[iCbCr][i] = 0;
                 }
             }
         }
@@ -332,11 +328,11 @@ void residual(Macroblock *mb_array, int mbAddr, int type, int t_8x8_flag, int st
                 for (int i4x4 = 0; i4x4 < 4; i4x4++) {
                     if (cbp_chroma & 2) {
                         /* chroma AC residual present */
-                        (*residual_block)(mb_array, mbAddr, i4x4, CHROMA_AC_LEVEL, mb->chroma_AC[iCbCr][i8x8*4 + i4x4],
+                        (*residual_block)(mb_array, mbAddr, i4x4, CHROMA_AC_LEVEL, mb->residuals.chroma_AC[iCbCr][i8x8*4 + i4x4],
                             _max(0, startIdx-1), endIdx-1, 15, sh, ctx);
                     } else {
                         for (int i = 0; i < 15; i++) {
-                            mb->chroma_AC[iCbCr][i8x8*4 + i4x4][i] = 0;
+                            mb->residuals.chroma_AC[iCbCr][i8x8*4 + i4x4][i] = 0;
                         }
                     }
                 }
@@ -373,7 +369,7 @@ void residual_luma(Macroblock *mb_array, int mbAddr, int type, int t_8x8_flag, i
 
 
     if (startIdx == 0 && IS_INTRA16x16(type)) {
-        (*residual_block)(mb_array, mbAddr, 0, LUMA_INTRA_16x16_DC_LEVEL, mb->luma_16x16_DC, 0, 15, 16, sh, ctx);
+        (*residual_block)(mb_array, mbAddr, 0, LUMA_INTRA_16x16_DC_LEVEL, mb->residuals.luma_16x16_DC, 0, 15, 16, sh, ctx);
     }
 
     for (int i8x8 = 0; i8x8 < 4; i8x8++) {
@@ -381,33 +377,33 @@ void residual_luma(Macroblock *mb_array, int mbAddr, int type, int t_8x8_flag, i
             for (int i4x4 = 0; i4x4 < 4; i4x4++) {
                 if (cbp_luma & (1 << i8x8)) {
                     if (IS_INTRA16x16(type)) {
-                        (*residual_block)(mb_array, mbAddr, i8x8*4 + i4x4, LUMA_INTRA_16x16_AC_LEVEL, mb->luma_16x16_AC[i8x8*4 + i4x4],
+                        (*residual_block)(mb_array, mbAddr, i8x8*4 + i4x4, LUMA_INTRA_16x16_AC_LEVEL, mb->residuals.luma_16x16_AC[i8x8*4 + i4x4],
                             _max(0, startIdx - 1), endIdx - 1, 15, sh, ctx);
                     } else {
-                        (*residual_block)(mb_array, mbAddr, i8x8*4 + i4x4, LUMA_LEVEL_4x4, mb->luma_4x4_coeffs[i8x8*4 + i4x4],
+                        (*residual_block)(mb_array, mbAddr, i8x8*4 + i4x4, LUMA_LEVEL_4x4, mb->residuals.luma_4x4_coeffs[i8x8*4 + i4x4],
                             startIdx, endIdx, 16, sh, ctx);
                     }
                 } else if (IS_INTRA16x16(type)) {
                     for (int i = 0; i < 15; i++) {
-                        mb->luma_16x16_AC[i8x8*4 + i4x4][i] = 0;
+                        mb->residuals.luma_16x16_AC[i8x8*4 + i4x4][i] = 0;
                     }
                 } else {
                     for (int i = 0; i < 16; i++) {
-                        mb->luma_4x4_coeffs[i8x8*4 + i4x4][i] = 0;
+                        mb->residuals.luma_4x4_coeffs[i8x8*4 + i4x4][i] = 0;
                     }
                 }
 
                 if (!sh->pps->entropy_coding_mode_flag && t_8x8_flag) {
                     for (int i = 0; i < 16; i++) {
-                        mb->luma_8x8_coeffs[i8x8][4*i + i4x4] = mb->luma_4x4_coeffs[i8x8*4 + i4x4][i];
+                        mb->residuals.luma_8x8_coeffs[i8x8][4*i + i4x4] = mb->residuals.luma_4x4_coeffs[i8x8*4 + i4x4][i];
                     }
                 }
             }
         } else if (cbp_luma & (1 << i8x8)) {
-            (*residual_block)(mb_array, mbAddr, 0, LUMA_LEVEL_8x8, mb->luma_8x8_coeffs[i8x8], 4*startIdx, 4*endIdx+3, 64, sh, ctx);
+            (*residual_block)(mb_array, mbAddr, 0, LUMA_LEVEL_8x8, mb->residuals.luma_8x8_coeffs[i8x8], 4*startIdx, 4*endIdx+3, 64, sh, ctx);
         } else {
             for (int i = 0; i < 64; i++) {
-                mb->luma_8x8_coeffs[i8x8][i] = 0;
+                mb->residuals.luma_8x8_coeffs[i8x8][i] = 0;
             }
         }
     }

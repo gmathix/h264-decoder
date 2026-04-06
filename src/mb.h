@@ -52,10 +52,8 @@ extern const int luma_location_diff[4][2];
 
 
 
+
 typedef struct {
-    int type;
-    uint32_t intra_chroma_pred_mode;
-    int32_t mb_qp_delta;
     int16_t luma_total_coeffs[16]; /* FIXME: CABAC uses total_coeffs per 8x8 block
                                         needs a total_coeff array for every union
                                         fine for now as CAVAC doesnt support 8x8 transforms at all */
@@ -71,10 +69,21 @@ typedef struct {
             int16_t luma_16x16_AC[16][15];
         };
     };
-
     int16_t chroma_total_coeffs[4];
     int16_t chroma_DC[2][4];
     int16_t chroma_AC[2][4][15];
+} MacroblockResiduals ;
+
+
+typedef struct {
+    int type;
+    uint32_t intra_chroma_pred_mode;
+    int32_t mb_qp_delta;
+
+    int16_t luma_samples[16][16];
+    int16_t chroma_samples[2][8][8];
+
+    MacroblockResiduals residuals;
 } Macroblock ;
 
 

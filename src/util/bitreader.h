@@ -27,6 +27,7 @@ void     bitreader_skip_bits(BitReader *br, uint32_t n);
 void     bitreader_rewind(BitReader *br, int n);
 bool     bitreader_byte_aligned(BitReader *br);
 int32_t  bitreader_bits_remaining(BitReader *br);
+int32_t  bitreader_bits_consumed(BitReader *br);
 bool     more_rbsp_data(BitReader *br);
 bool     rbsp_trailing_bits(BitReader *br);
 

@@ -77,6 +77,10 @@ int32_t bitreader_bits_remaining(BitReader *br) {
     return ((int32_t)br->size - (int32_t)br->byte_pos) * 8 - (int32_t)br->bit_pos;
 }
 
+int32_t bitreader_bits_consumed(BitReader *br) {
+    return br->byte_pos*8 + br->bit_pos;
+}
+
 bool more_rbsp_data(BitReader *br) {
     return bitreader_bits_remaining(br) > 16 && !rbsp_trailing_bits(br);
 }

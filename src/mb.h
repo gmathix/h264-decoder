@@ -6,7 +6,7 @@
 #define TOY_H264_MB_H
 
 #include <stdint.h>
-#include <stdio.h>
+
 
 #include "nal.h"
 #include "slice.h"
@@ -48,30 +48,57 @@ extern const int sub_width_c_info[4];
 extern const int sub_height_c_info[4];
 
 
+extern const int luma_location_diff[4][2];
+
+
+
 typedef struct {
-    int16_t chromaDC[2][4];     // FIXME: no assumption for 4:2:0 and use [2][8] for 4:2:2
-    int16_t chromaAC[2][4][15]; // FIXME: same, [2][8][15] for 4:2:2
-} ResidualScratch ;
+    int type;
+    uint32_t intra_chroma_pred_mode;
+    int32_t mb_qp_delta;
+    int16_t luma_total_coeffs[16]; /* FIXME: CABAC uses total_coeffs per 8x8 block
+                                        needs a total_coeff array for every union
+                                        fine for now as CAVAC doesnt support 8x8 transforms at all */
+    union {
+        /* Intra 4x4 / 8x8 */
+        struct {
+            int16_t luma_4x4_coeffs[16][16];
+            int16_t luma_8x8_coeffs[4][64]; // just to avoid undefined behavior in residual_luma
+        };
+        /* Intra 16x16 */
+        struct {
+            int16_t luma_16x16_DC[16];
+            int16_t luma_16x16_AC[16][15];
+        };
+    };
+
+    int16_t chroma_total_coeffs[4];
+    int16_t chroma_DC[2][4];
+    int16_t chroma_AC[2][4][15];
+} Macroblock ;
 
 
-typedef void (*residual_function)(int16_t[], int, int, int, BitReader*, SliceHeader*);
+
+typedef void (*residual_function)(Macroblock*, int, int, int, int16_t[], int, int, int, SliceHeader*, CodecContext*);
 
 
 
-void  decode_macroblock        (SliceHeader *s_h, NalUnit *nal_unit, BitReader *br, ParamSets *ps);
-void  mb_pred                  (int type, int pred_mode, SliceHeader *s_h, NalUnit *nal_unit, BitReader *br, ParamSets *ps);
+void  decode_macroblock        (Macroblock *mb_array, int mbAddr, SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
+void  mb_pred                  (Macroblock *mb_array, int mbAddr, int type, int pred_mode, SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
 
-void  residual                 (int type, int t_8x8_flag, int startIdx, int endIdx, int cbp_luma, int cbp_chroma,
-                                    residual_function residual_block,  BitReader *br, SliceHeader *s_h);
+void  residual                 (Macroblock *mb_array, int mbAddr, int type, int t_8x8_flag, int startIdx, int endIdx, int cbp_luma, int cbp_chroma,
+                                    residual_function residual_block, SliceHeader *sh, CodecContext *ctx);
 
-void  residual_luma            (int type, int t_8x8_flag, int cbp_luma, int startIdx, int endIdx,
-                                    int16_t i16x16[16], int16_t i16x16AC[16][15], int16_t level4x4[16][16], int16_t level8x8[4][64],
-                                    residual_function residual_block, BitReader *br, SliceHeader *s_h);
+void  residual_luma            (Macroblock *mb_array, int mbAddr, int type, int t_8x8_flag, int cbp_luma,
+                                int startIdx, int endIdx,
+                                residual_function residual_block, SliceHeader *sh, CodecContext *ctx);
 
-void  residual_block_cavlc     (int16_t coeffLevel[], int startIdx, int endIdx, int maxNumCoeff, BitReader *br, SliceHeader *s_h);
-void  residual_block_cabac     (int16_t coeffLevel[], int startIdx, int endIdx, int maxNumCoeff, BitReader *br, SliceHeader *s_h);
+void  residual_block_cabac     (Macroblock *mb_array, int mbAddr, int blkIdx, int pbt, int16_t coeffLevel[], int startIdx, int endIdx, int maxNumCoeff, SliceHeader *sh, CodecContext *ctx);
 
 
+
+void derive_neighbor_4x4_luma  (int luma4x4BlkIdx, int currMbAddr, int *mbAddrA, int *luma4x4BlkIdxA, int *mbAddrB, int *luma4x4BlkIdxB, SliceHeader *sh);
+void derive_neighbor           (bool luma, Coord location, int currMbAddr, int *mbAddrN, Coord *xWyW, SliceHeader *sh);
 
 /* little luma/chroma coeff tutorial */
 
@@ -128,43 +155,66 @@ each has AC blocks, plus a 2x2 DC block
 
 */
 
-
-
-
-static inline int inverse_mb_scan_x          (uint32_t mbAddr, SPS *sps) {
-    return _inverse_raster_scan(
-        sps->mb_aff_flag ? mbAddr / 2 : mbAddr,
-        16, sps->mb_aff_flag ? 32 : 16,
-        sps->pic_width_samples_l, 0);
+static inline int derive_4x4_luma_blk_scan_order(int xP, int yP) {
+    return 8 * (yP / 8) + 4 * (xP / 8) +
+            2 * ((yP % 8) / 4) + ((xP % 8) / 4);
 }
-static inline int inverse_mb_scan_y          (uint32_t mbAddr, SPS *sps) {
-    return _inverse_raster_scan(
-        sps->mb_aff_flag ? mbAddr / 2 : mbAddr,
-        16, sps->mb_aff_flag ? 32 : 16,
-        sps->pic_width_samples_l, 1);
+static inline int derive_4x4_luma_blk(int xP, int yP) {
+    return  xP/4 + yP;
 }
-static inline int inverse_mb_part_scan_x     (uint8_t mbPartIdx, uint8_t mbPartWidth, uint8_t mbPartHeight) {
-    return _inverse_raster_scan(
+
+static Coord inverse_4x4_luma_blk_scan(int luma4x4BlkIdx) {
+    return (Coord) {
+        _inverse_raster_scan(luma4x4BlkIdx, 4, 4, 16, 0),
+        _inverse_raster_scan(luma4x4BlkIdx, 4, 4, 16, 1)
+    };
+}
+
+static Coord inverse_4x4_chroma_blk_scan(int chroma4x4BlkIdx) {
+    return (Coord) {
+        _inverse_raster_scan(chroma4x4BlkIdx, 4, 4, 8, 0),
+        _inverse_raster_scan(chroma4x4BlkIdx, 4, 4, 8, 1)
+    };
+}
+
+static Coord inverse_mb_scan(uint32_t mbAddr, SPS *sps) {
+    return (Coord){
+        _inverse_raster_scan(
+            sps->mb_aff_flag ? mbAddr / 2 : mbAddr,
+            16, sps->mb_aff_flag ? 32 : 16,
+            sps->pic_width_samples_l, 0),
+
+        _inverse_raster_scan(
+            sps->mb_aff_flag ? mbAddr / 2 : mbAddr,
+            16, sps->mb_aff_flag ? 32 : 16,
+            sps->pic_width_samples_l, 1)
+    };
+}
+
+static Coord inverse_mb_part_scan(uint8_t mbPartIdx, uint8_t mbPartWidth, uint8_t mbPartHeight) {
+    return (Coord) {
+        _inverse_raster_scan(
             mbPartIdx,
             mbPartWidth, mbPartHeight,
-            16, 0);
-}
-static inline int inverse_mb_part_scan_y     (uint8_t mbPartIdx, uint8_t mbPartWidth, uint8_t mbPartHeight) {
-    return _inverse_raster_scan(
+            16, 0),
+
+        _inverse_raster_scan(
             mbPartIdx,
             mbPartWidth, mbPartHeight,
-            16, 1);
-}
-static inline int inverse_sub_mb_part_scan_x (int32_t mb_type, uint8_t mbPartIdx, uint8_t subMbPartIdx, uint8_t subMbPartWidth, uint8_t subMpPartHeight) {
-    return (mb_type == 3 || mb_type == 4 || mb_type == 22)
-        ? _inverse_raster_scan(subMbPartIdx, subMbPartWidth, subMpPartHeight, 8, 0)
-        : _inverse_raster_scan(subMbPartIdx, 4, 4, 8, 0);
-}
-static inline int inverse_sub_mb_part_scan_y (int32_t mb_type, uint8_t mbPartIdx, uint8_t subMbPartIdx, uint8_t subMbPartWidth, uint8_t subMpPartHeight) {
-    return (mb_type == 3 || mb_type == 4 || mb_type == 22)
-        ? _inverse_raster_scan(subMbPartIdx, subMbPartWidth, subMpPartHeight, 8, 1)
-        : _inverse_raster_scan(subMbPartIdx, 4, 4, 8, 1);
+            16, 1)
+        };
 }
 
+static Coord inverse_sub_mb_part_scan(int32_t mb_type, uint8_t mbPartIdx, uint8_t subMbPartIdx, uint8_t subMbPartWidth, uint8_t subMpPartHeight) {
+    return (Coord) {
+        (mb_type == 3 || mb_type == 4 || mb_type == 22)
+            ? _inverse_raster_scan(subMbPartIdx, subMbPartWidth, subMpPartHeight, 8, 0)
+            : _inverse_raster_scan(subMbPartIdx, 4, 4, 8, 0),
+
+        (mb_type == 3 || mb_type == 4 || mb_type == 22)
+            ? _inverse_raster_scan(subMbPartIdx, subMbPartWidth, subMpPartHeight, 8, 1)
+            : _inverse_raster_scan(subMbPartIdx, 4, 4, 8, 1)
+        };
+}
 
 #endif //TOY_H264_MB_H

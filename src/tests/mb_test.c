@@ -49,5 +49,9 @@ int main(void) {
 
     free(frame);
 
+
+    printf("%d\n", (-(uint16_t)19-1)>>1);
+
+
     return 0;
 }

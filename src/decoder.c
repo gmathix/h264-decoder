@@ -23,8 +23,9 @@ CodecContext *decoder_init(const uint8_t *data, size_t size) {
     context->data = data;
     context->size = size;
 
-    BitReader br = make_br(context->data, context->size);
-    context->br = &br;
+    BitReader *br = malloc(sizeof(BitReader));
+    context->br = br;
+    context->global_bit_offset = 0;
 
     ParamSets *ps = calloc(1, sizeof(ParamSets));
     context->ps = ps;
@@ -53,7 +54,7 @@ void decoder_run(CodecContext *context) {
     while (i < num_nals) {
         printf("\n");
 
-        dispatch_nal_unit(&nal_units[i], context->ps);
+        dispatch_nal_unit(&nal_units[i], context);
 
         i++;
     }

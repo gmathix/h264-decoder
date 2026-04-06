@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 #include "util/bitreader.h"
-
+#include "util/logger.h"
 
 
 #define MAX_SPS_COUNT     32
@@ -18,9 +18,6 @@
 typedef struct SPS {
     /* only params used for intra + CAVLC for now.
      * no scaling matrix or VUI params shit that we don't need for now */
-
-    uint8_t buf[4096];
-    size_t  size;
 
 
     // RAW (from bitstream)
@@ -51,6 +48,7 @@ typedef struct SPS {
     int      frame_mbs_only_flag;
     int      mb_aff_flag;
     int      profile_idc; // 66=baseline, 77=main, 100=high
+    int      separate_color_plane_flag;
 
 
     // DERIVED
@@ -67,14 +65,6 @@ typedef struct SPS {
 
 
 typedef struct PPS {
-    /* same */
-
-
-    uint8_t buf[4096];
-    size_t  size;
-
-
-
     // RAW (from bitstream)
     uint32_t num_ref_idx_l0_active_minus1;
     uint32_t num_ref_idx_l1_active_minus1;
@@ -118,8 +108,11 @@ typedef struct ParamSets {
 
 
 int  get_profile (ParamSets *ps);
-int  decode_sps  (BitReader *br, ParamSets *ps);
-int  decode_pps  (BitReader *br, ParamSets *ps);
+int  decode_sps  (size_t global_bit_offset, BitReader *br, ParamSets *ps);
+int  decode_pps  (size_t global_bit_offset, BitReader *br, ParamSets *ps);
+
+int decode_vui (size_t global_bit_offset, BitReader *br, ParamSets *ps);
+
 void ps_uninit   (ParamSets *ps);
 
 

@@ -6,6 +6,7 @@
 #define TOY_H264_COMMON_H
 
 
+#include <stddef.h>
 #include <stdint.h>
 
 

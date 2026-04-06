@@ -10,16 +10,13 @@
 
 
 int main(void) {
-    int res = (int)(size_t)12 - (int)(size_t)13;
-    printf("%lu\n", res);
-
-    const char *path = "../videos/output.h264";
+    const char *path = "../videos/h264/out_16x16_100f_linear.h264";
+    // const char *path = "../videos/output.h264";
     FILE *file = fopen(path, "rb");
     if (!file) {
         printf("file not found : %s\n", path);
         return 1;
     }
-
     fseek(file, 0, SEEK_END);
     size_t size = ftell(file);
     rewind(file);

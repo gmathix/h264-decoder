@@ -11,11 +11,11 @@
 
 #include <assert.h>
 #include <limits.h>
-#include <math.h>
+#include <time.h>
+#include <unistd.h>
 
+#include "nal.h"
 #include "util/expgolomb.h"
-
-
 
 
 #define MIN_LOG2_MAX_FRAME_NUM    4
@@ -24,16 +24,9 @@
 
 
 /* 7.3.2.1.1 */
-int decode_sps(BitReader *br, ParamSets *ps) {
+int decode_sps(size_t global_bit_offset, BitReader *br, ParamSets *ps) {
     SPS *sps = calloc(1, sizeof(SPS));
 
-    sps->size = br->size;
-
-    if (sps->size > sizeof(sps->buf)) {
-        printf("[SPS] truncating likely oversized SPS \n");
-        sps->size = sizeof(sps->buf);
-    }
-    memcpy(sps->buf, br->data, sps->size);
 
     if (!bitreader_byte_aligned(br)) {
         printf("[SPS] bitreader not aligned, cannot read sps\n");
@@ -41,7 +34,10 @@ int decode_sps(BitReader *br, ParamSets *ps) {
     }
 
 
+    print_annexb_line_info(global_bit_offset, "SPS", "profile_idc", br);
     int profile_idc = read_u(br, 8);
+    print_annexb_line_value((int16_t)profile_idc);
+
 
     /// TODO: use 6 next bits for constraints
     bitreader_skip_bits(br, 6);
@@ -49,7 +45,11 @@ int decode_sps(BitReader *br, ParamSets *ps) {
 
     bitreader_skip_bits(br, 2); // reserved zero bits
 
+
+    print_annexb_line_info(global_bit_offset, "SPS", "level_idc", br);
     int level_idc = read_u(br, 8);
+    print_annexb_line_value((int16_t)level_idc);
+
 
     uint32_t sps_id = read_ue(br);
     if (sps_id > MAX_SPS_COUNT) {
@@ -57,9 +57,17 @@ int decode_sps(BitReader *br, ParamSets *ps) {
         return -1;
     }
 
+
+
+    print_annexb_line_info(global_bit_offset, "SPS", "sps_id", br);
+
     sps->sps_id = sps_id;
     sps->profile_idc = profile_idc;
 
+    print_annexb_line_value((int16_t)sps->sps_id);
+
+
+    print_annexb_line_info(global_bit_offset, "SPS", "chroma_format_idc", br);
     if (sps->profile_idc == 100 || // High profile
         sps->profile_idc == 110 || // High10 profile
         sps->profile_idc == 122 || // High422 profile
@@ -72,11 +80,11 @@ int decode_sps(BitReader *br, ParamSets *ps) {
     {
         sps->chroma_format_idc = read_ue(br);
         if (sps->chroma_format_idc == 3) {
-            uint32_t separate_color_plane_flag = read_u(br, 1);
+            sps->separate_color_plane_flag = read_u(br, 1);
             /// TODO: something
         }
 
-        sps->bit_depth_chroma_minus8 = read_ue(br);
+        sps->bit_depth_luma_minus8 = read_ue(br);
         sps->bit_depth_chroma_minus8 = read_ue(br);
 
         uint32_t transform_bypass = read_u(br, 1);
@@ -91,14 +99,20 @@ int decode_sps(BitReader *br, ParamSets *ps) {
         sps->bit_depth_luma = 8;
         sps->bit_depth_chroma = 8;
     }
+    print_annexb_line_value((int16_t)sps->chroma_format_idc);
 
+
+    print_annexb_line_info(global_bit_offset, "SPS", "log2_max_frame_num_minus4", br);
     sps->log2_max_frame_num_minus4 =read_ue(br);
     if (sps->log2_max_frame_num_minus4 < MIN_LOG2_MAX_FRAME_NUM - 4 ||
         sps->log2_max_frame_num_minus4 > MAX_LOG2_MAX_FRAME_NUM) {
         printf("log2_max_frame_num_minus4 out of range(0-12): %d\n", sps->log2_max_frame_num_minus4);
         return -1;
     }
+    print_annexb_line_value((int16_t)sps->log2_max_frame_num_minus4);
 
+
+    print_annexb_line_info(global_bit_offset, "SPS", "pic_order_cnt_type", br);
     sps->pic_order_cnt_type = read_ue(br);
     if (sps->pic_order_cnt_type == 0) {
         sps->log2_max_pic_order_cnt_lsb_minus4 = read_ue(br);
@@ -119,25 +133,50 @@ int decode_sps(BitReader *br, ParamSets *ps) {
         printf("invalid poc type : %d", sps->pic_order_cnt_type);
         return -1;
     }
+    print_annexb_line_value((int16_t)sps->pic_order_cnt_type);
 
 
 
     /* unused for now */
+    print_annexb_line_info(global_bit_offset, "SPS", "num_ref_frames", br);
     uint32_t num_ref_frames = read_ue(br);
+    print_annexb_line_value((int16_t)num_ref_frames);
+
+
+    print_annexb_line_info(global_bit_offset, "SPS", "gaps_in_frame_num_value_allowed_flag", br);
     int32_t gaps_in_frame_num_value_allowed_flag = read_u(br, 1);
+    print_annexb_line_value((int16_t)gaps_in_frame_num_value_allowed_flag);
 
 
+    print_annexb_line_info(global_bit_offset, "SPS", "pic_width_in_mbs_minus1", br);
     sps->pic_width_in_mbs_minus1 = read_ue(br);
-    sps->pic_height_in_map_units_minus1 = read_ue(br);
+    print_annexb_line_value((int16_t)sps->pic_width_in_mbs_minus1);
 
+    print_annexb_line_info(global_bit_offset, "SPS", "pic_height_in_map_units_minus1", br);
+    sps->pic_height_in_map_units_minus1 = read_ue(br);
+    print_annexb_line_value((int16_t)sps->pic_height_in_map_units_minus1);
+
+
+    print_annexb_line_info(global_bit_offset, "SPS", "frame_mbs_only_flag", br);
     sps->frame_mbs_only_flag = read_u(br, 1);
+    print_annexb_line_value((int16_t)sps->frame_mbs_only_flag);
+
     if (!sps->frame_mbs_only_flag) {
+        print_annexb_line_info(global_bit_offset, "SPS", "mb_aff_flag", br);
         sps->mb_aff_flag = read_u(br, 1);
+        print_annexb_line_value((int16_t)sps->mb_aff_flag);
+
     }
 
+    print_annexb_line_info(global_bit_offset, "SPS", "direct_8x8_inference_flag", br);
     sps->direct_8x8_inference_flag = read_u(br, 1);
+    print_annexb_line_value((int16_t)sps->direct_8x8_inference_flag);
 
+
+    print_annexb_line_info(global_bit_offset, "SPS", "frame_cropping_flag", br);
     sps->frame_cropping_flag = read_u(br, 1);
+    print_annexb_line_value((int16_t)sps->frame_cropping_flag);
+
     if (sps->frame_cropping_flag) {
         uint32_t crop_left   = read_ue(br);
         uint32_t crop_right  = read_ue(br);
@@ -176,9 +215,12 @@ int decode_sps(BitReader *br, ParamSets *ps) {
 
 
     /* unused for now */
+    print_annexb_line_info(global_bit_offset, "SPS", "vui_params_present", br);
     int vui_params_present = read_u(br, 1);
+    print_annexb_line_value((int16_t)vui_params_present);
+
     if (vui_params_present) {
-        // vui params not supported yet so we'll ignore them ;
+        decode_vui(global_bit_offset, br, ps);
     }
 
 
@@ -196,14 +238,6 @@ int decode_sps(BitReader *br, ParamSets *ps) {
         sps->crop_top_offset - sps->crop_bottom_offset;
 
 
-    // log debug info
-    printf("   sps:%u profile:%d/%d poc:%d poc_lsb:%d %s mb_width:%d mb_height:%d px_width:%d px_height:%d crop:%u/%u/%u/%u\n",
-        sps_id, sps->profile_idc, level_idc,
-        sps->pic_order_cnt_type, sps->log2_max_pic_order_cnt_lsb, sps->mb_aff_flag ? "MBAFF" : "NO_MBAFF",
-        sps->pic_width_in_mbs, sps->pic_height_in_map_units,
-        sps->pic_width_in_mbs * 16, sps->pic_height_in_map_units * 16 - sps->crop_bottom_offset,
-        sps->crop_left_offset, sps->crop_right_offset, sps->crop_top_offset, sps->crop_bottom_offset);
-
 
     ps->sps_list[sps->sps_id] = sps;
 
@@ -212,17 +246,9 @@ int decode_sps(BitReader *br, ParamSets *ps) {
 
 
 /* 7.3.2.2 */
-int decode_pps(BitReader *br, ParamSets *ps) {
+int decode_pps(size_t global_bit_offset, BitReader *br, ParamSets *ps) {
     PPS *pps = calloc(1, sizeof(PPS));
 
-    pps->size = br->size;
-
-
-    if (pps->size > sizeof(pps->buf)) {
-        printf("[SPS] truncating likely oversized SPS \n");
-        pps->size = sizeof(pps->buf);
-    }
-    memcpy(pps->buf, br->data, pps->size);
 
     if (!bitreader_byte_aligned(br)) {
         printf("[SPS] bitreader not aligned, cannot read sps\n");
@@ -230,47 +256,86 @@ int decode_pps(BitReader *br, ParamSets *ps) {
     }
 
 
+    print_annexb_line_info(global_bit_offset, "PPS", "pps_id", br);
     pps->pps_id = read_ue(br);
     if (pps->pps_id > 255) {
         printf("pps id out of range 0-255: %d\n", pps->pps_id);
         return -1;
     }
+    print_annexb_line_value((int16_t)pps->pps_id);
+
+    print_annexb_line_info(global_bit_offset, "PPS", "sps_id", br);
     pps->sps_id = read_ue(br);
     if (pps->sps_id >= MAX_SPS_COUNT || !ps->sps_list[pps->sps_id]) {
         printf("invalid sps referenced : %d\n", pps->sps_id);
         return -1;
     }
+    print_annexb_line_value((int16_t)pps->sps_id);
 
+    print_annexb_line_info(global_bit_offset, "PPS", "entropy_coding_mode_flag", br);
     pps->entropy_coding_mode_flag = read_u(br, 1);
     if (pps->entropy_coding_mode_flag == 1) {
         printf("CABAC not supported for now\n");
-
     }
+    print_annexb_line_value((int16_t)pps->entropy_coding_mode_flag);
 
+    print_annexb_line_info(global_bit_offset, "PPS", "bottom_field_pic_order_in_frame_present_flag", br);
     pps->bottom_field_pic_order_in_frame_present_flag = read_u(br, 1);
+    print_annexb_line_value((int16_t)pps->bottom_field_pic_order_in_frame_present_flag);
 
+    print_annexb_line_info(global_bit_offset, "PPS", "num_slice_groups_minus1", br);
     pps->num_slice_groups_minus1 = read_ue(br);
+    print_annexb_line_value((int16_t)pps->num_slice_groups_minus1);
     assert(pps->num_slice_groups_minus1 == 0); // no slice groups for now, nobody uses them anyway
 
 
     /* unused for now */
+    print_annexb_line_info(global_bit_offset, "PPS", "num_ref_idx_l0_active_minus1", br);
     pps->num_ref_idx_l0_active_minus1              = read_ue(br);
+    print_annexb_line_value((int16_t)pps->num_ref_idx_l0_active_minus1);
+
+    print_annexb_line_info(global_bit_offset, "PPS", "num_ref_idx_l1_active_minus1", br);
     pps->num_ref_idx_l1_active_minus1              = read_ue(br);
+    print_annexb_line_value((int16_t)pps->num_ref_idx_l1_active_minus1);
+
+    print_annexb_line_info(global_bit_offset, "PPS", "weighted_pred_flag", br);
     pps->weighted_pred_flag                        = read_u(br, 1);
+    print_annexb_line_value((int16_t)pps->weighted_pred_flag);
+
+    print_annexb_line_info(global_bit_offset, "PPS", "weighted_bipred_flag", br);
     pps->weighted_bipred_idc                       = read_u(br, 2);
+    print_annexb_line_value((int16_t)pps->weighted_bipred_idc);
 
 
 
+    print_annexb_line_info(global_bit_offset, "PPS", "pic_init_qp_minus26", br);
     pps->pic_init_qp_minus26                    = read_se(br);
+    print_annexb_line_value((int16_t)pps->pic_init_qp_minus26);
+
+    print_annexb_line_info(global_bit_offset, "PPS", "pic_init_qs_minus26", br);
     pps->pic_init_qs_minus26                    = read_se(br);
+    print_annexb_line_value((int16_t)pps->pic_init_qs_minus26);
+
+    print_annexb_line_info(global_bit_offset, "PPS", "chroma_qp_index_offset", br);
     pps->chroma_qp_index_offset                 = read_se(br);
+    print_annexb_line_value((int16_t)pps->chroma_qp_index_offset);
 
+    print_annexb_line_info(global_bit_offset, "PPS", "deblocking_filter_control_present_flag", br);
     pps->deblocking_filter_control_present_flag = read_u(br, 1);
-    pps->constrained_intra_pred_flag            = read_u(br, 1);
-    pps->redundant_pic_cnt_present_flag         = read_u(br, 1);
+    print_annexb_line_value((int16_t)pps->deblocking_filter_control_present_flag);
 
-    if (bitreader_bits_remaining(br) > 0) {
+    print_annexb_line_info(global_bit_offset, "PPS", "constrained_intra_pred_flag", br);
+    pps->constrained_intra_pred_flag            = read_u(br, 1);
+    print_annexb_line_value((int16_t)pps->constrained_intra_pred_flag);
+
+    print_annexb_line_info(global_bit_offset, "PPS", "redundant_pic_cnt_present_flag", br);
+    pps->redundant_pic_cnt_present_flag         = read_u(br, 1);
+    print_annexb_line_value((int16_t)pps->redundant_pic_cnt_present_flag);
+
+    if (more_rbsp_data(br)) {
+        print_annexb_line_info(global_bit_offset, "PPS", "transform_8x8_mode_flag", br);
         pps->transform_8x8_mode_flag = read_u(br, 1);
+        print_annexb_line_value((int16_t)pps->transform_8x8_mode_flag);
     }
 
 
@@ -281,17 +346,162 @@ int decode_pps(BitReader *br, ParamSets *ps) {
     pps->pic_init_qp           = pps->pic_init_qp_minus26 + 26;
     pps->pic_init_qs           = pps->pic_init_qs_minus26 + 26;
 
-    printf("   pps:%u sps:%u %s qp:%d/%d/%d %s %s %s\n",
-        pps->pps_id, pps->sps_id,
-        pps->entropy_coding_mode_flag ? "CABAC" : "CAVLC",
-        pps->pic_init_qp, pps->pic_init_qs, pps->chroma_qp_index_offset,
-        pps->deblocking_filter_control_present_flag ? "LPAR" : "",
-        pps->constrained_intra_pred_flag            ? "CONSTR" : "",
-        pps->redundant_pic_cnt_present_flag         ? "REDU" : "");
 
     ps->pps_list[pps->pps_id] = pps;
 
     return 0;
 }
 
+
+/* E.1.1 */
+int decode_vui (size_t global_bit_offset, BitReader *br, ParamSets *ps) {
+    /* not used for now, just necessary parsing for bitreader alignement with the reference decoder */
+
+    print_annexb_line_info(global_bit_offset, "VUI", "aspect_ratio_present_flag", br);
+    int aspect_ratio_present_flag = read_u(br, 1);
+    print_annexb_line_value(aspect_ratio_present_flag);
+
+    if (aspect_ratio_present_flag) {
+        print_annexb_line_info(global_bit_offset, "VUI", "aspect_ratio_idc", br);
+        int aspect_ratio_idc = read_u(br, 8);
+        print_annexb_line_value(aspect_ratio_idc);
+    }
+
+    print_annexb_line_info(global_bit_offset, "VUI", "overscan_info_present_flag", br);
+    int overscan_info_present_flag = read_u(br, 1);
+    print_annexb_line_value(overscan_info_present_flag);
+
+    if (overscan_info_present_flag) {
+        print_annexb_line_info(global_bit_offset, "VUI", "overscan_appropriate_flag", br);
+        int overscan_appropriate_flag = read_u(br, 1);
+        print_annexb_line_value(overscan_appropriate_flag);
+    }
+
+    print_annexb_line_info(global_bit_offset, "VUI", "video_signal_type_present_flag", br);
+    int video_signal_type_present_flag = read_u(br, 1);
+    print_annexb_line_value(video_signal_type_present_flag);
+
+    if (video_signal_type_present_flag) {
+        print_annexb_line_info(global_bit_offset, "VUI", "video_format", br);
+        int video_format = read_u(br, 3);
+        print_annexb_line_value(video_format);
+
+        print_annexb_line_info(global_bit_offset, "VUI", "video_full_range", br);
+        int video_full_range_flag = read_u(br, 1);
+        print_annexb_line_value(video_full_range_flag);
+
+        print_annexb_line_info(global_bit_offset, "VUI", "color_description_present_flag", br);
+        int color_description_present_flag = read_u(br, 1);
+        print_annexb_line_value(color_description_present_flag);
+
+        if (color_description_present_flag) {
+            print_annexb_line_info(global_bit_offset, "VUI", "color_primaries", br);
+            int color_primaries = read_u(br, 8);
+            print_annexb_line_value(color_primaries);
+
+            print_annexb_line_info(global_bit_offset, "VUI", "transfer_characteristics", br);
+            int transfer_characteristics = read_u(br, 8);
+            print_annexb_line_value(transfer_characteristics);
+
+            print_annexb_line_info(global_bit_offset, "VUI", "matrix_coeffs", br);
+            int matrix_coeffs = read_u(br, 8);
+            print_annexb_line_value(matrix_coeffs);
+        }
+    }
+
+    print_annexb_line_info(global_bit_offset, "VUI", "chroma_loc_info_present_flag", br);
+    int chroma_loc_info_present_flag = read_u(br, 1);
+    print_annexb_line_value(chroma_loc_info_present_flag);
+
+    if (chroma_loc_info_present_flag) {
+        print_annexb_line_info(global_bit_offset, "VUI", "chroma_sample_loc_type_top_field", br);
+        uint32_t chroma_sample_loc_type_top_field = read_ue(br);
+        print_annexb_line_value(chroma_sample_loc_type_top_field);
+
+        print_annexb_line_info(global_bit_offset, "VUI", "chroma_log_type_bottom_field", br);
+        uint32_t chroma_sample_log_tyep_bottom_field = read_ue(br);
+        print_annexb_line_value(chroma_sample_log_tyep_bottom_field);
+    }
+
+
+    print_annexb_line_info(global_bit_offset, "VUI", "timing_info_present_flag", br);
+    int timing_info_present_flag = read_u(br, 1);
+    print_annexb_line_value(timing_info_present_flag);
+
+    if (timing_info_present_flag) {
+        print_annexb_line_info(global_bit_offset, "VUI", "num_units_in_tick", br);
+        uint32_t num_units_in_ticks = read_u(br, 32);
+        print_annexb_line_value((int32_t)num_units_in_ticks);
+
+        print_annexb_line_info(global_bit_offset, "VUI", "time_scale", br);
+        uint32_t time_scale = read_u(br, 32);
+        print_annexb_line_value((int32_t)time_scale);
+
+        print_annexb_line_info(global_bit_offset, "VUI", "fixed_frame_rate_flag", br);
+        uint32_t fixed_frame_rate_flag = read_u(br, 1);
+        print_annexb_line_value((int32_t)fixed_frame_rate_flag);
+    }
+
+
+    print_annexb_line_info(global_bit_offset, "VUI", "nal_hrd_params_present_flag", br);
+    int nal_hrd_parameters_present_flag = read_u(br, 1);
+    print_annexb_line_value(nal_hrd_parameters_present_flag);
+
+    if (nal_hrd_parameters_present_flag) {
+        /* hrd_parameters() */
+    }
+
+
+    print_annexb_line_info(global_bit_offset, "VUI", "vcl_hrd_params_present_flag", br);
+    int vcl_hrd_parameters_present_flag = read_u(br, 1);
+    print_annexb_line_value(vcl_hrd_parameters_present_flag);
+
+    if (vcl_hrd_parameters_present_flag) {
+        /* hrd_parameters() */
+    }
+
+    if (nal_hrd_parameters_present_flag || vcl_hrd_parameters_present_flag) {
+        print_annexb_line_info(global_bit_offset, "VUI", "low_delay_hrd_flag", br);
+        int low_delay_hrd_flag = read_u(br, 1);
+        print_annexb_line_value(low_delay_hrd_flag);
+    }
+
+    print_annexb_line_info(global_bit_offset, "VUI", "pic_struct_present_flag", br);
+    int pic_struct_present_flag = read_u(br, 1);
+    print_annexb_line_value(pic_struct_present_flag);
+
+    print_annexb_line_info(global_bit_offset, "VUI", "bitstream_restriction_flag", br);
+    int bitstream_restriction_flag = read_u(br, 1);
+    print_annexb_line_value(bitstream_restriction_flag);
+
+    if (bitstream_restriction_flag) {
+        print_annexb_line_info(global_bit_offset, "VUI", "mvs_over_pic_boundaries_flag", br);
+        int mvs_over_pic_boundaries_flag = read_u(br, 1);
+        print_annexb_line_value(mvs_over_pic_boundaries_flag);
+
+        print_annexb_line_info(global_bit_offset, "VUI", "max_bytes_per_pic_denom", br);
+        uint32_t max_bytes_per_pic_denom = read_ue(br);
+        print_annexb_line_value((int32_t)max_bytes_per_pic_denom);
+
+        print_annexb_line_info(global_bit_offset, "VUI", "max_bits_per_mb_denom", br);
+        uint32_t max_bits_per_mb_denom = read_ue(br);
+        print_annexb_line_value((int32_t)max_bits_per_mb_denom);
+
+        print_annexb_line_info(global_bit_offset, "VUI", "log2_max_mb_length_horizontal", br);
+        uint32_t log2_max_mb_length_horizontal = read_ue(br);
+        print_annexb_line_value((int32_t)log2_max_mb_length_horizontal);
+
+        print_annexb_line_info(global_bit_offset, "VUI", "log2_max_mv_length_vertical", br);
+        uint32_t log2_max_mv_length_vertical = read_ue(br);
+        print_annexb_line_value((int32_t)log2_max_mv_length_vertical);
+
+        print_annexb_line_info(global_bit_offset, "VUI", "max_num_reorder_frames", br);
+        uint32_t max_num_reorder_frames = read_ue(br);
+        print_annexb_line_value((int32_t)max_num_reorder_frames);
+
+        print_annexb_line_info(global_bit_offset, "VUI", "max_dec_frame_buffering", br);
+        uint32_t max_dec_frame_buffering = read_ue(br);
+        print_annexb_line_value((int32_t)max_dec_frame_buffering);
+    }
+}
 

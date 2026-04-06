@@ -9,13 +9,17 @@
 #include <stdio.h>
 
 
-int dispatch_nal_unit(NalUnit *nal_unit, ParamSets *ps) {
+int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx) {
 
-    BitReader br = make_br(nal_unit->data, nal_unit->size);
+    bitreader_init(ctx->br, nal_unit->data, nal_unit->size);
+
+    printf("Annex B NALU, len %lu, nal_ref_idc %d, nal_unit_type %d\n",
+        nal_unit->size+1, nal_unit->ref_idc, nal_unit->type);
 
     switch (nal_unit->type) {
-        case NAL_SPS: printf("*** DECODING SPS ***\n"); return decode_sps(&br, ps);
-        case NAL_PPS: printf("*** DECODING PPS ***\n"); return decode_pps(&br, ps);
+        case NAL_SEI: break;
+        case NAL_SPS: decode_sps(ctx->global_bit_offset, ctx->br, ctx->ps); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
+        case NAL_PPS: decode_pps(ctx->global_bit_offset, ctx->br, ctx->ps); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
 
 
         case NAL_CODED_SLICE_OF_NON_IDR_PICTURE:
@@ -25,9 +29,9 @@ int dispatch_nal_unit(NalUnit *nal_unit, ParamSets *ps) {
         case NAL_CODED_SLICE_DATA_PARTITION_C:
         case NAL_CODED_SLICE_OF_AUX_CODED_PICTURE:
         case NAL_CODED_SLICE_EXTENSION:
-            printf("*** DECODING SLICE OF SIZE %lu ***\n", nal_unit->size);
-            decode_slice(nal_unit, &br, ps);
-
+            decode_slice(nal_unit, ctx);
+            ctx->global_bit_offset += bitreader_bits_consumed(ctx->br);
+            break;
 
 
         case NAL_UNSPECIFIED:
@@ -46,8 +50,8 @@ int dispatch_nal_unit(NalUnit *nal_unit, ParamSets *ps) {
         case NAL_UNSPEC30:
         case NAL_UNSPEC31:        return 0;
 
-
-
         default: return -1;
     }
+
+
 }

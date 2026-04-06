@@ -13,12 +13,12 @@
 typedef struct CodecContext {
     bool initialized;
 
-    const uint8_t   *data;
-    size_t     size;
+    const uint8_t *data;
+    size_t size;
     BitReader *br;
+    size_t global_bit_offset;
 
     ParamSets *ps;
-
 } CodecContext ;
 
 

@@ -42,6 +42,7 @@ typedef struct SliceHeader {
     int      direct_spatial_mv_pred_flag;
     int      field_pic_flag;
     int      idr_pic_flag;
+    int      long_term_reference_flag;
     int      num_ref_idx_active_override_flag;
     int      sp_for_switch_flag;
 
@@ -49,11 +50,11 @@ typedef struct SliceHeader {
 } SliceHeader ;
 
 
-void         decode_slice              (NalUnit *nal_unit, BitReader *br, ParamSets *ps);
-SliceHeader *decode_slice_header       (NalUnit *nal_unit, BitReader *br, ParamSets *ps);
-void         decode_slice_data         (SliceHeader *s_h, NalUnit *nal_unit, BitReader *br, ParamSets *ps);
-void         ref_pic_list_modification (uint8_t type, BitReader *br);
-void         pred_weight_table         (uint8_t type, BitReader *br, SPS *sps, PPS *pps);
-void         dec_ref_pic_marking       (int idr_pic_flag, BitReader *br, SPS *sps, PPS *pps);
+void         decode_slice              (NalUnit *nal_unit, CodecContext *ctx);
+SliceHeader *decode_slice_header       (NalUnit *nal_unit, CodecContext *ctx);
+void         decode_slice_data         (SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
+void         ref_pic_list_modification (uint8_t type, SliceHeader *sh, CodecContext *ctx);
+void         pred_weight_table         (uint8_t type, SliceHeader *sh, CodecContext *ctx);
+void         dec_ref_pic_marking       (SliceHeader *sh, CodecContext *ctx);
 
 #endif //TOY_H264_SLICE_H

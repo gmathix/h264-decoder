@@ -2,16 +2,21 @@
 // Created by gmathix on 3/21/26.
 //
 
+#include "cavlc.h"
 #include "mb.h"
 
-#include <stdlib.h>
-#include <threads.h>
-#include <unistd.h>
+#include <stdio.h>
 
 #include "util/expgolomb.h"
 #include "util/formulas.h"
 #include "util/mbutil.h"
 #include "util/predutil.h"
+
+#include <stdlib.h>
+#include <threads.h>
+#include <unistd.h>
+
+
 
 
 /* table 7-11 */
@@ -121,52 +126,80 @@ const int sub_width_c_info[4]  = {
 const int sub_height_c_info[4] = {-1, 2, 1, 1};
 
 
+/* table 6-2 */
+const int luma_location_diff[4][2] = {
+    /* N       {xD, yD} */
+
+    /* A */ {-1,  0},
+    /* B */ { 0, -1},
+    /* C */ {-2, -1},
+    /* D */ {-1, -1},
+};
+
+
 /* 7.3.5 */
-void decode_macroblock(SliceHeader *s_h, NalUnit *nal_unit, BitReader *br, ParamSets *ps) {
-    PPS *pps = ps->pps_list[s_h->pps_id];
-    SPS *sps = ps->sps_list[pps->sps_id];
+void decode_macroblock(Macroblock *mb_array, int mbAddr, SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
+    BitReader *br = ctx->br;
 
+
+    Macroblock *mb = &mb_array[mbAddr];
+
+    PPS *pps = sh->pps;
+    SPS *sps = sh->sps;
+
+
+    print_macroblock_header(sh->sps->pic_order_cnt_type, mbAddr, sh->frame_num, sh->slice_type);
+
+
+    print_slice_line_info(ctx->global_bit_offset, "mb_type", ctx->br);
     uint32_t mb_type = read_ue(br);
+    print_slice_line_value(mb_type);
 
-    if ((IS_I_SLICE(s_h->slice_type) && mb_type > 25) ||
-        (IS_P_SLICE(s_h->slice_type) && mb_type > 4)  ||
-        (IS_B_SLICE(s_h->slice_type) && mb_type > 22)) {
+
+    if ((IS_I_SLICE(sh->slice_type) && mb_type > 25) ||
+        (IS_P_SLICE(sh->slice_type) && mb_type > 4)  ||
+        (IS_B_SLICE(sh->slice_type) && mb_type > 22)) {
 
         printf("mb_type out of bounds for %s slice : got %d\n",
-            slice_type_to_string(s_h->slice_type), mb_type);
+            slice_type_to_string(sh->slice_type), mb_type);
         return;
     }
 
-    int MbWidthC  = 16 / sub_width_c_info[s_h->sps->chroma_format_idc];
-    int MbHeightC = 16 / sub_height_c_info[s_h->sps->chroma_format_idc];
+    int MbWidthC  = 16 / sub_width_c_info[sh->sps->chroma_format_idc];
+    int MbHeightC = 16 / sub_height_c_info[sh->sps->chroma_format_idc];
 
 
     uint8_t pcm_samples_luma[256];
     uint8_t pcm_samples_chroma[2 * MbHeightC * MbWidthC];
 
 
-    int type = IS_I_SLICE(s_h->slice_type)
+    int type = IS_I_SLICE(sh->slice_type)
         ? i_mb_type_info[mb_type].type
-        : IS_P_SLICE(s_h->slice_type)
+        : IS_P_SLICE(sh->slice_type)
             ? p_mb_type_info[mb_type].type
-            : IS_B_SLICE(s_h->slice_type)
+            : IS_B_SLICE(sh->slice_type)
                 ? b_mb_type_info[mb_type].type
                 : -1;
 
-    int pred_mode = IS_I_SLICE(s_h->slice_type)
+    mb->type = type;
+
+    int pred_mode = IS_I_SLICE(sh->slice_type)
         ? i_mb_type_info[mb_type].pred_mode
         : -1;
 
-    int cbp_luma = IS_I_SLICE(s_h->slice_type)
+    int cbp_luma = IS_I_SLICE(sh->slice_type)
         ? i_mb_type_info[mb_type].cbp_luma
         : -1;
 
-    int cbp_chroma = IS_I_SLICE(s_h->slice_type)
+    int cbp_chroma = IS_I_SLICE(sh->slice_type)
         ? i_mb_type_info[mb_type].cbp_chroma
         : -1;
 
 
-    printf("%s ", mb_type_to_string(type));
+
+
+
+
 
 
     if (type == MB_TYPE_INTRA_PCM) {
@@ -189,7 +222,7 @@ void decode_macroblock(SliceHeader *s_h, NalUnit *nal_unit, BitReader *br, Param
             if (pps->transform_8x8_mode_flag && type == MB_TYPE_INTRA4x4) {
                 transform_size_8x8_flag = read_u(br, 1);
             }
-            mb_pred(type, pred_mode, s_h, nal_unit, br, ps);
+            mb_pred(mb_array, mbAddr, type, pred_mode, sh, nal_unit, ctx);
         }
 
         if (!IS_INTRA16x16(type)) {
@@ -208,23 +241,27 @@ void decode_macroblock(SliceHeader *s_h, NalUnit *nal_unit, BitReader *br, Param
         }
 
         if (cbp_luma > 0 || cbp_chroma > 0 || IS_INTRA16x16(type)) {
-            int32_t mb_qp_delta = read_se(br);
+            print_slice_line_info(ctx->global_bit_offset, "mb_qp_delta", ctx->br);
+            mb->mb_qp_delta = read_se(br);
+            print_slice_line_value(mb->mb_qp_delta);
 
-            residual_function residual_block = s_h->pps->entropy_coding_mode_flag
+            residual_function residual_block = sh->pps->entropy_coding_mode_flag
                 ? &residual_block_cabac
                 : &residual_block_cavlc;
 
-            printf("cbp_luma:%d cbp_chroma:%d", cbp_luma, cbp_chroma);
 
-            residual(type, transform_size_8x8_flag, 0, 15, cbp_luma, cbp_chroma,
-                        residual_block, br, s_h);
+            residual(mb_array, mbAddr, type, transform_size_8x8_flag, 0, 15, cbp_luma, cbp_chroma,
+                        residual_block, sh, ctx);
         }
     };
 }
 
 
 /* 7.3.5.1 */
-void mb_pred(int type, int pred_mode, SliceHeader *s_h, NalUnit *nal_unit, BitReader *br, ParamSets *ps) {
+void mb_pred(Macroblock *mb_array, int mbAddr, int type, int pred_mode, SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
+    BitReader *br = ctx->br;
+
+
     if (type == MB_TYPE_INTRA4x4 ||
         type == MB_TYPE_INTRA8x8 ||
         type == MB_TYPE_INTRA16x16) {
@@ -251,8 +288,10 @@ void mb_pred(int type, int pred_mode, SliceHeader *s_h, NalUnit *nal_unit, BitRe
             }
         }
 
-        if (s_h->sps->chroma_format_idc == 1 || s_h->sps->chroma_format_idc == 2) {
-            uint32_t intra_chroma_pred_mode = read_ue(br);
+        if (sh->sps->chroma_format_idc == 1 || sh->sps->chroma_format_idc == 2) {
+            print_slice_line_info(ctx->global_bit_offset, "intra_chroma_pred_mode", ctx->br);
+            mb_array[mbAddr].intra_chroma_pred_mode = read_ue(br);
+            print_slice_line_value((int32_t)mb_array[mbAddr].intra_chroma_pred_mode);
         }
     } else if (type != MB_TYPE_DIRECT2) {
 
@@ -261,35 +300,29 @@ void mb_pred(int type, int pred_mode, SliceHeader *s_h, NalUnit *nal_unit, BitRe
 
 
 /* 7.3.5.3 */
-void residual(int type, int t_8x8_flag, int startIdx, int endIdx, int cbp_luma, int cbp_chroma, residual_function residual_block, BitReader *br,  SliceHeader *s_h) {
+void residual(Macroblock *mb_array, int mbAddr, int type, int t_8x8_flag, int startIdx, int endIdx, int cbp_luma, int cbp_chroma, residual_function residual_block, SliceHeader *sh, CodecContext *ctx) {
+    BitReader *br = ctx->br;
 
+    Macroblock *mb = &mb_array[mbAddr];
 
-    int16_t intra16x16DC     [16];  /* one DC coeff for each 4x4 luma block */
-    int16_t intra16x16AC [16][15];  /* 15 AC coeffs (1 4x4 block) for each 4x4 luma block for Intra16x16*/
-    int16_t luma4x4      [16][16];  /* 16 AC coeffs (1 4x4 block) for each 4x4 luma block */
-    int16_t luma8x8      [ 4][64];
-
-    residual_luma(type, t_8x8_flag, cbp_luma, startIdx, endIdx,
-                    intra16x16DC, intra16x16AC, luma4x4, luma8x8,
-                    residual_block, br, s_h);
+    residual_luma(mb_array, mbAddr, type, t_8x8_flag, cbp_luma, startIdx, endIdx,
+                    residual_block, sh, ctx);
 
 
 
-    if (s_h->sps->chroma_format_idc == 1 || s_h->sps->chroma_format_idc == 2) {
+    if (sh->sps->chroma_format_idc == 1 || sh->sps->chroma_format_idc == 2) {
 
         int numC8x8 = 4 /
-            (sub_width_c_info[s_h->sps->chroma_format_idc] * sub_height_c_info[s_h->sps->chroma_format_idc]);
+            (sub_width_c_info[sh->sps->chroma_format_idc] * sub_height_c_info[sh->sps->chroma_format_idc]);
 
-
-        ResidualScratch residual_scratch = {};
 
         for (int iCbCr = 0; iCbCr < 2; iCbCr++) {
             if ((cbp_chroma & 3) && startIdx == 0) {
                 /* chroma DC residual present */
-                (*residual_block)(residual_scratch.chromaDC[iCbCr], 0, 4*numC8x8-1, 4*numC8x8, br, s_h);
+                (*residual_block)(mb_array, mbAddr, 0, CHROMA_DC_LEVEL, mb->chroma_DC[iCbCr], 0, 4*numC8x8-1, 4*numC8x8, sh, ctx);
             } else {
                 for (int i = 0; i < 4 * numC8x8; i++) {
-                    residual_scratch.chromaDC[iCbCr][i] = 0;
+                    mb->chroma_DC[iCbCr][i] = 0;
                 }
             }
         }
@@ -299,92 +332,135 @@ void residual(int type, int t_8x8_flag, int startIdx, int endIdx, int cbp_luma, 
                 for (int i4x4 = 0; i4x4 < 4; i4x4++) {
                     if (cbp_chroma & 2) {
                         /* chroma AC residual present */
-                        (*residual_block)(residual_scratch.chromaAC[iCbCr][i8x8*4 + i4x4],
-                            _max(0, startIdx-1), endIdx-1, 15, br, s_h);
+                        (*residual_block)(mb_array, mbAddr, i4x4, CHROMA_AC_LEVEL, mb->chroma_AC[iCbCr][i8x8*4 + i4x4],
+                            _max(0, startIdx-1), endIdx-1, 15, sh, ctx);
                     } else {
                         for (int i = 0; i < 15; i++) {
-                            residual_scratch.chromaAC[iCbCr][i8x8*4 + i4x4][i] = 0;
+                            mb->chroma_AC[iCbCr][i8x8*4 + i4x4][i] = 0;
                         }
                     }
                 }
             }
         }
-    } else if (s_h->sps->chroma_format_idc == 3) {
+    } else if (sh->sps->chroma_format_idc == 3) { /* 4:4:4 not handled for now */
         int16_t CbIntra16x16DC[16];
         int16_t CbIntra16x16AC[16][15];
         int16_t Cb4x4[16][16];
         int16_t Cb8x8[4][64];
-        residual_luma(type, t_8x8_flag, cbp_chroma, startIdx,  endIdx,
-                         CbIntra16x16DC, CbIntra16x16AC, Cb4x4, Cb8x8,
-                         residual_block, br, s_h);
+        residual_luma(mb_array, mbAddr, type, t_8x8_flag, cbp_chroma, startIdx,  endIdx,
+                         residual_block, sh, ctx);
 
         int16_t CrIntra16x16DC[16];
         int16_t CrIntra16x16AC[16][15];
         int16_t Cr4x4[16][16];
         int16_t Cr8x8[4][64];
-        residual_luma(type, t_8x8_flag, cbp_chroma, startIdx,  endIdx,
-                        CrIntra16x16DC, CrIntra16x16AC, Cr4x4, Cr8x8,
-                        residual_block, br, s_h);
+        residual_luma(mb_array, mbAddr, type, t_8x8_flag, cbp_chroma, startIdx,  endIdx,
+                        residual_block, sh, ctx);
     }
 }
 
 
 
 /* 7.3.5.3.1 */
-void residual_luma(int type, int t_8x8_flag, int cbp_luma, int startIdx, int endIdx,
-                    int16_t i16x16DClevel[16], int16_t i16x16AClevel[16][15], int16_t level4x4[16][16], int16_t level8x8[4][64],
-                    residual_function residual_block, BitReader *br, SliceHeader *s_h) {
+void residual_luma(Macroblock *mb_array, int mbAddr, int type, int t_8x8_flag, int cbp_luma,
+                    int startIdx, int endIdx,
+                    residual_function residual_block, SliceHeader *sh, CodecContext *ctx) {
+
+    BitReader *br = ctx->br;
+
+
+    Macroblock *mb = &mb_array[mbAddr];
+
 
     if (startIdx == 0 && IS_INTRA16x16(type)) {
-        printf("\n parsing DC luma coeffs\n");
-        (*residual_block)(i16x16DClevel, 0, 15, 16, br, s_h);
+        (*residual_block)(mb_array, mbAddr, 0, LUMA_INTRA_16x16_DC_LEVEL, mb->luma_16x16_DC, 0, 15, 16, sh, ctx);
     }
 
     for (int i8x8 = 0; i8x8 < 4; i8x8++) {
-        if (!t_8x8_flag || !s_h->pps->entropy_coding_mode_flag) {
+        if (!t_8x8_flag || !sh->pps->entropy_coding_mode_flag) {
             for (int i4x4 = 0; i4x4 < 4; i4x4++) {
                 if (cbp_luma & (1 << i8x8)) {
                     if (IS_INTRA16x16(type)) {
-                        (*residual_block)(i16x16AClevel[i8x8*4 + i4x4],
-                            _max(0, startIdx - 1), endIdx - 1, 15, br, s_h);
+                        (*residual_block)(mb_array, mbAddr, i8x8*4 + i4x4, LUMA_INTRA_16x16_AC_LEVEL, mb->luma_16x16_AC[i8x8*4 + i4x4],
+                            _max(0, startIdx - 1), endIdx - 1, 15, sh, ctx);
                     } else {
-                        (*residual_block)(level4x4[i8x8*4 + i4x4],
-                            startIdx, endIdx, 16, br, s_h);
+                        (*residual_block)(mb_array, mbAddr, i8x8*4 + i4x4, LUMA_LEVEL_4x4, mb->luma_4x4_coeffs[i8x8*4 + i4x4],
+                            startIdx, endIdx, 16, sh, ctx);
                     }
                 } else if (IS_INTRA16x16(type)) {
                     for (int i = 0; i < 15; i++) {
-                        i16x16AClevel[i8x8*4 + i4x4][i] = 0;
+                        mb->luma_16x16_AC[i8x8*4 + i4x4][i] = 0;
                     }
                 } else {
                     for (int i = 0; i < 16; i++) {
-                        level4x4[i8x8*4 + i4x4][i] = 0;
+                        mb->luma_4x4_coeffs[i8x8*4 + i4x4][i] = 0;
                     }
                 }
 
-                if (!s_h->pps->entropy_coding_mode_flag && t_8x8_flag) {
+                if (!sh->pps->entropy_coding_mode_flag && t_8x8_flag) {
                     for (int i = 0; i < 16; i++) {
-                        level8x8[i8x8][4*i + i4x4] = level4x4[i8x8*4 + i4x4][i];
+                        mb->luma_8x8_coeffs[i8x8][4*i + i4x4] = mb->luma_4x4_coeffs[i8x8*4 + i4x4][i];
                     }
                 }
             }
         } else if (cbp_luma & (1 << i8x8)) {
-            (*residual_block)(level8x8[i8x8], 4*startIdx, 4*endIdx+3, 64, br, s_h);
+            (*residual_block)(mb_array, mbAddr, 0, LUMA_LEVEL_8x8, mb->luma_8x8_coeffs[i8x8], 4*startIdx, 4*endIdx+3, 64, sh, ctx);
         } else {
             for (int i = 0; i < 64; i++) {
-                level8x8[i8x8][i] = 0;
+                mb->luma_8x8_coeffs[i8x8][i] = 0;
             }
         }
     }
 }
 
 
-/* 7.3.5.3.2 */
-void residual_block_cavlc(int16_t coeffLevel[], int startIdx, int endIdx, int maxNumCoeff, BitReader *br, SliceHeader *s_h) {
+
+/* 7.3.5.3.3 */
+void residual_block_cabac(Macroblock *mb_array, int mbAddr, int blkIdx, int pbt, int16_t coeffLevel[], int startIdx, int endIdx, int maxNumCoeff, SliceHeader *sh, CodecContext *ctx) {
 
 }
 
 
-/* 7.3.5.3.3 */
-void residual_block_cabac(int16_t coeffLevel[], int startIdx, int endIdx, int maxNumCoeff, BitReader *br, SliceHeader *s_h) {
+void derive_neighbor_4x4_luma(int luma4x4BlkIdx, int currMbAddr, int *mbAddrA, int *luma4x4BlkIdxA, int *mbAddrB, int *luma4x4BlkIdxB, SliceHeader *sh) {
+    /* mb A */
+    int xD = luma_location_diff[0][0];
+    int yD = luma_location_diff[0][1];
 
+    Coord luma_4x4_pos = inverse_4x4_luma_blk_scan(luma4x4BlkIdx);
+
+    int xA = luma_4x4_pos.x + xD;
+    int yA = luma_4x4_pos.y + yD;
+
+    Coord neighbor_pos = {xA, yA};
+    Coord xWyW = {};
+    derive_neighbor(1, neighbor_pos, currMbAddr, mbAddrA, &xWyW, sh);
+
+    *luma4x4BlkIdxA = *mbAddrA != -1 ? derive_4x4_luma_blk(xWyW.x, xWyW.y) : -1;
+
+
+    /* mb B */
+    xD = luma_location_diff[1][0];
+    yD = luma_location_diff[1][1];
+
+    int xB = luma_4x4_pos.x + xD;
+    int yB = luma_4x4_pos.y + yD;
+
+    neighbor_pos.x = xB; neighbor_pos.y = yB;
+    derive_neighbor(1, luma_4x4_pos, currMbAddr, mbAddrB, &xWyW, sh);
+
+    *luma4x4BlkIdxB = *mbAddrB != -1 ? derive_4x4_luma_blk(xWyW.x, xWyW.y) : -1;
+}
+
+void derive_neighbor(bool luma, Coord location, int currMbAddr, int *mbAddrN, Coord *xWyW, SliceHeader *sh) {
+    int max = luma ? 16 : 8; // FIXME: use MbWidthC and MbHeightC instead of 4:2:0 assumption for chroma
+
+    if (location.x < 0) {
+        *mbAddrN = currMbAddr - (location.y < 0 ? (int)sh->sps->pic_width_in_mbs : 1);
+    } else if (location.x < max) {
+        *mbAddrN = currMbAddr - (location.y < 0 ? (int)sh->sps->pic_width_in_mbs : 0);
+    } else {
+        *mbAddrN = location.y >= 0 ? currMbAddr - (int)sh->sps->pic_width_in_mbs + 1 : -1;
+    }
+    xWyW->x = (location.x + max) % max;
+    xWyW->y = (location.y + max) % max;
 }

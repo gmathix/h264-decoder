@@ -7,13 +7,14 @@
 
 #include <stdint.h>
 #include <math.h>
+#include <stdio.h>
 
 #include "../decoder.h"
 
 
 
 static inline double  _abs(double x)           { return x >= 0 ? x : -x; }
-static inline double  _min(double x, double y) { return x <= y ? x : y; }
+static inline int32_t _min(int32_t x, int32_t y) { return x <= y ? x : y; }
 static inline double  _max(double x, double y) { return x >= y ? x : y; }
 static inline double  _log2(double x)          { return log2(x); }
 static inline double  _log10(double x)         { return log10(x); }
@@ -23,6 +24,16 @@ static inline int32_t _floor(double x)         { return (int32_t) x; }
 static inline int32_t _ceil(double x)          { return (int32_t)x + (x > (int32_t)x ? 1 : 0); }
 static inline int32_t _sign(double x)          { return x >= 0 ? 1 : -1; }
 static inline int32_t _round(double x)         { return _sign(x) * _floor(_abs(x) + 0.5); }
+
+
+
+
+static void binprintf(int v, int length)
+{
+    for (int i = 31; i >= 32-length; i--) {
+        putchar((v & (1 << i)) ? '1' : '0');
+    }
+}
 
 
 static inline int32_t _clip3(int32_t x, int32_t y, int32_t z) {

@@ -18,8 +18,8 @@ void print_annexb_header(size_t size, int nal_ref_idc, int nal_unit_type) {
 }
 
 void print_annexb_line_info(size_t g_offset, char *title, char *param_name, BitReader *br) {
-    printf("@%lu", g_offset + br->byte_pos*8 + br->bit_pos);
-    spaces(MAX_BIT_OFFSET_SIZE - nb_digits(g_offset + br->byte_pos*8 + br->bit_pos));
+    // printf("@%lu", g_offset + br->byte_pos*8 + br->bit_pos);
+    // spaces(MAX_BIT_OFFSET_SIZE - nb_digits(g_offset + br->byte_pos*8 + br->bit_pos));
 
     spaces(MAX_TITLE_OFFSET_SIZE - strlen(title));
     printf("%s", title);
@@ -44,8 +44,8 @@ void print_macroblock_header(int poc, int mbAddr, int slice_num, int slice_type)
 }
 
 void print_slice_line_info(size_t g_offset, char *name, BitReader *br) {
-    printf("@%lu", g_offset + br->byte_pos*8 + br->bit_pos);
-    spaces(MAX_BIT_OFFSET_SIZE - nb_digits(g_offset + br->byte_pos*8 + br->bit_pos));
+    // printf("@%lu", g_offset + br->byte_pos*8 + br->bit_pos);
+    // spaces(MAX_BIT_OFFSET_SIZE - nb_digits(g_offset + br->byte_pos*8 + br->bit_pos));
 
     printf("%s", name);
     spaces(MAX_INFO_SIZE - strlen(name));

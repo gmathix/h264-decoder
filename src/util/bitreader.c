@@ -42,13 +42,15 @@ uint32_t bitreader_peek_bits(BitReader *br, int n) {
 uint32_t bitreader_read_bits(BitReader *br, int n) {
     uint32_t res = bitreader_peek_bits(br, n);
     bitreader_skip_bits(br, n);
+
     return res;
 }
 
 void bitreader_skip_bits(BitReader *br, uint32_t n) {
-    int32_t remaining = bitreader_bits_remaining(br);
+    size_t remaining = bitreader_bits_remaining(br);
 
     if (n > remaining) {
+        // printf("%lu\n", remaining);
         printf("bitreader overflow: requested %u, remaining %u\n", n, remaining);
         exit(1);
     }
@@ -72,17 +74,17 @@ bool bitreader_byte_aligned(BitReader *br) {
     return br->bit_pos == 0;
 }
 
-int32_t bitreader_bits_remaining(BitReader *br) {
-    if ((int32_t)br->byte_pos >= (int32_t)br->size) return 0;
-    return ((int32_t)br->size - (int32_t)br->byte_pos) * 8 - (int32_t)br->bit_pos;
+size_t bitreader_bits_remaining(BitReader *br) {
+    if (br->byte_pos >= br->size) return 0;
+    return (br->size - br->byte_pos) * 8 - br->bit_pos;
 }
 
-int32_t bitreader_bits_consumed(BitReader *br) {
+size_t bitreader_bits_consumed(BitReader *br) {
     return br->byte_pos*8 + br->bit_pos;
 }
 
 bool more_rbsp_data(BitReader *br) {
-    return bitreader_bits_remaining(br) > 16 && !rbsp_trailing_bits(br);
+    return bitreader_bits_remaining(br) > 0 && !rbsp_trailing_bits(br);
 }
 
 bool rbsp_trailing_bits(BitReader *br) {

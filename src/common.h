@@ -54,6 +54,20 @@ enum NalUnitType : uint8_t {
 } ;
 
 
+enum Profile : uint8_t {
+    PROFILE_CAVLC_444       =  44,
+    PROFILE_BASELINE        =  66,
+    PROFILE_MAIN            =  77,
+    PROFILE_EXTENDED        =  88,
+    PROFILE_HIGH            = 100,
+    PROFILE_HIGH_10         = 110,
+    PROFILE_HIGH_422        = 122,
+    PROFILE_HIGH_PRED_444   = 244,
+
+
+};
+
+
 char *NalUnitTypeToString(uint8_t nal_unit_type);
 
 

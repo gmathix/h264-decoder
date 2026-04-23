@@ -3,8 +3,8 @@
 #include <stdint.h>
 #include <time.h>
 
-#include "../src/util/bitreader.h"
-#include "../src/annexb.h"
+#include "../util/bitreader.h"
+#include "../annexb.h"
 
 int main(void) {
     char *path = "../videos/output.h264";

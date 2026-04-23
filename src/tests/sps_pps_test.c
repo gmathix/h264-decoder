@@ -7,10 +7,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "../src/annexb.h"
-#include "../src/util/bitreader.h"
-#include "../src/common.h"
-#include "../src/ps.h"
+#include "../annexb.h"
+#include "../util/bitreader.h"
+#include "../common.h"
+#include "../ps.h"
 
 int main(void) {
     char *path = "../videos/output.h264";
@@ -48,14 +48,14 @@ int main(void) {
         br = make_br(nal.data, nal.size);
         if (nal.type == NAL_SPS) {
             printf("Detected SPS Nal unit : \n   ");
-            int ret = decode_sps(&br, &ps);
+            int ret = decode_sps(0, &br, &ps);
             printf("\n");
 
             num_sps++;
         }
         if (nal.type == NAL_PPS) {
             printf("Detected PPS Nal unit : \n   ");
-            int ret = decode_pps(&br, &ps);
+            int ret = decode_pps(0, &br, &ps);
             printf("\n");
 
             num_pps++;

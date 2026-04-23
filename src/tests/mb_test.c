@@ -9,48 +9,70 @@
 #include "time.h"
 
 
-const int32_t WIDTH = 1920;
-const int32_t HEIGHT = 1080;
+
 
 
 int main(void) {
-    uint8_t *frame = malloc(WIDTH * HEIGHT * sizeof(uint8_t));
-
-    for (int i = 0; i < WIDTH * HEIGHT; i++)
-        frame[i] = i % UINT8_MAX;
-
-
-    int mb_width = WIDTH / 16;
-    int mb_height = HEIGHT / 16;
-
-    uint8_t (*mbs)[mb_height * mb_width][16][16] = malloc(mb_width * mb_height * sizeof(*mbs));
-
+    int SIZE = 500;
+    int top_samples[SIZE];
+    int left_samples[SIZE];
+    int pred[SIZE][SIZE];
 
     struct timespec ts, te;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
 
-    for (int i = 0; i < mb_width * mb_height; i++) {
-        int mb_y = i / mb_width;
-        int mb_x = i % mb_width;
-
-        for (int j = 0; j < 16; j++) {
-            int off = mb_y * WIDTH + mb_x * 16 + j * WIDTH;
-            memcpy(mbs[i][j], frame + off, 16 * sizeof(uint8_t));
+    // warmup
+    for (int k = 0; k < 100; k++) {
+        for (int i = 0; i < SIZE; i++) {
+            top_samples[i] = i;
+            left_samples[i] = SIZE-i;
         }
     }
 
+
+    // method 1 : condition in loop body
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    for (int i = 0; i < 1000; i++) {
+        for (int y = 0; y < SIZE; y++) {
+            for (int x = 0; x < SIZE; x++) {
+                if (y==x) {
+                    pred[y][x] = top_samples[x] + left_samples[y];
+                }
+                else if (x>y) {
+                    pred[y][x] = top_samples[y];
+                }
+                else {
+                    pred[y][x] = left_samples[y];
+                }
+            }
+        }
+    }
     clock_gettime(CLOCK_MONOTONIC, &te);
-
-    double total = (te.tv_sec - ts.tv_sec) * 1000 +
-        (te.tv_nsec-ts.tv_nsec) / 1e6;
-
-    printf("macroblock division took %.3fms\n", total);
+    printf("method 1 took %.3fms\n",
+        (double)(te.tv_sec-ts.tv_sec)*1000 + (double)(te.tv_nsec-ts.tv_nsec)/1000000);
 
 
-    free(frame);
+    // method 2 : fill main diagonal first, then upper triangle, then lower triangle
+    clock_gettime(CLOCK_MONOTONIC, &ts);
+    for (int i = 0; i < 1000; i++) {
+        for (int d = 0; d < SIZE; d++) {
+            pred[d][d] = top_samples[d] + left_samples[d];
+        }
+        for (int y = 0; y < SIZE; y++) {
+            for (int x = y+1; x < SIZE; x++) {
+                pred[y][x] = top_samples[y];
+            }
+        }
+        for (int y = 1; y < SIZE; y++) {
+            for (int x = 0; x < y; x++) {
+                pred[y][x] = left_samples[y];
+            }
+        }
+    }
+    clock_gettime(CLOCK_MONOTONIC, &te);
+    printf("method 2 took %.3fms\n",
+        (double)(te.tv_sec-ts.tv_sec)*1000 + (double)(te.tv_nsec-ts.tv_nsec)/1000000);
 
 
-    printf("%d\n", (-(uint16_t)19-1)>>1);
 
 
     return 0;

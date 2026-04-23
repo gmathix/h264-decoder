@@ -3,6 +3,7 @@
 //
 
 
+#include "global.h"
 #include "nal.h"
 #include "slice.h"
 
@@ -13,8 +14,11 @@ int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx) {
 
     bitreader_init(ctx->br, nal_unit->data, nal_unit->size);
 
-    printf("Annex B NALU, len %lu, nal_ref_idc %d, nal_unit_type %d\n",
+#if NAL_LOG
+    printf("\nAnnex B NALU, len %lu, nal_ref_idc %d, nal_unit_type %d\n",
         nal_unit->size+1, nal_unit->ref_idc, nal_unit->type);
+#endif
+
 
     switch (nal_unit->type) {
         case NAL_SEI: break;

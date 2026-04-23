@@ -3,13 +3,15 @@
 //
 
 #include "cavlc.h"
+#include "global.h"
 #include "vlc.h"
 #include "util/expgolomb.h"
 #include "util/mbutil.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <unistd.h>
+
+#include "picture.h"
 
 
 /* Table 9-5 */
@@ -197,6 +199,9 @@ const uint16_t run_before_bits[7][15]={
 
 
 
+
+
+
 static int vlc_initialized = 0;
 
 static MultiVLC coeff_token_vlc;
@@ -209,6 +214,21 @@ static MultiVLC total_zeros_cr422_vlc;
 
 static MultiVLC run_before_vlc;
 
+
+
+static const uint8_t nc_to_index[19] = {
+    0,0,0,0,1,1,2,2,2,2,3,3,3,3,3,3,3,3,3
+};
+
+static const MultiVLC *nc_to_table[19] = {
+    /*   -2 */ &coeff_token_cr422_vlc,
+    /*   -1 */ &coeff_token_cr420_vlc,
+    /* >= 0 */ &coeff_token_vlc, &coeff_token_vlc, &coeff_token_vlc, &coeff_token_vlc,
+               &coeff_token_vlc, &coeff_token_vlc, &coeff_token_vlc, &coeff_token_vlc,
+               &coeff_token_vlc, &coeff_token_vlc, &coeff_token_vlc, &coeff_token_vlc,
+               &coeff_token_vlc, &coeff_token_vlc, &coeff_token_vlc, &coeff_token_vlc,
+               &coeff_token_vlc
+};
 
 
 
@@ -274,7 +294,9 @@ void init_vlc_tables() {
 }
 
 /* 7.3.5.3.2 */
-void residual_block_cavlc(Macroblock *mb_array, int mbAddr, int blkIdx, int bt, int16_t coeffLevel[], int startIdx, int endIdx, int maxNumCoeff, SliceHeader *sh, CodecContext *ctx) {
+void residual_block_cavlc(Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t coeffLevel[], uint8_t (*total_coeffs_table)[16],
+    int startIdx, int endIdx, int maxNumCoeff, bool isLuma, SliceHeader *sh, CodecContext *ctx) {
+
     BitReader *br = ctx->br;
 
 
@@ -291,13 +313,15 @@ void residual_block_cavlc(Macroblock *mb_array, int mbAddr, int blkIdx, int bt, 
     }
 
 
+#if CAVLC_LOG
     print_bit_pos(ctx->global_bit_offset, ctx->br);
+#endif
 
 
     int totalCoeff;
     int trailingOnes;
     int nC;
-    coeff_token(mb_array, mbAddr, blkIdx, bt, &startIdx, &endIdx, &totalCoeff, &trailingOnes, &nC, sh, ctx);
+    coeff_token(mb, blkIdx, iCbCr, bt, &startIdx, &endIdx, isLuma, &totalCoeff, &trailingOnes, &nC, total_coeffs_table, sh, ctx);
 
 
     if (totalCoeff > 0) {
@@ -309,212 +333,66 @@ void residual_block_cavlc(Macroblock *mb_array, int mbAddr, int blkIdx, int bt, 
 
         reconstruct(levelVal, blkIdx, bt, runVal, coeffLevel, startIdx, totalCoeff);
 
-        printf(" \nLevels : [");
+#if CAVLC_LOG
+        printf("Levels : [");
         for (int i = 0; i < 15; i++) {
             printf("%d, ", coeffLevel[i]);
         }
-        printf("]\n");
+        printf("]\n\n");
+#endif
     }
 }
 
 
-void coeff_token(Macroblock *mb_array, int mbAddr, int blkIdx, int bt, int *startIdx, int *endIdx,
-                    int *totalCoeff, int *trailingOnes, int *nC, SliceHeader *sh, CodecContext *ctx) {
+void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, int bt, int *startIdx, int *endIdx, bool isLuma,
+                    int *totalCoeff, int *trailingOnes, int *nC, uint8_t (*total_coeffs_table)[16], SliceHeader *sh, CodecContext *ctx) {
 
     BitReader *br = ctx->br;
 
-
-    Coord currMbCoords = inverse_mb_scan(mbAddr, sh->sps);
-
-
-    switch (bt) {
-        case CHROMA_DC_LEVEL: *nC = (int32_t)sh->sps->chroma_format_idc * -1; break;
-
-        case LUMA_INTRA_16x16_DC_LEVEL:
-        case CB_INTRA_16x16_DC_LEVEL:
-        case CR_INTRA_16x16_DC_LEVEL:
-            blkIdx = 0; break;
-
-
-
-        default:
-    }
-
+    if (bt == CHROMA_DC_LEVEL) *nC = sh->sps->chroma_format_idc * -1;
 
     int nA = 0, nB = 0;
-
-    int mbAddrA = -1;
-    int mbAddrB = -1;
-    int blkIdxA = -1;
-    int blkIdxB = -1;
+    Neighbors n = isLuma
+        ? derive_neighbors_4x4_luma(mb, blkIdx, ctx)
+        : derive_neighbors_4x4_chroma(mb, blkIdx, ctx);
 
 
-    switch (bt) {
-        case LUMA_INTRA_16x16_DC_LEVEL:
-        case LUMA_INTRA_16x16_AC_LEVEL:
-        case LUMA_LEVEL_4x4: {
-            /* derive neighbors */
-
-            Coord xy = inverse_4x4_luma_blk_scan(blkIdx);
-            int xA = xy.x - 4;
-            int yB = xy.y - 4;
-
-            if (xA < 0) {
-                if (mbAddr % sh->sps->pic_width_in_mbs == 0) {
-                    mbAddrA = -1;
-                    blkIdxA = -1;
-                } else {
-                    mbAddrA = mbAddr - 1;
-                    blkIdxA = blkIdx + 3;
-                }
-            } else {
-                mbAddrA = mbAddr;
-                blkIdxA = blkIdx - 1;
-            }
-
-            if (yB < 0) {
-                if (mbAddr - (int)sh->sps->pic_width_in_mbs < 0) {
-                    mbAddrB = -1;
-                    blkIdxB = -1;
-                } else {
-                    mbAddrB = mbAddr - sh->sps->pic_width_in_mbs;
-                    blkIdxB = blkIdx + 12;
-                }
-            } else {
-                mbAddrB = mbAddr;
-                blkIdxB = blkIdx - 4;
-            }
-            break;
-        }
-
-
-        case CHROMA_AC_LEVEL: {
-            Coord xy = inverse_4x4_chroma_blk_scan(blkIdx);
-            int xA = xy.x - 4;
-            int yB = xy.y - 4;
-            if (xA < 0) {
-                if (mbAddr % sh->sps->pic_width_in_mbs == 0) {
-                    mbAddrA = -1;
-                    blkIdxA = -1;
-                } else {
-                    mbAddrA = mbAddr - 1;
-                    blkIdxA = blkIdx + 1;
-                }
-            } else {
-                mbAddrA = mbAddr;
-                blkIdxA = blkIdx - 1;
-            }
-
-            if (yB < 0) {
-                if (mbAddr - (int)sh->sps->pic_width_in_mbs < 0) {
-                    mbAddrB = -1;
-                    blkIdxB = -1;
-                } else {
-                    mbAddrB = mbAddr - sh->sps->pic_width_in_mbs;
-                    blkIdxB = blkIdx + 2;
-                }
-            } else {
-                mbAddrB = mbAddr;
-                blkIdxB = blkIdx - 2;
-            }
-            break;
-        }
-
-
-        case CB_INTRA_16x16_DC_LEVEL:
-        case CB_INTRA_16x16_AC_LEVEL:
-        case CB_LEVEL_4x4:
-        case CR_INTRA_16x16_DC_LEVEL:
-        case CR_INTRA_16x16_AC_LEVEL:
-        case CR_LEVEL_4x4:
-            printf("\n4:4:4 not supported for now\n");
-            exit(1);
-
-        case CHROMA_DC_LEVEL:
-            break;
-
+    if (n.a_av) {
+        nA = total_coeffs_table[n.mb_a->mbAddr][n.a_idx];
     }
-
-    int availableFlagA = mbAddrA != -1;
-    int availableFlagB = mbAddrB != -1;
-
-    if (availableFlagA) {
-        int is_luma = (bt == LUMA_LEVEL_4x4 || bt == LUMA_INTRA_16x16_AC_LEVEL || bt == LUMA_INTRA_16x16_DC_LEVEL);
-
-        if (mb_array[mbAddrA].type == MB_TYPE_SKIP || ((is_luma && mb_array[mbAddrA].residuals.luma_total_coeffs[blkIdxA]   == 0) ||
-                                                        bt == CHROMA_AC_LEVEL && mb_array[mbAddrA].residuals.chroma_total_coeffs[blkIdxA] == 0)) {
-            nA = 0;
-        } else if (mb_array[mbAddrA].type == MB_TYPE_INTRA_PCM) {
-            nA = 16;
-        } else {
-            nA = is_luma
-                ? mb_array[mbAddrA].residuals.luma_total_coeffs[blkIdxA]
-                : mb_array[mbAddrA].residuals.chroma_total_coeffs[blkIdxA];
-        }
-    }
-    if (availableFlagB) {
-        int is_luma = (bt == LUMA_LEVEL_4x4 || bt == LUMA_INTRA_16x16_AC_LEVEL || bt == LUMA_INTRA_16x16_DC_LEVEL);
-
-        if (mb_array[mbAddrB].type == MB_TYPE_SKIP || ((is_luma  && mb_array[mbAddrB].residuals.luma_total_coeffs[blkIdxB]   == 0) ||
-                                                        bt == CHROMA_AC_LEVEL && mb_array[mbAddrB].residuals.chroma_total_coeffs[blkIdxB] == 0)) {
-            nB = 0;
-        } else if (mb_array[mbAddrB].type == MB_TYPE_INTRA_PCM) {
-            nB = 16;
-        } else {
-            nB = is_luma
-                ? mb_array[mbAddrB].residuals.luma_total_coeffs[blkIdxB]
-                : mb_array[mbAddrB].residuals.chroma_total_coeffs[blkIdxB];
-        }
+    if (n.b_av) {
+        nB = total_coeffs_table[n.mb_b->mbAddr][n.b_idx];
     }
 
 
     if (bt != CHROMA_DC_LEVEL) {
-        *nC = availableFlagA
-            ? availableFlagB
-                ? (nA+nB+1)>>1
-                : nA
-            : availableFlagB
-                ? nB
-                : 0;
+        if (n.a_av && n.b_av)  *nC = (nA+nB+1)>>1;
+        else *nC = n.a_av*nA + n.b_av * nB;
     }
 
+    unsigned bits = bitreader_peek_bits(br, MAX_COEFF_TOKEN_BITS);
+    int length = get_vlc_length(nc_to_table[*nC + 2], nc_to_index[*nC + 2], br);
 
-
-    MultiVLC table = coeff_token_vlc;
-    int index;
-    switch (*nC) {
-        case 0: case 1: index = 0; break;
-        case 2: case 3: index = 1; break;
-        case 4: case 5: case 6: case 7: index = 2; break;
-        case -1: index = 0; table = coeff_token_cr420_vlc; break;
-        case -2: index = 0; table = coeff_token_cr422_vlc; break;
-        default: if (*nC >= 8) index = 3; else {printf("unsupported nC value %d\n", *nC); exit(1);}
-    }
-
-
-    int length = get_vlc_length(&table, index, br);
-    uint16_t bits = bitreader_peek_bits(br, table.tables[index].max_bits);
-    int sym = get_vlc(&table, index, br);
+    int sym = get_vlc(nc_to_table[*nC + 2], nc_to_index[*nC + 2], br);
 
     *totalCoeff = total_coeffs[sym];
     *trailingOnes = trailing_ones[sym];
 
 
     /* luma 16x16 DC doesn't store totalCoeff */
-    if (bt == LUMA_LEVEL_4x4 || bt == LUMA_INTRA_16x16_AC_LEVEL) {
-        mb_array[mbAddr].residuals.luma_total_coeffs[blkIdx] = (int16_t)*totalCoeff;
-    } else if (bt == CHROMA_AC_LEVEL) {
-        mb_array[mbAddr].residuals.chroma_total_coeffs[blkIdx] = (int16_t)*totalCoeff;
+    if (bt != LUMA_INTRA_16x16_DC_LEVEL) {
+        total_coeffs_table[mb->mbAddr][blkIdx] = *totalCoeff;
     }
 
-
+#if CAVLC_LOG
     char log[128];
     snprintf(log, sizeof(log), "%s vlc=%d totalCoeff=%d t1s=%d",
-        bt_to_string(bt), index, *totalCoeff, *trailingOnes);
+        bt_to_string(bt), nc_to_index[*nC+2], *totalCoeff, *trailingOnes);
     print_info_only(log);
 
     print_bits((int32_t)bits<<16, length);
     print_value(bits >> (16-length));
+#endif
 }
 
 
@@ -528,13 +406,16 @@ void parse_level(int16_t levelVal[], int blkIdx, int bt, int totalCoeff, int tra
 
     for (int i = 0; i < totalCoeff; i++) {
         if (i < trailingOnes) {
+#if CAVLC_LOG
             print_bit_pos(ctx->global_bit_offset, ctx->br);
+#endif
 
 
             unsigned sign_bit = read_u(br, 1);
             levelVal[i] = 1 - 2*sign_bit;
 
 
+#if CAVLC_LOG
             char log[128];
             snprintf(log, sizeof(log),
                 "%s trailing ones sign (%d,0)",
@@ -542,10 +423,13 @@ void parse_level(int16_t levelVal[], int blkIdx, int bt, int totalCoeff, int tra
             print_info_only(log);
             print_bits(sign_bit << 31, 1);
             print_value(sign_bit);
+#endif
 
         } else {
+#if CAVLC_LOG
             print_bit_pos(ctx->global_bit_offset, ctx->br);
             int bit_pos_before = bitreader_bits_consumed(br);
+#endif
 
             /* 1 */
             int leadingZeroBits = -1;
@@ -564,7 +448,9 @@ void parse_level(int16_t levelVal[], int blkIdx, int bt, int totalCoeff, int tra
             if (suffix_size > 0)  level_suffix = read_u(br, suffix_size);
             else                  level_suffix = 0;
 
+#if CAVLC_LOG
             int bits_consumed = bitreader_bits_consumed(br) - bit_pos_before;
+#endif
 
             /* 4 */
             uint16_t levelCode = (_min(15, level_prefix) << suffixLength) + level_suffix;
@@ -589,7 +475,7 @@ void parse_level(int16_t levelVal[], int blkIdx, int bt, int totalCoeff, int tra
             if (_abs(levelVal[i]) > (3 << (suffixLength - 1)) && suffixLength < 6) suffixLength += 1;
 
 
-
+#if CAVLC_LOG
             bitreader_rewind(br, bits_consumed);
             uint32_t raw = bitreader_peek_bits(br, bits_consumed);
             bitreader_skip_bits(br, bits_consumed);
@@ -602,6 +488,7 @@ void parse_level(int16_t levelVal[], int blkIdx, int bt, int totalCoeff, int tra
             print_info_only(log);
             print_bits((int32_t)raw << (32 - bits_consumed), bits_consumed);
             print_value(raw);
+#endif
         }
     }
 
@@ -614,7 +501,9 @@ void parse_run(int16_t runVal[],int blkIdx,  int bt, int totalCoeff, int maxNumC
 
     int16_t zerosLeft;
 
+#if CAVLC_LOG
     print_bit_pos(ctx->global_bit_offset, ctx->br);
+#endif
 
 
     if (totalCoeff < endIdx - startIdx + 1) {
@@ -635,18 +524,19 @@ void parse_run(int16_t runVal[],int blkIdx,  int bt, int totalCoeff, int maxNumC
 
         int bits_consumed = bitreader_bits_consumed(br) - bit_pos_before;
 
-        bitreader_rewind(br, bits_consumed);
+        // bitreader_rewind(br, bits_consumed);
         uint32_t raw = bitreader_peek_bits(br, bits_consumed);
-        bitreader_skip_bits(br, bits_consumed);
+        // bitreader_skip_bits(br, bits_consumed);
 
 
 
-
+#if CAVLC_LOG
         char log[128];
         snprintf(log, sizeof(log), "%s totalrun (%d,0) vlc=%d", bt_to_string(bt), blkIdx, totalCoeff-1);
         print_info_only(log);
         print_bits(raw << (32 - bits_consumed), bits_consumed);
         print_value(raw);
+#endif
 
     } else {
         zerosLeft = 0;
@@ -654,15 +544,17 @@ void parse_run(int16_t runVal[],int blkIdx,  int bt, int totalCoeff, int maxNumC
 
     for (int i = 0; i < totalCoeff-1; i++) {
         if (zerosLeft > 0) {
+#if CAVLC_LOG
             print_bit_pos(ctx->global_bit_offset, ctx->br);
             int bit_pos_before = bitreader_bits_consumed(br);
+#endif
 
             int idx = zerosLeft > 6 ? 6 : zerosLeft-1;
 
             uint16_t run_before = get_vlc(&run_before_vlc, idx, br);
             runVal[i] = (int16_t)run_before;
 
-
+#if CAVLC_LOG
             int bits_consumed = bitreader_bits_consumed(br) - bit_pos_before;
 
             bitreader_rewind(br, bits_consumed);
@@ -678,6 +570,7 @@ void parse_run(int16_t runVal[],int blkIdx,  int bt, int totalCoeff, int maxNumC
             print_info_only(log);
             print_bits((int32_t)raw << (32 - bits_consumed), bits_consumed);
             print_value(raw);
+#endif
 
         } else {
             runVal[i] = 0;

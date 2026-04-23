@@ -6,19 +6,14 @@
 #define TOY_H264_SLICE_H
 
 
-#include "util/bitreader.h"
-#include "util/sliceutil.h"
+#include "decoder.h"
 #include "common.h"
 #include "ps.h"
-
-
-
 
 
 typedef struct SliceHeader {
     SPS *sps;
     PPS *pps;
-
 
     uint32_t disable_deblocking_filter_idc;
     uint32_t first_mb;
@@ -50,9 +45,10 @@ typedef struct SliceHeader {
 } SliceHeader ;
 
 
+
 void         decode_slice              (NalUnit *nal_unit, CodecContext *ctx);
-SliceHeader *decode_slice_header       (NalUnit *nal_unit, CodecContext *ctx);
-void         decode_slice_data         (SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
+SliceHeader  *read_slice_header       (NalUnit *nal_unit, CodecContext *ctx);
+void         read_slice_data         (SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
 void         ref_pic_list_modification (uint8_t type, SliceHeader *sh, CodecContext *ctx);
 void         pred_weight_table         (uint8_t type, SliceHeader *sh, CodecContext *ctx);
 void         dec_ref_pic_marking       (SliceHeader *sh, CodecContext *ctx);

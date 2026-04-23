@@ -56,20 +56,7 @@ void build_vlc(VLCTable *vlc) {
     }
 }
 
-uint16_t get_vlc(MultiVLC *mv, int table_idx, BitReader *br) {
 
-    uint16_t bits = bitreader_peek_bits(br, mv->tables[table_idx].max_bits);
-
-    if (mv->tables[table_idx].max_bits > bitreader_bits_remaining(br)) {
-        bits <<= (mv->tables[table_idx].max_bits - bitreader_bits_remaining(br));
-    }
-
-    int sym = mv->tables[table_idx].lookup_symbol[bits];
-    int len = mv->tables[table_idx].lookup_length[bits];
-    bitreader_skip_bits(br, len);
-
-    return sym;
-}
 
 uint16_t get_vlc_length(MultiVLC *mv, int table_idx, BitReader *br) {
     uint16_t bits = bitreader_peek_bits(br, mv->tables[table_idx].max_bits);

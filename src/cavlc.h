@@ -85,11 +85,11 @@ static char* bt_to_string(int bt) {
 }
 
 
-void  residual_block_cavlc (Macroblock *mb_array, int mbAddr, int blkIdx, int bt, int16_t coeffLevel[], int startIdx, int endIdx, int maxNumCoeff, SliceHeader *sh, CodecContext *ctx);
+void  residual_block_cavlc (Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t coeffLevel[], uint8_t (*total_coeffs_table)[16], int startIdx, int endIdx, int maxNumCoeff, bool isLuma, SliceHeader *sh, CodecContext *ctx);
 
 
-void  coeff_token    (Macroblock *mb_array, int mbAddr, int blkIdx, int bt, int *startIdx, int *endIdx,
-                        int *totalCoeff, int *trailingOnes, int *nC, SliceHeader *sh, CodecContext *ctx);
+void  coeff_token    (Macroblock *mb, int blkIdx, int iCbCr, int bt, int *startIdx, int *endIdx, bool isLuma,
+                        int *totalCoeff, int *trailingOnes, int *nC, uint8_t (*total_coeffs_table)[16], SliceHeader *sh, CodecContext *ctx);
 void  parse_level    (int16_t levelVal[], int blkIdx, int bt, int totalCoeff, int trailingOnes, CodecContext *ctx);
 void  parse_run      (int16_t runVal[], int blkIdx, int bt,  int totalCoeff, int maxNumCoeff, int startIdx, int endIdx, SliceHeader *sh, CodecContext *ctx);
 void  reconstruct    (const int16_t levelVal[], int blkIdx, int bt, const int16_t runVal[], int16_t coeffLevel[], int startIdx, int totalCoeff);

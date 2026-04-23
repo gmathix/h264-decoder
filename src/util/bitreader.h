@@ -16,6 +16,9 @@ typedef struct {
     size_t         size; // total bytes in buffer
     size_t         byte_pos;
     size_t         bit_pos; // 0..7 within current byte
+
+    uint32_t last_3_bytes;
+    int last_3_bytes_size; // in bits
 } BitReader ;
 
 
@@ -26,8 +29,8 @@ uint32_t bitreader_read_bits(BitReader *br, int n);
 void     bitreader_skip_bits(BitReader *br, uint32_t n);
 void     bitreader_rewind(BitReader *br, int n);
 bool     bitreader_byte_aligned(BitReader *br);
-int32_t  bitreader_bits_remaining(BitReader *br);
-int32_t  bitreader_bits_consumed(BitReader *br);
+size_t  bitreader_bits_remaining(BitReader *br);
+size_t  bitreader_bits_consumed(BitReader *br);
 bool     more_rbsp_data(BitReader *br);
 bool     rbsp_trailing_bits(BitReader *br);
 

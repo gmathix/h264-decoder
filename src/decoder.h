@@ -7,8 +7,10 @@
 
 #include "common.h"
 #include "ps.h"
+#include "tests/profiler.h"
 
 
+extern int debugging;
 
 typedef struct CodecContext {
     bool initialized;
@@ -19,11 +21,24 @@ typedef struct CodecContext {
     size_t global_bit_offset;
 
     ParamSets *ps;
+
+    struct Picture *current_pic;
+    struct Slice   *current_slice;
+
+
+    int16_t levelScaleTable[52][4][4];
+    int16_t  **weightScaleMatrix;
+
+
+    Profiler *prf;
+    char *out_path;
+    FILE *out_file;
 } CodecContext ;
 
 
-CodecContext *decoder_init(const uint8_t *data, size_t size);
+CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path);
 void decoder_run(CodecContext *context);
+void decoder_free(CodecContext *ctx);
 
 
 

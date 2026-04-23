@@ -19,10 +19,11 @@ I'd like to understand how the GCC managed to achieve that 14 -> 60fps jump, but
 
 
 ## Usage
-As simple as : 
+As simple as, for example : 
 ```shell
-./intra_decode input.h264 output.yuv
+./intra_decode videos/256x256_radial.h264 output.yuv
 ```
+I made a few synthetic gradient streams located in the videos/h264/ folder. 
 
 Though, you'll likely have to re-encode your video, because virtually all H.264 streams (except professional editing content) are coded with 95% of inter prediction (P/B frames) which this decoder doesn't support yet.  
 Therefore you'd need to run a command like this one : 

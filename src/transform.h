@@ -41,7 +41,7 @@ static ALWAYS_INLINE void scaling_residual_4x4_rshift_min(int shift, int16_t (*s
 
 
 
-static void idct_4x4(int32_t d[4][4], uint8_t *dst, int stride, int bitDepth) {
+static ALWAYS_INLINE void idct_4x4(int32_t d[4][4], uint8_t *dst, int stride, int bitDepth) {
 
     int t0,t1,t2,t3;
     int f[4][4];

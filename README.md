@@ -13,19 +13,21 @@ My primary goal is to work up to the full Main profile.
 ## Performance
 Not great for now.  
 It can reach ~62fps on a single thread, on 1080p streams, without dumping the frames. When writing to the output YUV file, it reaches ~45fps.  
-Compiler optimizations help a lot : without -O3, it runs at ~14fps.  
+Compiler optimizations help a lot : without -O3, it runs at ~14fps. And I haven't made it cache-friendly or used SIMD for now.    
+
 I'd like to understand how the GCC managed to achieve that 14 -> 60fps jump, but I'd have to learn assembly and that's a different learning path which I will eventually take when this project is finished. 
 
 
 ## Usage
 As simple as : 
 ```shell
-intra_decode input.h264 output.yuv
+./intra_decode input.h264 output.yuv
 ```
 
-Though, you'll likely have to re-encode your, video because all H.264 streams (except professional editing content) are coded with inter prediction (P/B frames) which this decoder doesn't support yet.  
+Though, you'll likely have to re-encode your video, because virtually all H.264 streams (except professional editing content) are coded with 95% of inter prediction (P/B frames) which this decoder doesn't support yet.  
 Therefore you'd need to run a command like this one : 
 ```shell
 ffmpeg -i input.h264 -c:v libx264 -profile:v baseline -preset slow -x264-params "keyint=1:min-keyint=1:no-cabac=1" -g 1 -bf 0 -pix_fmt yuv420p -an output.h264
 ```
-This will output a fully intra-coded stream in Baseline profile, without CABAC.
+This will output a fully intra-coded stream in Baseline profile, without CABAC.  
+Use  ```--preset veryslow``` if you want to minimize quality loss.

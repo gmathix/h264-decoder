@@ -24,7 +24,7 @@ int main(int argc, char *argv[]) {
 
 
     const char *in_path  = argv[1];
-    const char *out_path = argc > 1 ? argv[2] : "output.yuv";
+    const char *out_path = argc > 2 ? argv[2] : "output.yuv";
 
 
     FILE *test = fopen(in_path, "rb");

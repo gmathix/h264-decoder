@@ -1,6 +1,7 @@
 
 
 cmake-build-debug/
+.idea/
 
 h264_decoder_roadmap.html
 

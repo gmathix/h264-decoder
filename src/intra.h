@@ -55,16 +55,16 @@ void hor_up_4x4_pred(uint8_t *dst, int stride,  int a_av, int b_av,
 
 
 
-void OPTIMIZE_O3 vert_16x16_pred(uint8_t *dst, int stride, int a_av, int b_av,
+void vert_16x16_pred(uint8_t *dst, int stride, int a_av, int b_av,
     const uint8_t top_samples[17], const uint8_t left_samples[17], int bitDepth);
 
-void OPTIMIZE_O3 hor_16x16_pred(uint8_t *dst, int stride, int a_av, int b_av,
+void hor_16x16_pred(uint8_t *dst, int stride, int a_av, int b_av,
     const uint8_t top_samples[17], const uint8_t left_samples[17], int bitDepth);
 
-void OPTIMIZE_O3 dc_16x16_pred(uint8_t *dst, int stride, int a_av, int b_av,
+void dc_16x16_pred(uint8_t *dst, int stride, int a_av, int b_av,
     const uint8_t top_samples[17], const uint8_t left_samples[17], int bitDepth);
 
-void OPTIMIZE_O3 plane_16x16_pred(uint8_t *dst, int stride, int a_av, int b_av,
+void plane_16x16_pred(uint8_t *dst, int stride, int a_av, int b_av,
     const uint8_t top_samples[17], const uint8_t left_samples[17], int bitDepth);
 
 

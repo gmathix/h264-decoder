@@ -56,8 +56,8 @@ void print_mb(uint8_t *frame, int blk_size, int mb_idx, int frame_stride)
 
 
 int main(void) {
-    char *ref_path = "../videos/debug/ref.yuv";
-    char *test_path = "../videos/out/test.yuv";
+    char *ref_path = "../videos/dec_ref/horizon5-trailer-intra-baseline.yuv";
+    char *test_path = "../output.yuv";
 
     FILE *ref_file = fopen(ref_path, "rb");
     if (!ref_file) {
@@ -152,6 +152,16 @@ int main(void) {
                         print_mb(ref_frame_Y, 16, mb, WIDTH);
                         printf("\ntest mb : \n");
                         print_mb(test_frame_Y, 16, mb, WIDTH);
+
+                        printf("\nref B neighbor : \n");
+                        print_mb(ref_frame_Y, 16, mb-MB_WIDTH, WIDTH);
+                        printf("\ntest B neighbor : \n");
+                        print_mb(test_frame_Y, 16, mb-MB_WIDTH, WIDTH);
+
+                        printf("\nref C neighbor : \n");
+                        print_mb(ref_frame_Y, 16, mb-MB_WIDTH+1, WIDTH);
+                        printf("\nref C neighbor : \n");
+                        print_mb(test_frame_Y, 16, mb-MB_WIDTH+1, WIDTH);
 
                         exit(1);
                     }

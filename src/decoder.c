@@ -13,6 +13,8 @@
 #include "dequant.h"
 #include "nal.h"
 #include "picture.h"
+#include "dpb.h"
+#include "tests/profiler.h"
 
 int debugging = false;
 
@@ -39,9 +41,13 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path) {
 
 
     ctx->current_slice = slice_alloc();
+    ctx->dpb = make_dbp(ctx);
 
 
     precompute_level_scale_table(ctx, &flat_4x4_16[0]);
+
+    ctx->currMb = make_mb(0, ctx);
+    ctx->prevMb = make_mb(0, ctx);
 
 
 
@@ -117,6 +123,15 @@ void decoder_free(CodecContext *ctx) {
     free(ctx->ps);
 
     free(ctx->current_slice);
+
+    free(ctx->mb_types);
+    free(ctx->intra8x8_pred_modes);
+    free(ctx->intra4x4_pred_modes);
+    free(ctx->luma_total_coeffs);
+    free(ctx->cb_total_coeffs);
+    free(ctx->cr_total_coeffs);
+
+    dpb_free(ctx->dpb);
 
     fclose(ctx->out_file);
 

@@ -11,6 +11,7 @@
 #include <stdio.h>
 
 #include "../decoder.h"
+#include "../ps.h"
 
 
 
@@ -54,7 +55,7 @@ ALWAYS_INLINE int32_t _clip3(int32_t x, int32_t y, int32_t z) {
     return z;
 }
 
-ALWAYS_INLINE int32_t _clip1y(int32_t x, CodecContext *ctx) {
+ALWAYS_INLINE int32_t _clip1y(int32_t x, struct CodecContext *ctx) {
     return _clip3(0, (1 << ctx->ps->sps->bit_depth_luma) - 1, x);
 }
 

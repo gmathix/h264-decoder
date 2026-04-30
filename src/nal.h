@@ -12,7 +12,7 @@
 
 
 
-int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx);
+int dispatch_nal_unit(NalUnit *nal_unit, struct CodecContext *ctx);
 
 
 

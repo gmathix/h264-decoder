@@ -10,7 +10,7 @@
 
 
 
-void bitreader_init(BitReader *br, const uint8_t *data, size_t size) {
+void bitreader_init(struct BitReader *br, const uint8_t *data, size_t size) {
     br->data = data;
     br->size = size;
     br->byte_pos = 0;

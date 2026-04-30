@@ -14,16 +14,11 @@ int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx) {
 
     bitreader_init(ctx->br, nal_unit->data, nal_unit->size);
 
-#if NAL_LOG
-    printf("\nAnnex B NALU, len %lu, nal_ref_idc %d, nal_unit_type %d\n",
-        nal_unit->size+1, nal_unit->ref_idc, nal_unit->type);
-#endif
-
 
     switch (nal_unit->type) {
         case NAL_SEI: break;
-        case NAL_SPS: decode_sps(ctx->global_bit_offset, ctx->br, ctx->ps); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
-        case NAL_PPS: decode_pps(ctx->global_bit_offset, ctx->br, ctx->ps); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
+        case NAL_SPS: decode_sps(ctx->global_bit_offset, ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
+        case NAL_PPS: decode_pps(ctx->global_bit_offset, ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
 
 
         case NAL_CODED_SLICE_OF_NON_IDR_PICTURE:

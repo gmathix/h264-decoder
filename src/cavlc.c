@@ -313,10 +313,6 @@ void residual_block_cavlc(Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t
     }
 
 
-#if CAVLC_LOG
-    print_bit_pos(ctx->global_bit_offset, ctx->br);
-#endif
-
 
     int totalCoeff;
     int trailingOnes;
@@ -332,14 +328,6 @@ void residual_block_cavlc(Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t
         parse_run(runVal, blkIdx, bt, totalCoeff, maxNumCoeff, startIdx, endIdx, sh, ctx);
 
         reconstruct(levelVal, blkIdx, bt, runVal, coeffLevel, startIdx, totalCoeff);
-
-#if CAVLC_LOG
-        printf("Levels : [");
-        for (int i = 0; i < 15; i++) {
-            printf("%d, ", coeffLevel[i]);
-        }
-        printf("]\n\n");
-#endif
     }
 }
 
@@ -358,10 +346,10 @@ void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, int bt, int *startIdx, i
 
 
     if (n.a_av) {
-        nA = total_coeffs_table[n.mb_a->mbAddr][n.a_idx];
+        nA = total_coeffs_table[mb->mbAddr + n.mb_a_off][n.a_idx];
     }
     if (n.b_av) {
-        nB = total_coeffs_table[n.mb_b->mbAddr][n.b_idx];
+        nB = total_coeffs_table[mb->mbAddr + n.mb_b_off][n.b_idx];
     }
 
 
@@ -383,16 +371,6 @@ void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, int bt, int *startIdx, i
     if (bt != LUMA_INTRA_16x16_DC_LEVEL) {
         total_coeffs_table[mb->mbAddr][blkIdx] = *totalCoeff;
     }
-
-#if CAVLC_LOG
-    char log[128];
-    snprintf(log, sizeof(log), "%s vlc=%d totalCoeff=%d t1s=%d",
-        bt_to_string(bt), nc_to_index[*nC+2], *totalCoeff, *trailingOnes);
-    print_info_only(log);
-
-    print_bits((int32_t)bits<<16, length);
-    print_value(bits >> (16-length));
-#endif
 }
 
 
@@ -406,31 +384,11 @@ void parse_level(int16_t levelVal[], int blkIdx, int bt, int totalCoeff, int tra
 
     for (int i = 0; i < totalCoeff; i++) {
         if (i < trailingOnes) {
-#if CAVLC_LOG
-            print_bit_pos(ctx->global_bit_offset, ctx->br);
-#endif
-
 
             unsigned sign_bit = read_u(br, 1);
             levelVal[i] = 1 - 2*sign_bit;
 
-
-#if CAVLC_LOG
-            char log[128];
-            snprintf(log, sizeof(log),
-                "%s trailing ones sign (%d,0)",
-                bt_to_string(bt), blkIdx);
-            print_info_only(log);
-            print_bits(sign_bit << 31, 1);
-            print_value(sign_bit);
-#endif
-
         } else {
-#if CAVLC_LOG
-            print_bit_pos(ctx->global_bit_offset, ctx->br);
-            int bit_pos_before = bitreader_bits_consumed(br);
-#endif
-
             /* 1 */
             int leadingZeroBits = -1;
             for (uint32_t b = 0; !b; leadingZeroBits++)
@@ -447,10 +405,6 @@ void parse_level(int16_t levelVal[], int blkIdx, int bt, int totalCoeff, int tra
             uint16_t level_suffix;
             if (suffix_size > 0)  level_suffix = read_u(br, suffix_size);
             else                  level_suffix = 0;
-
-#if CAVLC_LOG
-            int bits_consumed = bitreader_bits_consumed(br) - bit_pos_before;
-#endif
 
             /* 4 */
             uint16_t levelCode = (_min(15, level_prefix) << suffixLength) + level_suffix;
@@ -473,22 +427,6 @@ void parse_level(int16_t levelVal[], int blkIdx, int bt, int totalCoeff, int tra
 
             /* 10 */
             if (_abs(levelVal[i]) > (3 << (suffixLength - 1)) && suffixLength < 6) suffixLength += 1;
-
-
-#if CAVLC_LOG
-            bitreader_rewind(br, bits_consumed);
-            uint32_t raw = bitreader_peek_bits(br, bits_consumed);
-            bitreader_skip_bits(br, bits_consumed);
-            char log[128];
-            snprintf(log, sizeof(log),
-                "%s lev (%d,0) k=%d vlc=%d",
-                bt_to_string(bt), blkIdx,
-                totalCoeff - i - 1,
-                suffixLength_used);
-            print_info_only(log);
-            print_bits((int32_t)raw << (32 - bits_consumed), bits_consumed);
-            print_value(raw);
-#endif
         }
     }
 
@@ -501,11 +439,6 @@ void parse_run(int16_t runVal[],int blkIdx,  int bt, int totalCoeff, int maxNumC
 
     int16_t zerosLeft;
 
-#if CAVLC_LOG
-    print_bit_pos(ctx->global_bit_offset, ctx->br);
-#endif
-
-
     if (totalCoeff < endIdx - startIdx + 1) {
         MultiVLC table;
         if (maxNumCoeff <= 8) {
@@ -517,67 +450,22 @@ void parse_run(int16_t runVal[],int blkIdx,  int bt, int totalCoeff, int maxNumC
         } else {
             table = total_zeros_vlc;
         }
-
-        int bit_pos_before = bitreader_bits_consumed(br);
-
         zerosLeft = (int16_t)get_vlc(&table, totalCoeff-1, br);
-
-        int bits_consumed = bitreader_bits_consumed(br) - bit_pos_before;
-
-        // bitreader_rewind(br, bits_consumed);
-        uint32_t raw = bitreader_peek_bits(br, bits_consumed);
-        // bitreader_skip_bits(br, bits_consumed);
-
-
-
-#if CAVLC_LOG
-        char log[128];
-        snprintf(log, sizeof(log), "%s totalrun (%d,0) vlc=%d", bt_to_string(bt), blkIdx, totalCoeff-1);
-        print_info_only(log);
-        print_bits(raw << (32 - bits_consumed), bits_consumed);
-        print_value(raw);
-#endif
-
     } else {
         zerosLeft = 0;
     }
 
     for (int i = 0; i < totalCoeff-1; i++) {
         if (zerosLeft > 0) {
-#if CAVLC_LOG
-            print_bit_pos(ctx->global_bit_offset, ctx->br);
-            int bit_pos_before = bitreader_bits_consumed(br);
-#endif
-
             int idx = zerosLeft > 6 ? 6 : zerosLeft-1;
-
             uint16_t run_before = get_vlc(&run_before_vlc, idx, br);
             runVal[i] = (int16_t)run_before;
-
-#if CAVLC_LOG
-            int bits_consumed = bitreader_bits_consumed(br) - bit_pos_before;
-
-            bitreader_rewind(br, bits_consumed);
-            uint32_t raw = bitreader_peek_bits(br, bits_consumed);
-            bitreader_skip_bits(br, bits_consumed);
-
-            char log[128];
-            snprintf(log, sizeof(log),
-                "%s run (%d,0) k=%d vlc=%d",
-                bt_to_string(bt), blkIdx,
-                totalCoeff - i - 1,
-                idx);
-            print_info_only(log);
-            print_bits((int32_t)raw << (32 - bits_consumed), bits_consumed);
-            print_value(raw);
-#endif
-
         } else {
             runVal[i] = 0;
         }
         zerosLeft -= runVal[i];
     }
-    runVal[totalCoeff-1] = (int16_t)zerosLeft;
+    runVal[totalCoeff-1] = zerosLeft;
 }
 
 

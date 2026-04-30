@@ -10,7 +10,6 @@
 #include <stdint.h>
 
 
-/* Table 7.1 */
 enum NalUnitType : uint8_t {
     NAL_UNSPECIFIED = 0,
     NAL_CODED_SLICE_OF_NON_IDR_PICTURE = 1,
@@ -63,8 +62,16 @@ enum Profile : uint8_t {
     PROFILE_HIGH_10         = 110,
     PROFILE_HIGH_422        = 122,
     PROFILE_HIGH_PRED_444   = 244,
+};
 
-
+enum {
+    MMCO_END_LOOP                   = 0,
+    MMCO_MARK_SHORT_TERM_UNUSED     = 1,
+    MMCO_MARK_LONG_TERM_UNUSED      = 2,
+    MMCO_MARK_LONG_TERM_ASSIGN      = 3,
+    MMCO_MARK_OOB_LONG_TERM_UNUSED  = 4,
+    MMCO_RESET                      = 5,
+    MMCO_MARK_CURR_AS_LONG_TERM     = 6
 };
 
 
@@ -74,7 +81,7 @@ char *NalUnitTypeToString(uint8_t nal_unit_type);
 typedef struct NalUnit {
     const uint8_t *data;   // pointer into original buffer (after start code)
     size_t        size;    // byte count AFTER emulation prevention removal
-    uint8_t       ref_idc; // nal_ref_icd (bits 5-6 of first byte)
+    uint8_t       ref_idc; // nal_ref_idc (bits 5-6 of first byte)
     uint8_t       type;    // nal_unit_type (low 5 bits of first byte)
 } NalUnit;
 

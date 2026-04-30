@@ -5,9 +5,9 @@
 #ifndef TOY_H264_DECODER_H
 #define TOY_H264_DECODER_H
 
-#include "common.h"
-#include "ps.h"
-#include "tests/profiler.h"
+#include <stdbool.h>
+#include <stdint.h>
+#include <stdio.h>
 
 
 extern int debugging;
@@ -17,22 +17,43 @@ typedef struct CodecContext {
 
     const uint8_t *data;
     size_t size;
-    BitReader *br;
     size_t global_bit_offset;
 
-    ParamSets *ps;
 
-    struct Picture *current_pic;
-    struct Slice   *current_slice;
+    int maxFrameNum;
+    int maxLongTermFrameIdx;
+
+
+    struct BitReader *br;
+    struct ParamSets *ps;
+    struct Picture   *current_pic;
+    struct Slice     *current_slice;
+    struct DPB       *dpb;
+    struct Profiler  *prf;
 
 
     int16_t levelScaleTable[52][4][4];
     int16_t  **weightScaleMatrix;
 
 
-    Profiler *prf;
+    /* MB metadata */
+    bool mb_metadata_initialized;
+    int  num_mbs;
+
+    int32_t  *mb_types;
+    uint8_t (*intra8x8_pred_modes) [ 4];
+    uint8_t (*intra4x4_pred_modes) [16];
+    uint8_t (*luma_total_coeffs)   [16];
+    uint8_t (*cb_total_coeffs)     [16];
+    uint8_t (*cr_total_coeffs)     [16];
+
+    struct Macroblock *prevMb;
+    struct Macroblock *currMb;
+
+
     char *out_path;
     FILE *out_file;
+
 } CodecContext ;
 
 

@@ -7,10 +7,14 @@
 
 
 #include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 #include "nal.h"
 #include "slice.h"
 #include "util/formulas.h"
+#include "util/mbutil.h"
+#include "util/sliceutil.h"
 
 
 typedef struct I_MbInfo {
@@ -22,24 +26,16 @@ typedef struct I_MbInfo {
 extern const I_MbInfo i_mb_type_info[26];
 
 
-typedef struct P_MbInfo {
+typedef struct PB_MbInfo {
     int type;
     uint8_t  part_count;
     uint8_t  mb_part_width;
     uint8_t  mb_part_height;
-} P_MbInfo ;
-extern const P_MbInfo p_mb_type_info[5];
-extern const P_MbInfo p_sub_mb_type_info[4];
-
-
-typedef struct B_MbInfo {
-    int type;
-    uint8_t  part_count;
-    uint8_t  mb_part_width;
-    uint8_t  mb_part_height;
-} B_MbInfo ;
-extern const B_MbInfo b_mb_type_info[23];
-extern const B_MbInfo b_sub_mb_type_info[13];
+} PB_MbInfo ;
+extern const PB_MbInfo p_mb_type_info[5];
+extern const PB_MbInfo p_sub_mb_type_info[4];
+extern const PB_MbInfo b_mb_type_info[23];
+extern const PB_MbInfo b_sub_mb_type_info[13];
 
 
 extern const int sub_width_c_info[4];
@@ -70,9 +66,6 @@ typedef struct {
     int cbp_luma;
     int cbp_chroma;
 
-    int16_t luma_total_coeffs[16]; /* FIXME: CABAC uses total_coeffs per 8x8 block
-                                        needs a total_coeff array for every union
-                                        fine for now as CAVLC doesnt support 8x8 transforms at all */
     union {
         /* Intra 4x4 / 8x8 */
         struct {
@@ -92,8 +85,10 @@ typedef struct {
 } MacroblockResiduals ;
 
 
+
+
 typedef struct Macroblock {
-    struct Picture *p_frame;
+    struct Picture *p_pic;
 
     uint32_t slice_type;
     int table_idx;
@@ -104,19 +99,31 @@ typedef struct Macroblock {
     int mb_y, mb_x;
     int mb_width_c;
     int mb_height_c;
+    int num_parts;
+    int num_sub_parts;
 
     int has_mb_a, has_mb_b, has_mb_c, has_mb_d;
-    struct Macroblock *p_mb_a, *p_mb_b, *p_mb_c, *p_mb_d;
+    int mb_a_off, mb_b_off, mb_c_off, mb_d_off;
 
     uint32_t intra_chroma_pred_mode;
     int32_t mb_qp_delta, QPY, QPC;
 
-    uint8_t intra4x4_pred_mode[16];
-    uint8_t intra8x8_pred_mode[4];
-
     MacroblockResiduals residuals;
 
 
+    union {
+        struct {
+            I_MbInfo mb_info;
+        } i ;
+        struct {
+            PB_MbInfo mb_info;
+            PB_MbInfo sub_mb_info[4];
+            uint8_t   ref_idx_l0[4];
+            uint8_t   ref_idx_l1[4];
+            int16_t   mvd_l0[4][4][2];
+            int16_t   mvd_l1[4][4][2];
+        } pb ;
+    } u ;
 } Macroblock ;
 
 
@@ -125,7 +132,7 @@ typedef struct Macroblock {
 typedef struct Neighbors {
     Macroblock *p_mb;
 
-    Macroblock *mb_a, *mb_b, *mb_c, *mb_d;
+    int         mb_a_off, mb_b_off, mb_c_off, mb_d_off;
     int8_t      a_idx, b_idx, c_idx, d_idx;
     Coord       cA,    cB,    cC,    cD;
     bool        a_av,  b_av,  c_av,  d_av;
@@ -138,15 +145,10 @@ ALWAYS_INLINE Neighbors derive_neighbors_4x4_luma(Macroblock *mb, int blkIdx, Co
     }
     Neighbors n = {0};
 
-    int mb_a_off = luma_4x4_blk_mb_neighbors[blkIdx][0];
-    int mb_b_off = luma_4x4_blk_mb_neighbors[blkIdx][1];
-    int mb_c_off = luma_4x4_blk_mb_neighbors[blkIdx][2];
-    int mb_d_off = luma_4x4_blk_mb_neighbors[blkIdx][3];
-
-    n.mb_a = mb + mb_a_off;
-    n.mb_b = mb + mb_b_off;
-    n.mb_c = mb + mb_c_off;
-    n.mb_d = mb + mb_d_off;
+    n.mb_a_off = luma_4x4_blk_mb_neighbors[blkIdx][0];
+    n.mb_b_off = luma_4x4_blk_mb_neighbors[blkIdx][1];
+    n.mb_c_off = luma_4x4_blk_mb_neighbors[blkIdx][2];
+    n.mb_d_off = luma_4x4_blk_mb_neighbors[blkIdx][3];
 
     n.a_idx = luma_4x4_blk_neighbor_idx[blkIdx][0];
     n.b_idx = luma_4x4_blk_neighbor_idx[blkIdx][1];
@@ -158,10 +160,10 @@ ALWAYS_INLINE Neighbors derive_neighbors_4x4_luma(Macroblock *mb, int blkIdx, Co
     n.cC = (Coord){luma_4x4_blk_neighbor_coords[blkIdx][2][1], luma_4x4_blk_neighbor_coords[blkIdx][2][0]};
     n.cD = (Coord){luma_4x4_blk_neighbor_coords[blkIdx][3][1], luma_4x4_blk_neighbor_coords[blkIdx][3][0]};
 
-    n.a_av = mb_a_off == 0 || mb->has_mb_a;
-    n.b_av = mb_b_off == 0 || mb->has_mb_b;
+    n.a_av = n.mb_a_off == 0 || mb->has_mb_a;
+    n.b_av = n.mb_b_off == 0 || mb->has_mb_b;
     n.d_av = n.a_av && n.b_av;
-    n.c_av = (mb_c_off == 0 || mb->has_mb_c || (n.b_av && blkIdx!=3 && blkIdx!=7 && blkIdx!=11 && blkIdx!=15))
+    n.c_av = (n.mb_c_off == 0 || mb->has_mb_c || (n.b_av && blkIdx!=3 && blkIdx!=7 && blkIdx!=11 && blkIdx!=15))
         && n.c_idx != -1;
 
     return n;
@@ -175,15 +177,10 @@ ALWAYS_INLINE Neighbors derive_neighbors_4x4_chroma(Macroblock *mb, int blkIdx, 
 
     Neighbors n = {0};
 
-    int mb_a_off = chroma_4x4_blk_mb_neighbors[blkIdx][0];
-    int mb_b_off = chroma_4x4_blk_mb_neighbors[blkIdx][1];
-    int mb_c_off = chroma_4x4_blk_mb_neighbors[blkIdx][2];
-    int mb_d_off = chroma_4x4_blk_mb_neighbors[blkIdx][3];
-
-    n.mb_a = mb + mb_a_off;
-    n.mb_b = mb + mb_b_off;
-    n.mb_c = mb + mb_c_off;
-    n.mb_d = mb + mb_d_off;
+    n.mb_a_off = chroma_4x4_blk_mb_neighbors[blkIdx][0];
+    n.mb_b_off = chroma_4x4_blk_mb_neighbors[blkIdx][1];
+    n.mb_c_off = chroma_4x4_blk_mb_neighbors[blkIdx][2];
+    n.mb_d_off = chroma_4x4_blk_mb_neighbors[blkIdx][3];
 
     n.a_idx = chroma_4x4_blk_neighbor_idx[blkIdx][0];
     n.b_idx = chroma_4x4_blk_neighbor_idx[blkIdx][1];
@@ -195,16 +192,40 @@ ALWAYS_INLINE Neighbors derive_neighbors_4x4_chroma(Macroblock *mb, int blkIdx, 
     n.cC = (Coord){chroma_4x4_blk_neighbor_coords[blkIdx][2][1], chroma_4x4_blk_neighbor_coords[blkIdx][2][0]};
     n.cD = (Coord){chroma_4x4_blk_neighbor_coords[blkIdx][3][1], chroma_4x4_blk_neighbor_coords[blkIdx][3][0]};
 
-    n.a_av = mb_a_off == 0 || mb->has_mb_a;
-    n.b_av = mb_b_off == 0 || mb->has_mb_b;
+    n.a_av = n.mb_a_off == 0 || mb->has_mb_a;
+    n.b_av = n.mb_b_off == 0 || mb->has_mb_b;
     n.d_av = n.a_av && n.b_av;
-    n.c_av = (mb_c_off == 0 || mb->has_mb_c || (n.b_av && blkIdx!=3))
+    n.c_av = (n.mb_c_off == 0 || mb->has_mb_c || (n.b_av && blkIdx!=3))
     && n.c_idx != -1;
-
-
 
     return n;
 }
+
+ALWAYS_INLINE Macroblock *make_mb(int mbAddr, CodecContext *ctx) {
+    Macroblock *mb = calloc(1, sizeof(Macroblock));
+
+    mb->mbAddr = mbAddr;
+    mb->mb_y   = mbAddr / ctx->ps->sps->pic_width_in_mbs;
+    mb->mb_x   = mbAddr % ctx->ps->sps->pic_width_in_mbs;
+
+    return mb;
+}
+
+ALWAYS_INLINE void reset_mb(Macroblock *mb, int mbAddr, CodecContext *ctx) {
+    memset(&ctx->luma_total_coeffs[mbAddr], 0, 16);
+    memset(&ctx->cr_total_coeffs[mbAddr], 0, 16);
+    memset(&ctx->cb_total_coeffs[mbAddr], 0, 16);
+
+    memset(&mb->u, 0, sizeof(mb->u));
+    memset(&mb->residuals, 0, sizeof(mb->residuals));
+
+    mb->mbAddr = mbAddr;
+    mb->mb_y   = mbAddr / ctx->ps->sps->pic_width_in_mbs;
+    mb->mb_x   = mbAddr % ctx->ps->sps->pic_width_in_mbs;
+    mb->p_pic  = ctx->current_pic;
+}
+
+
 
 
 
@@ -214,12 +235,12 @@ typedef void (*residual_func)          (Macroblock *mb, int blkIdx, int iCbCr, i
 
 
 
-void  read_macroblock        (Macroblock *mb_array, int mbAddr, SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
-void  read_mb_pred           (Macroblock *mb_array, int mbAddr, int type, int pred_mode, SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
-void  read_residual          (Macroblock *mb_array, int mbAddr, int type, int t_8x8_flag, int startIdx, int endIdx, int cbp_luma, int cbp_chroma,
+void  read_macroblock        (Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
+void  read_mb_pred           (Macroblock *mb, SliceHeader *sh, CodecContext *ctx);
+void  read_sub_mb_pred       (Macroblock *mb, SliceHeader *sh, CodecContext *ctx);
+void  read_residual          (Macroblock *mb, int type, int t_8x8_flag, int startIdx, int endIdx, int cbp_luma, int cbp_chroma,
                                  residual_func residual_block, SliceHeader *sh, CodecContext *ctx);
-
-void  read_residual_luma     (Macroblock *mb_array, int mbAddr, int type, int t_8x8_flag, int cbp_luma,
+void  read_residual_luma     (Macroblock *mb, int type, int t_8x8_flag, int cbp_luma,
                                 int startIdx, int endIdx,
                                 residual_func residual_block, SliceHeader *sh, CodecContext *ctx);
 

@@ -471,11 +471,9 @@ void plane_8x8_chroma_pred(uint8_t *dst_cb, uint8_t *dst_cr, int stride, int a_a
 
 
 
-
-
 void intra_pred_4x4(Macroblock *mb, int blkIdx, int pred_mode, CodecContext *ctx) {
-    uint8_t *luma = mb->p_frame->luma;
-    int stride = mb->p_frame->strideY;
+    uint8_t *luma = mb->p_pic->luma;
+    int stride = mb->p_pic->strideY;
     int mb_y = mb->mb_y;
     int mb_x = mb->mb_x;
 
@@ -513,8 +511,8 @@ void intra_pred_4x4(Macroblock *mb, int blkIdx, int pred_mode, CodecContext *ctx
 }
 
 void intra_pred_16x16(Macroblock *mb, CodecContext *ctx) {
-    uint8_t *luma = mb->p_frame->luma;
-    int stride = mb->p_frame->strideY;
+    uint8_t *luma = mb->p_pic->luma;
+    int stride = mb->p_pic->strideY;
     int mb_y = mb->mb_y;
     int mb_x = mb->mb_x;
 
@@ -544,9 +542,9 @@ void intra_pred_16x16(Macroblock *mb, CodecContext *ctx) {
 
 
 void intra_chroma_pred(Macroblock *mb, CodecContext *ctx) {
-    uint8_t *cb = mb->p_frame->cb;
-    uint8_t *cr = mb->p_frame->cr;
-    int stride = mb->p_frame->strideC;
+    uint8_t *cb = mb->p_pic->cb;
+    uint8_t *cr = mb->p_pic->cr;
+    int stride = mb->p_pic->strideC;
     int mb_x = mb->mb_x;
     int mb_y = mb->mb_y;
 

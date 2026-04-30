@@ -5,10 +5,10 @@ set(CMAKE_C_STANDARD 11)
 
 
 # debugging
-
+#
 #add_compile_options(-fsanitize=address)
 #add_link_options(-fsanitize=address)
-
+#
 #add_compile_options(-fsanitize=undefined)
 #add_link_options(-fsanitize=undefined)
 
@@ -159,7 +159,7 @@ add_executable(cavlc_test src/tests/cavlc_test.c
 add_executable(gen_rgb_video src/tests/gen_rgb_video.c)
 target_link_libraries(gen_rgb_video m)
 
-add_executable(intra_decode main.c
+add_executable(h264_decoder main.c
         src/intra.c src/intra.h
         src/util/bitreader.h
         src/util/bitreader.c
@@ -196,6 +196,13 @@ add_executable(intra_decode main.c
         src/dequant.h
         src/dpb.c
         src/dpb.h
+        src/mv.c
+        src/mv.h
 )
-target_compile_options(intra_decode PRIVATE -O3 -march=native)
+target_compile_options(h264_decoder PRIVATE -O3 -march=native)
 add_executable(compare_streams src/tests/streamcomp.c)
+
+add_executable(misc_test src/tests/misc_test.c
+    src/tests/a.h
+    src/tests/b.h
+)

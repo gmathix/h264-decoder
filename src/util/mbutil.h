@@ -16,6 +16,8 @@
 
 
 
+
+
 /* macroblock types */
 #define MB_TYPE_INTRA4x4    (1 <<  0)
 #define MB_TYPE_INTRA8x8    (1 <<  1)
@@ -56,6 +58,7 @@
 #define IS_INTRA8x8(a)     ((a) & MB_TYPE_INTRA8x8)
 #define IS_INTRA16x16(a)   ((a) & MB_TYPE_INTRA16x16)
 #define IS_INTRANxN(a)     ((a) & (MB_TYPE_INTRA4x4 | MB_TYPE_INTRA8x8))
+#define IS_L0(a)           ((a) & MB_TYPE_L0)
 #define IS_PCM(a)          ((a) & MB_TYPE_INTRA_PCM)
 #define IS_INTRA(a)        ((a) & 7)
 #define IS_INTER(a)        ((a) & (MB_TYPE_16x16 | MB_TYPE_16x8 | \

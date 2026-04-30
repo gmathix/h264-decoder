@@ -13,12 +13,14 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include "src/tests/profiler.h"
+
 
 int main(int argc, char *argv[]) {
 
     if (argc == 1) {
         printf("please specify an input file.\n"
-               "Usage : intra_decode <input_file> [output_file]");
+               "Usage : h264_decoder <input_file> [output_file]");
         return 1;
     }
 

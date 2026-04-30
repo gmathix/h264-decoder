@@ -7,6 +7,7 @@
 
 #include <stdint.h>
 
+#include "decoder.h"
 #include "util/bitreader.h"
 #include "util/logger.h"
 
@@ -30,9 +31,10 @@ typedef struct SPS {
     uint32_t crop_right_offset;
     uint32_t crop_top_offset;
     uint32_t log2_max_frame_num_minus4;
-    uint32_t log2_max_pic_order_cnt_lsb_minus4;
-    uint32_t num_ref_frames_in_pic_order_cnt_cycle;
-    uint32_t pic_order_cnt_type;
+    uint32_t log2_max_poc_lsb_minus4;
+    uint32_t num_ref_frames_in_poc_cycle;
+    uint32_t num_ref_frames;
+    uint32_t poc_type;
     uint32_t pic_width_in_mbs_minus1;
     uint32_t pic_height_in_map_units_minus1;
     uint32_t sps_id;
@@ -46,6 +48,7 @@ typedef struct SPS {
     int      direct_8x8_inference_flag;
     int      frame_cropping_flag;
     int      frame_mbs_only_flag;
+    int      gaps_in_frame_num_allowed_flag;
     int      mb_aff_flag;
     int      profile_idc; // 66=baseline, 77=main, 100=high
     int      separate_color_plane_flag;
@@ -55,7 +58,7 @@ typedef struct SPS {
     int      bit_depth_luma;     // bit_depth_luma_minus8 + 8
     uint32_t bit_depth_chroma;   // bit_depth_chroma_minus8 + 8
     uint32_t log2_max_frame_num; // log2_max_frame_num_minus4 + 4
-    uint32_t log2_max_pic_order_cnt_lsb; // log2_max_pic_order_cnt_lbs_minus4 + 4
+    uint32_t log2_max_poc_lsb; // log2_max_poc_lbs_minus4 + 4
     uint32_t pic_width_in_mbs; // pic_width_in_mbs_minus1 + 1
     uint32_t pic_height_in_map_units; // (pic_height_in_map_units_minus1 + 1) * (2 - frame_mbs_only_flag)
     uint32_t pic_width_samples_l;
@@ -108,10 +111,10 @@ typedef struct ParamSets {
 
 
 int  get_profile (ParamSets *ps);
-int  decode_sps  (size_t global_bit_offset, BitReader *br, ParamSets *ps);
-int  decode_pps  (size_t global_bit_offset, BitReader *br, ParamSets *ps);
+int  decode_sps  (size_t global_bit_offset, CodecContext *ctx);
+int  decode_pps  (size_t global_bit_offset, CodecContext *ctx);
 
-int decode_vui (size_t global_bit_offset, BitReader *br, ParamSets *ps);
+int decode_vui (size_t global_bit_offset, CodecContext *ctx);
 
 void ps_uninit   (ParamSets *ps);
 

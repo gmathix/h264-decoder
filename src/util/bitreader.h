@@ -11,7 +11,7 @@
 #include <stdint.h>
 
 
-typedef struct {
+typedef struct BitReader {
     const uint8_t *data; // pointer to the byte buffer
     size_t         size; // total bytes in buffer
     size_t         byte_pos;
@@ -23,7 +23,7 @@ typedef struct {
 
 
 
-void     bitreader_init(BitReader *br, const uint8_t *data, size_t size);
+void     bitreader_init(struct BitReader *br, const uint8_t *data, size_t size);
 uint32_t bitreader_peek_bits(BitReader *br, int n);
 uint32_t bitreader_read_bits(BitReader *br, int n);
 void     bitreader_skip_bits(BitReader *br, uint32_t n);
@@ -36,7 +36,7 @@ bool     rbsp_trailing_bits(BitReader *br);
 
 
 static BitReader make_br(const uint8_t *data, size_t size) {
-    BitReader br;
+    struct BitReader br;
     bitreader_init(&br, data, size);
     return br;
 }

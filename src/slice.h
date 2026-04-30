@@ -6,8 +6,8 @@
 #define TOY_H264_SLICE_H
 
 
-#include "decoder.h"
 #include "common.h"
+#include "decoder.h"
 #include "ps.h"
 
 
@@ -25,20 +25,22 @@ typedef struct SliceHeader {
     uint32_t redundant_pic_cnt;
     uint32_t slice_type;
 
-    int32_t  delta_pic_order_cnt[2];
-    int32_t  delta_pic_order_cnt_bottom;
-    int32_t  pic_order_cnt_lsb;
+    int32_t  delta_poc[2];
+    int32_t  delta_poc_bottom;
+    int32_t  poc_lsb;
     int32_t  slice_qp_delta;
     int32_t  slice_qs_delta;
     int32_t  slice_alpha_c0_offset_div2;
     int32_t  slice_beta_offset_div2;
 
+    int      is_idr_pic;
     int      bottom_field_flag;
     int      direct_spatial_mv_pred_flag;
     int      field_pic_flag;
     int      idr_pic_flag;
     int      long_term_reference_flag;
     int      num_ref_idx_active_override_flag;
+    int      no_output_of_prior_pics_flag;
     int      sp_for_switch_flag;
 
 
@@ -49,8 +51,6 @@ typedef struct SliceHeader {
 void         decode_slice              (NalUnit *nal_unit, CodecContext *ctx);
 SliceHeader  *read_slice_header       (NalUnit *nal_unit, CodecContext *ctx);
 void         read_slice_data         (SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
-void         ref_pic_list_modification (uint8_t type, SliceHeader *sh, CodecContext *ctx);
 void         pred_weight_table         (uint8_t type, SliceHeader *sh, CodecContext *ctx);
-void         dec_ref_pic_marking       (SliceHeader *sh, CodecContext *ctx);
 
 #endif //TOY_H264_SLICE_H

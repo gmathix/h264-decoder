@@ -480,32 +480,32 @@ void intra_pred_4x4(Macroblock *mb, int blkIdx, int pred_mode, CodecContext *ctx
     uint8_t top_samples[9];
     uint8_t left_samples[5];
 
-    Neighbors n = derive_neighbors_4x4_luma(mb, blkIdx, ctx);
+    Neighbors n = derive_neighbors_4x4(mb, blkIdx, ctx);
     int blkX = (blkIdx&3)<<2;
     int blkY = (blkIdx>>2)<<2;
 
-    if (n.a_av) {
+    if (n.a.av) {
         for (int y = 0; y < 4; y++)
             left_samples[y+1] = luma[(mb_y*16 + blkY + y)*stride + mb_x*16 + blkX - 1];
     }
-    if (n.b_av) {
+    if (n.b.av) {
         for (int x = 0; x < 4; x++)
             top_samples[x+1]  = luma[(mb_y*16 + blkY - 1)*stride + mb_x*16 + blkX + x];
     }
-    if (n.c_av) {
+    if (n.c.av) {
         for (int x = 0; x < 4; x++)
             top_samples[x+5]  = luma[(mb_y*16 + blkY - 1)*stride + mb_x*16 + blkX + x + 4];
     } else {
         memset(&top_samples[5], top_samples[4], 4);
     }
-    if (n.d_av) {
+    if (n.d.av) {
         left_samples[0]       = luma[(mb_y*16 + blkY - 1)*stride + mb_x*16 + blkX - 1];
         top_samples[0]        = left_samples[0];
     }
 
     intra4x4_table[pred_mode](
         &luma[(mb_y*16 + blkY)*stride + mb_x*16 + blkX], stride,
-        n.a_av, n.b_av,
+        n.a.av, n.b.av,
         top_samples, left_samples
             );
 }
@@ -519,24 +519,24 @@ void intra_pred_16x16(Macroblock *mb, CodecContext *ctx) {
     uint8_t top_samples[17];
     uint8_t left_samples[17];
 
-    Neighbors n = derive_neighbors_4x4_luma(mb, 0, ctx);
+    Neighbors n = derive_neighbors_4x4(mb, 0, ctx);
 
-    if (n.a_av) {
+    if (n.a.av) {
         for (int i = 0; i < 16; i++)
             left_samples[i+1] = luma[(mb_y*16 + i)*stride + mb_x*16 - 1];
     }
-    if (n.b_av) {
+    if (n.b.av) {
         for (int i = 0; i < 16; i++)
             top_samples[i+1]  = luma[(mb_y*16 - 1)*stride + mb_x*16 + i];
     }
-    if (n.d_av) {
+    if (n.d.av) {
         left_samples[0]       = luma[(mb_y*16 - 1)*stride + mb_x*16 - 1];
         top_samples[0]        = left_samples[0];
     }
 
     intra16x16_table[mb->pred_mode](
         &luma[mb_y*16*stride + mb_x*16], stride,
-        n.a_av, n.b_av,
+        n.a.av, n.b.av,
         top_samples, left_samples, ctx->ps->sps->bit_depth_luma);
 }
 
@@ -554,21 +554,21 @@ void intra_chroma_pred(Macroblock *mb, CodecContext *ctx) {
     uint8_t top_samples_cr[9];
     uint8_t left_samples_cr[9];
 
-    Neighbors n = derive_neighbors_4x4_chroma(mb, 0, ctx);
+    Neighbors n = derive_neighbors_2x2(mb, 0, ctx);
 
-    if (n.a_av) {
+    if (n.a.av) {
         for (int y = 0; y < 8; y++) {
             left_samples_cb[y+1] = cb[(mb_y*8 + y)*stride + mb_x*8 - 1];
             left_samples_cr[y+1] = cr[(mb_y*8 + y)*stride + mb_x*8 - 1];
         }
     }
-    if (n.b_av) {
+    if (n.b.av) {
         for (int x = 0; x < 8; x++) {
             top_samples_cb[x+1]  = cb[(mb_y*8 - 1)*stride + mb_x*8 + x];
             top_samples_cr[x+1]  = cr[(mb_y*8 - 1)*stride + mb_x*8 + x];
         }
     }
-    if (n.d_av) {
+    if (n.d.av) {
         left_samples_cb[0]       = cb[(mb_y*8-1)*stride + (mb_x*8 - 1)];
         left_samples_cr[0]       = cr[(mb_y*8-1)*stride + (mb_x*8 - 1)];
         top_samples_cb[0]        = left_samples_cb[0];
@@ -577,7 +577,7 @@ void intra_chroma_pred(Macroblock *mb, CodecContext *ctx) {
 
     intra8x8_chroma_table[mb->intra_chroma_pred_mode](
         &cb[mb_y*8*stride + mb_x*8], &cr[mb_y*8*stride + mb_x*8], stride,
-        n.a_av, n.b_av,
+        n.a.av, n.b.av,
         top_samples_cb, left_samples_cb,
         top_samples_cr, left_samples_cr,
         ctx->ps->sps->bit_depth_chroma, ctx->ps->sps->chroma_format_idc);

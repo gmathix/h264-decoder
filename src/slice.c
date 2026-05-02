@@ -14,6 +14,7 @@
 #include <unistd.h>
 
 #include "dpb.h"
+#include "mvpred.h"
 #include "transform.h"
 #include "tests/profiler.h"
 #include "util/mbutil.h"
@@ -27,27 +28,27 @@ ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, CodecContext *ctx
 
     if (mb_addr % mb_width != 0) {
         mb->has_mb_a = 1;
-        mb->mb_a_off = mb_addr - 1;
+        mb->mb_a_off = - 1;
     } else { // top left, can't have A neighbor
         mb->has_mb_a = 0;
     }
     if (mb_addr / mb_width >= 1) {
         mb->has_mb_b = 1;
-        mb->mb_b_off = mb_addr - mb_width;
+        mb->mb_b_off = - mb_width;
     } else { // top row, can't have B neighbor
         mb->has_mb_b = 0;
     }
     if (mb_addr / mb_width >= 1 &&
         (mb_addr+1) % mb_width != 0) {
         mb->has_mb_c = 1;
-        mb->mb_c_off = mb_addr - mb_width + 1;
+        mb->mb_c_off = - mb_width + 1;
     } else { // top row or right column, can't have C neighbor
         mb->has_mb_c = 0;
     }
     if (mb_addr / mb_width >= 1 &&
         mb_addr % mb_width != 0) {
         mb->has_mb_d = 1;
-        mb->mb_d_off = mb_addr - mb_width - 1;
+        mb->mb_d_off = - mb_width - 1;
         } else { // top row or left column, can't have D neighbor
             mb->has_mb_d = 0;
         }
@@ -75,7 +76,7 @@ void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
 
     profiler_end_frame(ctx->prf);
 
-    printf("done frame %lu\n\n", ctx->prf->total_frames);
+    printf("done frame %lu (frame_num %d)\n\n", ctx->prf->total_frames-1, sh->frame_num);
 
     if (ctx->prf->total_frames == num_frames_before_stop) {
         exit(1);
@@ -166,6 +167,9 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
             if (b_slice) {
                 sh->num_ref_idx_l1_active_minus1 = read_ue(br);
             }
+        } else {
+            sh->num_ref_idx_l0_active_minus1 = pps->num_ref_idx_l0_default_active_minus1;
+            sh->num_ref_idx_l1_active_minus1 = pps->num_ref_idx_l1_default_active_minus1;
         }
     }
     if (nal_unit->type == NAL_CODED_SLICE_EXTENSION) {
@@ -262,16 +266,22 @@ void read_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
             if (!pps->entropy_coding_mode_flag) {
                 uint32_t mb_skip_run = read_ue(br);
                 prevMbSkipped = mb_skip_run > 0;
-                printf("skipping %d macroblocks\n", mb_skip_run);
+
+                // if (mb_skip_run > 0) {
+                //     printf("skipping %d macroblocks\n", mb_skip_run);
+                // }
 
                 for (int i = currMbAddr; i < currMbAddr + mb_skip_run; i++) {
                     Macroblock *mb = ctx->currMb;
                     reset_mb(mb, i, ctx);
+                    derive_macroblock_neighbors(mb, ctx);
 
                     mb->mb_type = MB_TYPE_SKIP;
                     mb->slice_type = sh->slice_type;
 
+                    derive_p_skip_mv(mb, ctx);
 
+                    ctx->prevMb = mb;
                 }
 
                 currMbAddr += mb_skip_run;
@@ -336,14 +346,14 @@ void pred_weight_table(uint8_t type, SliceHeader *sh, CodecContext *ctx) {
     }
 
     int luma_weight_l0_flag;
-    int32_t luma_weight_l0[pps->num_ref_idx_l0_active];
-    int32_t luma_offset_l0[pps->num_ref_idx_l0_active];
+    int32_t luma_weight_l0[sh->num_ref_idx_l0_active_minus1+1];
+    int32_t luma_offset_l0[sh->num_ref_idx_l0_active_minus1+1];
 
     int chroma_weight_l0_flag;
-    int32_t chroma_weight_l0[pps->num_ref_idx_l0_active][2];
-    int32_t chroma_offset_l0[pps->num_ref_idx_l0_active][2];
+    int32_t chroma_weight_l0[sh->num_ref_idx_l0_active_minus1+1][2];
+    int32_t chroma_offset_l0[sh->num_ref_idx_l0_active_minus1+1][2];
 
-    for (int i = 0; i < pps->num_ref_idx_l0_active; i++) {
+    for (int i = 0; i < sh->num_ref_idx_l0_active_minus1+1; i++) {
         luma_weight_l0_flag = read_u(br, 1);
         if (luma_weight_l0_flag) {
             luma_weight_l0[i] = read_se(br);
@@ -363,15 +373,15 @@ void pred_weight_table(uint8_t type, SliceHeader *sh, CodecContext *ctx) {
 
 
     int luma_weight_l1_flag;
-    int32_t luma_weight_l1[pps->num_ref_idx_l0_active];
-    int32_t luma_offset_l1[pps->num_ref_idx_l0_active];
+    int32_t luma_weight_l1[sh->num_ref_idx_l1_active_minus1+1];
+    int32_t luma_offset_l1[sh->num_ref_idx_l1_active_minus1+1];
 
     int chroma_weight_l1_flag;
-    int32_t chroma_weight_l1[pps->num_ref_idx_l0_active][2];
-    int32_t chroma_offset_l1[pps->num_ref_idx_l0_active][2];
+    int32_t chroma_weight_l1[sh->num_ref_idx_l1_active_minus1+1][2];
+    int32_t chroma_offset_l1[sh->num_ref_idx_l1_active_minus1+1][2];
 
     if (type%5 == 1) {
-        for (int i = 0; i < pps->num_ref_idx_l1_active; i++) {
+        for (int i = 0; i < sh->num_ref_idx_l1_active_minus1+1; i++) {
             luma_weight_l1_flag = read_u(br, 1);
             if (luma_weight_l1_flag) {
                 luma_weight_l1[i] = read_se(br);

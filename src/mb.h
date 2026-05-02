@@ -44,16 +44,16 @@ extern const int sub_height_c_info[4];
 
 extern const int QPcTable[52];
 extern const int luma_location_diff[4][2];
-extern const uint8_t block_mapping_4x4[16];
+extern const uint8_t map_4x4[16];
 
 
-extern int16_t luma_4x4_blk_mb_neighbors        [16][4];
-extern int8_t  luma_4x4_blk_neighbor_idx        [16][4];
-extern int8_t  luma_4x4_blk_neighbor_coords  [16][4][2];
+extern int16_t blk_4x4_mb_neighbors        [16][4];
+extern int8_t  blk_4x4_neighbor_idx        [16][4];
+extern int8_t  blk_4x4_neighbor_coords  [16][4][2];
 
-extern int16_t chroma_4x4_blk_mb_neighbors       [4][4];
-extern int8_t  chroma_4x4_blk_neighbor_idx       [4][4];
-extern int8_t  chroma_4x4_blk_neighbor_coords [4][4][2];
+extern int16_t blk_2x2_mb_neighbors       [4][4];
+extern int8_t  blk_2x2_neighbor_idx       [4][4];
+extern int8_t  blk_2x2_neighbor_coords [4][4][2];
 
 extern int     neighbor_tables_initialized;
 void           init_neighbor_tables(CodecContext *ctx);
@@ -129,74 +129,124 @@ typedef struct Macroblock {
 
 
 
-typedef struct Neighbors {
-    Macroblock *p_mb;
 
-    int         mb_a_off, mb_b_off, mb_c_off, mb_d_off;
-    int8_t      a_idx, b_idx, c_idx, d_idx;
-    Coord       cA,    cB,    cC,    cD;
-    bool        a_av,  b_av,  c_av,  d_av;
+
+typedef struct Neighbor {
+    int mb_off;
+    int8_t idx;
+    Coord c;
+    bool av;
+} Neighbor ;
+
+typedef struct Neighbors {
+    Neighbor a, b, c, d;
 } Neighbors ;
 
 
-ALWAYS_INLINE Neighbors derive_neighbors_4x4_luma(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+ALWAYS_INLINE Neighbor derive_a_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
-    Neighbors n = {0};
+    Neighbor n = {0};
 
-    n.mb_a_off = luma_4x4_blk_mb_neighbors[blkIdx][0];
-    n.mb_b_off = luma_4x4_blk_mb_neighbors[blkIdx][1];
-    n.mb_c_off = luma_4x4_blk_mb_neighbors[blkIdx][2];
-    n.mb_d_off = luma_4x4_blk_mb_neighbors[blkIdx][3];
+    n.mb_off = blk_4x4_mb_neighbors[blkIdx][0];
+    n.idx    = blk_4x4_neighbor_idx[blkIdx][0];
+    n.c      = (Coord){blk_4x4_neighbor_coords[blkIdx][0][1], blk_4x4_neighbor_coords[blkIdx][0][0]};
+    n.av     = n.mb_off == 0 || mb->has_mb_a;
 
-    n.a_idx = luma_4x4_blk_neighbor_idx[blkIdx][0];
-    n.b_idx = luma_4x4_blk_neighbor_idx[blkIdx][1];
-    n.c_idx = luma_4x4_blk_neighbor_idx[blkIdx][2];
-    n.d_idx = luma_4x4_blk_neighbor_idx[blkIdx][3];
+    return n;
+}
+ALWAYS_INLINE Neighbor derive_b_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+    if (!neighbor_tables_initialized) {
+        init_neighbor_tables(ctx);
+    }
+    Neighbor n = {0};
 
-    n.cA = (Coord){luma_4x4_blk_neighbor_coords[blkIdx][0][1], luma_4x4_blk_neighbor_coords[blkIdx][0][0]};
-    n.cB = (Coord){luma_4x4_blk_neighbor_coords[blkIdx][1][1], luma_4x4_blk_neighbor_coords[blkIdx][1][0]};
-    n.cC = (Coord){luma_4x4_blk_neighbor_coords[blkIdx][2][1], luma_4x4_blk_neighbor_coords[blkIdx][2][0]};
-    n.cD = (Coord){luma_4x4_blk_neighbor_coords[blkIdx][3][1], luma_4x4_blk_neighbor_coords[blkIdx][3][0]};
+    n.mb_off = blk_4x4_mb_neighbors[blkIdx][1];
+    n.idx    = blk_4x4_neighbor_idx[blkIdx][1];
+    n.c      = (Coord){blk_4x4_neighbor_coords[blkIdx][1][1], blk_4x4_neighbor_coords[blkIdx][1][0]};
+    n.av     = n.mb_off == 0 || mb->has_mb_b;
 
-    n.a_av = n.mb_a_off == 0 || mb->has_mb_a;
-    n.b_av = n.mb_b_off == 0 || mb->has_mb_b;
-    n.d_av = n.a_av && n.b_av;
-    n.c_av = (n.mb_c_off == 0 || mb->has_mb_c || (n.b_av && blkIdx!=3 && blkIdx!=7 && blkIdx!=11 && blkIdx!=15))
-        && n.c_idx != -1;
+    return n;
+}
+ALWAYS_INLINE Neighbor derive_c_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+    if (!neighbor_tables_initialized) {
+        init_neighbor_tables(ctx);
+    }
+    Neighbor n = {0};
+
+    int mb_b_off = blk_4x4_mb_neighbors[blkIdx][1];
+    int mb_c_off = blk_4x4_mb_neighbors[blkIdx][2];
+
+    n.mb_off = blk_4x4_mb_neighbors[blkIdx][2];
+    n.idx    = blk_4x4_neighbor_idx[blkIdx][2];
+    n.c      = (Coord){blk_4x4_neighbor_coords[blkIdx][2][1], blk_4x4_neighbor_coords[blkIdx][2][0]};
+    n.av     = (mb_c_off == 0 || mb->has_mb_c || ((mb_b_off == 0 || mb->has_mb_b) && blkIdx!=3 && blkIdx!=7 && blkIdx!=11 && blkIdx!=15))
+        && n.idx != -1;
+
+    return n;
+}
+ALWAYS_INLINE Neighbor derive_d_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+    if (!neighbor_tables_initialized) {
+        init_neighbor_tables(ctx);
+    }
+    Neighbor n = {0};
+
+    int mb_a_off = blk_4x4_mb_neighbors[blkIdx][0];
+    int mb_b_off = blk_4x4_mb_neighbors[blkIdx][1];
+
+    n.mb_off = blk_4x4_mb_neighbors[blkIdx][3];
+    n.idx    = blk_4x4_neighbor_idx[blkIdx][3];
+    n.c      = (Coord){blk_4x4_neighbor_coords[blkIdx][3][1], blk_4x4_neighbor_coords[blkIdx][3][0]};
+    n.av     = (mb_a_off == 0 || mb->has_mb_a) && (mb_b_off == 0 || mb->has_mb_b);
 
     return n;
 }
 
 
-ALWAYS_INLINE Neighbors derive_neighbors_4x4_chroma(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+ALWAYS_INLINE Neighbors derive_neighbors_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+    if (!neighbor_tables_initialized) {
+        init_neighbor_tables(ctx);
+    }
+    Neighbors n = {0};
+
+    n.a = derive_a_neighbor_4x4(mb, blkIdx, ctx);
+    n.b = derive_b_neighbor_4x4(mb, blkIdx, ctx);
+    n.c = derive_c_neighbor_4x4(mb, blkIdx, ctx);
+    n.d = derive_d_neighbor_4x4(mb, blkIdx, ctx);
+
+    return n;
+}
+
+
+ALWAYS_INLINE Neighbors derive_neighbors_2x2(Macroblock *mb, int blkIdx, CodecContext *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
 
     Neighbors n = {0};
 
-    n.mb_a_off = chroma_4x4_blk_mb_neighbors[blkIdx][0];
-    n.mb_b_off = chroma_4x4_blk_mb_neighbors[blkIdx][1];
-    n.mb_c_off = chroma_4x4_blk_mb_neighbors[blkIdx][2];
-    n.mb_d_off = chroma_4x4_blk_mb_neighbors[blkIdx][3];
 
-    n.a_idx = chroma_4x4_blk_neighbor_idx[blkIdx][0];
-    n.b_idx = chroma_4x4_blk_neighbor_idx[blkIdx][1];
-    n.c_idx = chroma_4x4_blk_neighbor_idx[blkIdx][2];
-    n.d_idx = chroma_4x4_blk_neighbor_idx[blkIdx][3];
+    n.a.mb_off = blk_2x2_mb_neighbors[blkIdx][0];
+    n.b.mb_off = blk_2x2_mb_neighbors[blkIdx][1];
+    n.c.mb_off = blk_2x2_mb_neighbors[blkIdx][2];
+    n.d.mb_off = blk_2x2_mb_neighbors[blkIdx][3];
 
-    n.cB = (Coord){chroma_4x4_blk_neighbor_coords[blkIdx][0][1], chroma_4x4_blk_neighbor_coords[blkIdx][0][0]};
-    n.cB = (Coord){chroma_4x4_blk_neighbor_coords[blkIdx][1][1], chroma_4x4_blk_neighbor_coords[blkIdx][1][0]};
-    n.cC = (Coord){chroma_4x4_blk_neighbor_coords[blkIdx][2][1], chroma_4x4_blk_neighbor_coords[blkIdx][2][0]};
-    n.cD = (Coord){chroma_4x4_blk_neighbor_coords[blkIdx][3][1], chroma_4x4_blk_neighbor_coords[blkIdx][3][0]};
+    n.a.idx = blk_2x2_neighbor_idx[blkIdx][0];
+    n.b.idx = blk_2x2_neighbor_idx[blkIdx][1];
+    n.c.idx = blk_2x2_neighbor_idx[blkIdx][2];
+    n.d.idx = blk_2x2_neighbor_idx[blkIdx][3];
 
-    n.a_av = n.mb_a_off == 0 || mb->has_mb_a;
-    n.b_av = n.mb_b_off == 0 || mb->has_mb_b;
-    n.d_av = n.a_av && n.b_av;
-    n.c_av = (n.mb_c_off == 0 || mb->has_mb_c || (n.b_av && blkIdx!=3))
-    && n.c_idx != -1;
+    n.a.c = (Coord){blk_2x2_neighbor_coords[blkIdx][0][1], blk_2x2_neighbor_coords[blkIdx][0][0]};
+    n.b.c = (Coord){blk_2x2_neighbor_coords[blkIdx][1][1], blk_2x2_neighbor_coords[blkIdx][1][0]};
+    n.c.c = (Coord){blk_2x2_neighbor_coords[blkIdx][2][1], blk_2x2_neighbor_coords[blkIdx][2][0]};
+    n.d.c = (Coord){blk_2x2_neighbor_coords[blkIdx][3][1], blk_2x2_neighbor_coords[blkIdx][3][0]};
+
+    n.a.av = n.a.mb_off == 0 || mb->has_mb_a;
+    n.b.av = n.b.mb_off == 0 || mb->has_mb_b;
+    n.d.av = n.a.av && n.b.av;
+    n.c.av = (n.c.mb_off == 0 || mb->has_mb_c || (n.b.av && blkIdx!=3))
+    && n.c.idx != -1;
 
     return n;
 }

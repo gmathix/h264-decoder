@@ -341,21 +341,22 @@ void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, int bt, int *startIdx, i
 
     int nA = 0, nB = 0;
     Neighbors n = isLuma
-        ? derive_neighbors_4x4_luma(mb, blkIdx, ctx)
-        : derive_neighbors_4x4_chroma(mb, blkIdx, ctx);
+        ? derive_neighbors_4x4(mb, blkIdx, ctx)
+        : derive_neighbors_2x2(mb, blkIdx, ctx);
 
 
-    if (n.a_av) {
-        nA = total_coeffs_table[mb->mbAddr + n.mb_a_off][n.a_idx];
+
+    if (n.a.av) {
+        nA = total_coeffs_table[mb->mbAddr + n.a.mb_off][n.a.idx];
     }
-    if (n.b_av) {
-        nB = total_coeffs_table[mb->mbAddr + n.mb_b_off][n.b_idx];
+    if (n.b.av) {
+        nB = total_coeffs_table[mb->mbAddr + n.b.mb_off][n.b.idx];
     }
 
 
     if (bt != CHROMA_DC_LEVEL) {
-        if (n.a_av && n.b_av)  *nC = (nA+nB+1)>>1;
-        else *nC = n.a_av*nA + n.b_av * nB;
+        if (n.a.av && n.b.av)  *nC = (nA+nB+1)>>1;
+        else *nC = n.a.av*nA + n.b.av * nB;
     }
 
     unsigned bits = bitreader_peek_bits(br, MAX_COEFF_TOKEN_BITS);

@@ -28,25 +28,10 @@ Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx) {
 
     if (!ctx->mb_metadata_initialized || f->num_mbs != ctx->num_mbs) {
         if (ctx->mb_metadata_initialized) { /* will have to reallocate the buffers, shouldn't happen mid-stream */
-            free(ctx->mb_types);
-            free(ctx->intra8x8_pred_modes);
-            free(ctx->intra4x4_pred_modes);
-            free(ctx->luma_total_coeffs);
-            free(ctx->cb_total_coeffs);
-            free(ctx->cr_total_coeffs);
+            decoder_free_metadata(ctx);
         }
-        ctx->num_mbs = f->num_mbs;
-
-        ctx->mb_types            = calloc(f->num_mbs, sizeof(int32_t));
-        ctx->intra8x8_pred_modes = calloc(f->num_mbs, sizeof(uint8_t[ 4]));
-        ctx->intra4x4_pred_modes = calloc(f->num_mbs, sizeof(uint8_t[16]));
-        ctx->luma_total_coeffs   = calloc(f->num_mbs, sizeof(uint8_t[16]));
-        ctx->cb_total_coeffs     = calloc(f->num_mbs, sizeof(uint8_t[16]));
-        ctx->cr_total_coeffs     = calloc(f->num_mbs, sizeof(uint8_t[16]));
-
-        ctx->mb_metadata_initialized = true;
+        decoder_alloc_metadata(ctx);
     }
-
 
 
     return f;

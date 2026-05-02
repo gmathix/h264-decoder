@@ -25,9 +25,8 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path) {
 
     CodecContext *ctx = calloc(1, sizeof(CodecContext));
     if (!ctx) {
-        free(ctx);
         return NULL;
-    };
+    }
 
     ctx->data = data;
     ctx->size = size;
@@ -46,8 +45,8 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path) {
 
     precompute_level_scale_table(ctx, &flat_4x4_16[0]);
 
-    ctx->currMb = make_mb(0, ctx);
-    ctx->prevMb = make_mb(0, ctx);
+    ctx->currMb = calloc(1, sizeof(Macroblock));
+    ctx->prevMb = calloc(1, sizeof(Macroblock));
 
 
 
@@ -84,34 +83,38 @@ void decoder_run(CodecContext *context) {
         //     break;
         // }
     }
-
-
-    // int num_nals = count_nals(context->data, context->size);
-    // NalUnit *nal_units = malloc(num_nals * sizeof(NalUnit));
-    // fill_nal_units(context->data, context->size, nal_units, num_nals);
-    //
-    // int total = 0;
-    // for (int i =0 ; i < num_nals; i++) {
-    //     total += nal_units[i].size;
-    // }
-    //
-    // int i = 0;
-    // while (i < num_nals) {
-    //
-    //     dispatch_nal_unit(&nal_units[i], context);
-    //     // if (context->prf->total_frames > 1000) {
-    //     //     break;
-    //     // }
-    //
-    //     i++;
-    // }
-    //
-    // for (int i = 0; i < num_nals; i++) {
-    //     free(nal_units[i].data);
-    // }
-    // free(nal_units);
 }
 
+void decoder_free_metadata(CodecContext *ctx) {
+    free(ctx->mb_types);
+    free(ctx->intra8x8_pred_modes);
+    free(ctx->intra4x4_pred_modes);
+    free(ctx->luma_total_coeffs);
+    free(ctx->cb_total_coeffs);
+    free(ctx->cr_total_coeffs);
+    free(ctx->mvs_l0);
+    free(ctx->mvs_l1);
+    free(ctx->pred_flag_l0);
+    free(ctx->pred_flag_l1);
+}
+
+/* caller's job to make sure metadata gets free beforehand */
+void decoder_alloc_metadata(CodecContext *ctx) {
+    ctx->num_mbs = (int32_t)ctx->ps->sps->pic_width_in_mbs * (int32_t)ctx->ps->sps->pic_height_in_map_units;
+
+    ctx->mb_types            = calloc(ctx->num_mbs, sizeof( int32_t));
+    ctx->intra8x8_pred_modes = calloc(ctx->num_mbs, sizeof( uint8_t        [ 4] ));
+    ctx->intra4x4_pred_modes = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
+    ctx->luma_total_coeffs   = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
+    ctx->cb_total_coeffs     = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
+    ctx->cr_total_coeffs     = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
+    ctx->mvs_l0              = calloc(ctx->num_mbs, sizeof( MotionVector   [16] ));
+    ctx->mvs_l1              = calloc(ctx->num_mbs, sizeof( MotionVector   [16] ));
+    ctx->pred_flag_l0        = calloc(ctx->num_mbs, sizeof( uint8_t        [ 4] ));
+    ctx->pred_flag_l1        = calloc(ctx->num_mbs, sizeof( uint8_t        [ 4] ));
+
+    ctx->mb_metadata_initialized = true;
+}
 
 void decoder_free(CodecContext *ctx) {
     munmap((void*)ctx->data, ctx->size);

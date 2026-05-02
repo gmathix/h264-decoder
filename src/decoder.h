@@ -9,6 +9,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "mv.h"
+
 
 extern int debugging;
 
@@ -36,7 +38,9 @@ typedef struct CodecContext {
     int16_t  **weightScaleMatrix;
 
 
-    /* MB metadata */
+
+    /* prediction metadata */
+
     bool mb_metadata_initialized;
     int  num_mbs;
 
@@ -46,6 +50,14 @@ typedef struct CodecContext {
     uint8_t (*luma_total_coeffs)   [16];
     uint8_t (*cb_total_coeffs)     [16];
     uint8_t (*cr_total_coeffs)     [16];
+
+    MotionVector (*mvs_l0)         [16]; // MVs are stored at 4x4 granularity
+    MotionVector (*mvs_l1)         [16];
+    uint8_t      (*pred_flag_l0)    [4];
+    uint8_t      (*pred_flag_l1)    [4];
+
+
+
 
     struct Macroblock *prevMb;
     struct Macroblock *currMb;
@@ -59,6 +71,8 @@ typedef struct CodecContext {
 
 CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path);
 void decoder_run(CodecContext *context);
+void decoder_free_metadata(CodecContext *ctx);
+void decoder_alloc_metadata(CodecContext *ctx);
 void decoder_free(CodecContext *ctx);
 
 

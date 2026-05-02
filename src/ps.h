@@ -69,8 +69,8 @@ typedef struct SPS {
 
 typedef struct PPS {
     // RAW (from bitstream)
-    uint32_t num_ref_idx_l0_active_minus1;
-    uint32_t num_ref_idx_l1_active_minus1;
+    uint32_t num_ref_idx_l0_default_active_minus1;
+    uint32_t num_ref_idx_l1_default_active_minus1;
     uint32_t num_slice_groups_minus1;
     uint32_t pps_id;
     uint32_t sps_id;
@@ -90,8 +90,8 @@ typedef struct PPS {
 
 
     // DERIVED
-    uint32_t num_ref_idx_l0_active;
-    uint32_t num_ref_idx_l1_active;
+    uint32_t num_ref_idx_l0_default_active;
+    uint32_t num_ref_idx_l1_default_active;
     uint32_t num_slice_groups;
     int32_t  pic_init_qp;
     int32_t  pic_init_qs;

@@ -82,6 +82,18 @@
 #define HAS_MV(a, dir)     ((a) & (MB_TYPE_FORWARD_MV << (dir)))
 
 
+
+#define MB_PART_WIDTH (t)                                    \
+    (IS_16x16(t) || IS_16x8(t)) ? 16 : 8;
+#define MB_PART_HEIGHT (t)                                    \
+    (IS_16x16(t) || IS_8x16(t)) ? 16 : 8;
+#define SUB_MB_PART_WIDTH (t)                                 \
+    ((t & SUB_MB_TYPE_8x8) || (t & SUB_MB_TYPE_8x4)) ? 8 : 4;
+#define SUB_MB_PART_HEIGHT (t)                                \
+    ((t & SUB_MB_TYPE_8x8) || (t & SUB_MB_TYPE_4x8)) ? 8 : 4;
+
+
+
 static char* mb_type_to_string(uint32_t type) {
     if (IS_INTRA4x4   (type))  return "Intra_4x4";
     if (IS_INTRA16x16 (type))  return "Intra_16x16";

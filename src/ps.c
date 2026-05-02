@@ -243,8 +243,8 @@ int decode_pps(size_t global_bit_offset, CodecContext *ctx) {
 
 
 
-    pps->num_ref_idx_l0_active_minus1              = read_ue(br);
-    pps->num_ref_idx_l1_active_minus1              = read_ue(br);
+    pps->num_ref_idx_l0_default_active_minus1      = read_ue(br);
+    pps->num_ref_idx_l1_default_active_minus1      = read_ue(br);
     pps->weighted_pred_flag                        = read_u(br, 1);
     pps->weighted_bipred_idc                       = read_u(br, 2);
     pps->pic_init_qp_minus26                       = read_se(br);
@@ -262,11 +262,11 @@ int decode_pps(size_t global_bit_offset, CodecContext *ctx) {
 
 
     /* derive */
-    pps->num_slice_groups      = pps->num_slice_groups_minus1 + 1;
-    pps->num_ref_idx_l0_active = pps->num_ref_idx_l0_active_minus1 + 1;
-    pps->num_ref_idx_l1_active = pps->num_ref_idx_l1_active_minus1 + 1;
-    pps->pic_init_qp           = pps->pic_init_qp_minus26 + 26;
-    pps->pic_init_qs           = pps->pic_init_qs_minus26 + 26;
+    pps->num_slice_groups              = pps->num_slice_groups_minus1 + 1;
+    pps->num_ref_idx_l0_default_active = pps->num_ref_idx_l0_default_active_minus1 + 1;
+    pps->num_ref_idx_l1_default_active = pps->num_ref_idx_l1_default_active_minus1 + 1;
+    pps->pic_init_qp                   = pps->pic_init_qp_minus26 + 26;
+    pps->pic_init_qs                   = pps->pic_init_qs_minus26 + 26;
 
 
     free(ps->pps_list[pps->pps_id]);

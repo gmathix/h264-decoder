@@ -69,7 +69,7 @@ ALWAYS_INLINE int32_t _inverse_raster_scan(int32_t a, int32_t b, int32_t c, int3
         : (a / (d / b)) * c;
 }
 
-ALWAYS_INLINE double _median(double x, double y, double z) {
+ALWAYS_INLINE int _median(int x, int y, int z) {
     return x + y + z - _min(x, _min(y, z)) - _max(x, _max(y, z));
 }
 

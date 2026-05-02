@@ -55,7 +55,7 @@ void derive_poc(DPB *dpb, Picture *pic) {
          * so if the stream is strictly I-P-P-P, type 2 is the way to go
          */
 
-        int prevFrameNum = dpb->prevPic->frame_num;
+        int prevFrameNum = dpb->prevPic == NULL ? 0 : dpb->prevPic->frame_num;
         int prevFrameNumOffset;
         if (!pic->is_idr) {
             prevFrameNumOffset = dpb->mmco_5_prev_occured ? 0 : dpb->prevPic->frame_num_offset;

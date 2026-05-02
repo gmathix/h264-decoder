@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 4.0)
-project(toy_h264 C)
+project(h264_decoder C)
 
 set(CMAKE_C_STANDARD 11)
 
@@ -8,7 +8,7 @@ set(CMAKE_C_STANDARD 11)
 #
 #add_compile_options(-fsanitize=address)
 #add_link_options(-fsanitize=address)
-#
+##
 #add_compile_options(-fsanitize=undefined)
 #add_link_options(-fsanitize=undefined)
 
@@ -196,8 +196,8 @@ add_executable(h264_decoder main.c
         src/dequant.h
         src/dpb.c
         src/dpb.h
-        src/mv.c
         src/mv.h
+        src/mvpred.h
 )
 target_compile_options(h264_decoder PRIVATE -O3 -march=native)
 add_executable(compare_streams src/tests/streamcomp.c)

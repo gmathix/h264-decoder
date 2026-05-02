@@ -5,10 +5,6 @@
 #ifndef TOY_H264_MV_H
 #define TOY_H264_MV_H
 
-
-
-#include "decoder.h"
-
 #include <stdint.h>
 
 
@@ -18,5 +14,6 @@ typedef struct MotionVector {
     int16_t y;
 } MotionVector ;
 
+static MotionVector MV_ZERO = {0, 0, 0};
 
 #endif //TOY_H264_MV_H

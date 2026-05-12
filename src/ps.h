@@ -33,7 +33,7 @@ typedef struct SPS {
     uint32_t log2_max_frame_num_minus4;
     uint32_t log2_max_poc_lsb_minus4;
     uint32_t num_ref_frames_in_poc_cycle;
-    uint32_t num_ref_frames;
+    uint32_t max_num_ref_frames;
     uint32_t poc_type;
     uint32_t pic_width_in_mbs_minus1;
     uint32_t pic_height_in_map_units_minus1;

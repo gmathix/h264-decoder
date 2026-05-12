@@ -14,7 +14,6 @@ int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx) {
 
     bitreader_init(ctx->br, nal_unit->data, nal_unit->size);
 
-
     switch (nal_unit->type) {
         case NAL_SEI: break;
         case NAL_SPS: decode_sps(ctx->global_bit_offset, ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;

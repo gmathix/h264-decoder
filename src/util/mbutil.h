@@ -104,6 +104,7 @@ static char* mb_type_to_string(uint32_t type) {
     if (IS_GMC        (type))  return "GMC";
     if (IS_16x16      (type))  return "16x16";
     if (IS_16x8       (type))  return "16x8";
+    if (IS_8x16       (type))  return "8x16";
     if (IS_8x8        (type))  return "8x8";
     if (IS_ACPRED     (type))  return "ACPRED";
     if (IS_QUANT      (type))  return "Quant";

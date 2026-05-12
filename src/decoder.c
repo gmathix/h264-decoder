@@ -16,11 +16,12 @@
 #include "dpb.h"
 #include "tests/profiler.h"
 
+
 int debugging = false;
 
 
 
-CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path) {
+CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome) {
     if (data == NULL) return NULL;
 
     CodecContext *ctx = calloc(1, sizeof(CodecContext));
@@ -54,11 +55,15 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path) {
     profiler_init(ctx->prf);
     ctx->out_path = out_path;
     ctx->out_file = fopen(ctx->out_path, "wb");
+    ctx->dump_monochrome = dump_monochrome;
     if (!ctx->out_file) {
         perror("fopen");
         exit(1);
     }
     setvbuf(ctx->out_file, NULL, _IOFBF, 8*1024*1024); // 4mb buffer
+
+    ctx->log_path = log_path;
+    ctx->log_file = fopen(ctx->log_path, "w");
 
     ctx->initialized = true;
 
@@ -79,9 +84,9 @@ void decoder_run(CodecContext *context) {
 
         free(nal->data);
         free(nal);
-        // if (context->prf->total_frames > 30000) {
-        //     break;
-        // }
+        if (context->prf->total_frames > 1200) {
+            break;
+        }
     }
 }
 
@@ -100,6 +105,7 @@ void decoder_free_metadata(CodecContext *ctx) {
 
 /* caller's job to make sure metadata gets free beforehand */
 void decoder_alloc_metadata(CodecContext *ctx) {
+    printf("allocating metadata : num_mbs %d\n", ctx->num_mbs);
     ctx->num_mbs = (int32_t)ctx->ps->sps->pic_width_in_mbs * (int32_t)ctx->ps->sps->pic_height_in_map_units;
 
     ctx->mb_types            = calloc(ctx->num_mbs, sizeof( int32_t));

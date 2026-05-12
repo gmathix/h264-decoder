@@ -8,7 +8,7 @@ set(CMAKE_C_STANDARD 11)
 #
 #add_compile_options(-fsanitize=address)
 #add_link_options(-fsanitize=address)
-##
+###
 #add_compile_options(-fsanitize=undefined)
 #add_link_options(-fsanitize=undefined)
 
@@ -198,6 +198,12 @@ add_executable(h264_decoder main.c
         src/dpb.h
         src/mv.h
         src/mvpred.h
+        src/inter.c
+        src/inter.h
+        src/qpel.h
+        src/qpel.c
+        src/deblock.c
+        src/deblock.h
 )
 target_compile_options(h264_decoder PRIVATE -O3 -march=native)
 add_executable(compare_streams src/tests/streamcomp.c)

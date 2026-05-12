@@ -27,6 +27,7 @@ int main(int argc, char *argv[]) {
 
     const char *in_path  = argv[1];
     const char *out_path = argc > 2 ? argv[2] : "output.yuv";
+    const char *log_path = "../log/log.txt";
 
 
     FILE *test = fopen(in_path, "rb");
@@ -57,7 +58,7 @@ int main(int argc, char *argv[]) {
     madvise(data, size, MADV_SEQUENTIAL);
 
 
-    CodecContext *context = decoder_init(data, size, out_path);
+    CodecContext *context = decoder_init(data, size, out_path, log_path, false);
 
 
     decoder_run(context);

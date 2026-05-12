@@ -129,7 +129,7 @@ int decode_sps(size_t global_bit_offset, CodecContext *ctx) {
 
 
 
-    sps->num_ref_frames = read_ue(br);
+    sps->max_num_ref_frames = read_ue(br);
     sps->gaps_in_frame_num_allowed_flag = read_u(br, 1);
     if (sps->gaps_in_frame_num_allowed_flag) {
         printf("WARNING: gaps in frame num detected. not doing that yet!\n");

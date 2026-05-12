@@ -18,9 +18,12 @@ typedef struct Picture {
     bool long_term_ref;
     bool num_ref_idx_active_override;
     bool adaptive_ref_pic_marking_mode;
-    int  frame_num;
+
     int  frame_num_offset;
+    int  frame_num_wrap;
+    int  frame_num;
     int  pic_num;
+    int  poc;
 
 
     /* after dpb storing */
@@ -30,7 +33,7 @@ typedef struct Picture {
 
     int top_field_order_cnt;
     int bottom_field_order_cnt;
-    int poc;
+
 
 
     /* will only be used for attributes that are common for all slices of one picture */

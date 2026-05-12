@@ -81,12 +81,8 @@ void decoder_run(CodecContext *context) {
 
         dispatch_nal_unit(nal, context);
 
-
         free(nal->data);
         free(nal);
-        if (context->prf->total_frames > 1200) {
-            break;
-        }
     }
 }
 

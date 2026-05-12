@@ -63,7 +63,7 @@ void derive_poc(DPB *dpb, Picture *pic) {
         if (pic->is_idr) {
             pic->frame_num_offset = 0;
         } else if (prevFrameNum > pic->frame_num) {
-            pic->frame_num_offset = prevFrameNumOffset + 1 << (pic->sh->sps->log2_max_frame_num_minus4 + 4);
+            pic->frame_num_offset = prevFrameNumOffset + (1 << (pic->sh->sps->log2_max_frame_num_minus4 + 4));
         } else {
             pic->frame_num_offset = prevFrameNumOffset;
         }
@@ -426,12 +426,9 @@ void dpb_flush(DPB *dpb) {
 }
 
 void dpb_free(DPB *dpb) {
-    for (int i = 0; i < 16; i++) {
-        if (dpb->l0[i] != NULL) {
-            picture_free(dpb->l0[i]);
-        }
-        if (dpb->l1[i] != NULL) {
-            picture_free(dpb->l1[i]);
+    for (int i = 0; i < dpb->size; i++) {
+        if (dpb->slots[i] != NULL) {
+            picture_free(dpb->slots[i]);
         }
     }
     free(dpb);

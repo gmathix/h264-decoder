@@ -64,12 +64,15 @@ typedef struct CodecContext {
 
 
     char *out_path;
+    char *log_path;
     FILE *out_file;
+    FILE *log_file;
+    bool dump_monochrome;
 
 } CodecContext ;
 
 
-CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path);
+CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome);
 void decoder_run(CodecContext *context);
 void decoder_free_metadata(CodecContext *ctx);
 void decoder_alloc_metadata(CodecContext *ctx);

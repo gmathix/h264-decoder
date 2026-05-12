@@ -15,7 +15,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
+#include "inter.h"
 #include "intra.h"
 #include "mvpred.h"
 #include "picture.h"
@@ -212,6 +214,9 @@ int8_t blk_2x2_neighbor_coords[4][4][2] = {
 
 
 
+
+
+
 int neighbor_tables_initialized = 0;
 
 void init_neighbor_tables(CodecContext *ctx) {
@@ -251,7 +256,10 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
     mb->table_idx = mb_type;
 
 
-    if (mb_type > 25) {
+    if ((IS_I_SLICE(sh->slice_type) && mb_type > 25) ||
+        (IS_P_SLICE(sh->slice_type) && mb_type > 30)  ||
+        (IS_B_SLICE(sh->slice_type) && mb_type > 48)) {
+
         printf("mb_type out of bounds for %s slice : got %d (mbAddr:%d)\n",
             slice_type_to_string(sh->slice_type), mb_type, mb->mbAddr);
         return;
@@ -272,6 +280,9 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
     if (intra_mb && IS_P_SLICE(sh->slice_type)) {
         mb_type -= 5;
         mb->table_idx -= 5;
+    } else if (intra_mb && IS_B_SLICE(sh->slice_type)) {
+        mb_type -= 23;
+        mb->table_idx -= 23;
     }
 
     if (intra_mb) {
@@ -318,16 +329,32 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
 
 
 
-    if (type == MB_TYPE_INTRA_PCM) {
+    fprintf(ctx->log_file,
+        "\nMB %d : \n"
+            "   mb_type : %d (%s)\n",
+            mb->mbAddr, mb->mb_type, mb_type_to_string(mb->mb_type));
+
+
+
+
+    if (type == MB_TYPE_INTRA_PCM) { // just inject the samples directly
         while (!bitreader_byte_aligned(br)) {
             bitreader_skip_bits(br, 1);
+        }
 
-        }
+        int strideY = mb->p_pic->strideY;
+        int strideC = mb->p_pic->strideC;
+        int posY = mb->mb_y*16*strideY+ mb->mb_x*16;
+        int posC = mb->mb_y*mb->mb_height_c*strideC + mb->mb_x*mb->mb_width_c;
+
         for (int i = 0; i < 256; i++) {
-            pcm_samples_luma[i] = read_u(br, 8);
+            mb->p_pic->luma[posY + (i/16)*strideY + i%16] = read_u(br, 8);
         }
-        for (int i = 0; i < 2 * mb->mb_height_c * mb->mb_width_c; i++) {
-            pcm_samples_chroma[i] = read_u(br, 8);
+        for (int i = 0; i < mb->mb_width_c * mb->mb_height_c; i++) {
+            mb->p_pic->cb[posC + (i/mb->mb_height_c)*strideC + i%mb->mb_width_c] = read_u(br, 8);
+        }
+        for (int i = 0; i < mb->mb_width_c * mb->mb_height_c; i++) {
+            mb->p_pic->cr[posC + (i/mb->mb_height_c)*strideC + i%mb->mb_width_c] = read_u(br, 8);
         }
     } else {
         int transform_size_8x8_flag = 0;
@@ -683,8 +710,6 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
         transform_chroma(mb, ctx);
     } else if (IS_INTRA8x8(mb->mb_type)) {
 
-    } else if (IS_INTRA_PCM(mb->mb_type)) {
-
     }
 
     memset(&ctx->mvs_l0[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
@@ -698,7 +723,25 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 }
 
 
+
+const int mb_debug = 3059;
+const int mb_debug_2 = 3059;
+const int frame_debug = 8;
+const int num_frames_before_stop = 186;
+
+
 void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
+    if (mb->mbAddr >= mb_debug && mb->mbAddr <= mb_debug_2 && ctx->prf->total_frames == frame_debug) {
+        debugging = true;
+    } else {
+        debugging = false;
+    }
+    if (debugging) {
+        printf("DEBUGGING: mb %d (x:%d y:%d) type %d (%s) \n",
+            mb->mbAddr, mb->mb_x, mb->mb_y, mb->mb_type, mb_type_to_string(mb->mb_type));
+    }
+
+
     if (IS_INTRA(mb->mb_type)) {
         decode_i_macroblock(mb, slice, ctx);
     } else {
@@ -711,27 +754,33 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
                 derive_p_16x8_mv(mb, ctx);
             } else if (IS_8x16(mb->mb_type)) {
                 derive_p_8x16_mv(mb, ctx);
-            } else {
+            } else if (IS_8x8(mb->mb_type)) {
                 derive_p_8x8_mv(mb, ctx);
             }
+        }
 
-            // if (mb->mb_type & MB_TYPE_8x8) {
-            //     printf("\nmotion vectors for mb %d (type %d) : \n", mb->mbAddr, mb->table_idx);
-            //     for (int i = 0; i < 16; i++) {
-            //         printf("x:%d y:%d\n", ctx->mvs_l0[mb->mbAddr]->x, ctx->mvs_l0[mb->mbAddr]->x);
-            //     }
-            // }
+        for (int part = 0; part < 4; part++) {
+            for (int subPart = 0; subPart < 4; subPart++) {
+                int idx = part/2*8 + (part%2)*2  +  subPart/2*4 + subPart%2;
+                MotionVector *mv = &ctx->mvs_l0[mb->mbAddr][idx];
+                inter_pred(mb, idx, mv, ctx);
+            }
+        }
 
+        inter_pred_chroma(mb, 0, &ctx->mvs_l0[mb->mbAddr][0], ctx);
+        inter_pred_chroma(mb, 1, &ctx->mvs_l0[mb->mbAddr][2], ctx);
+        inter_pred_chroma(mb, 2, &ctx->mvs_l0[mb->mbAddr][8], ctx);
+        inter_pred_chroma(mb, 3, &ctx->mvs_l0[mb->mbAddr][10], ctx);
+
+        if (!IS_SKIP(mb->mb_type)) {
             for (int i = 0; i < 16; i++) {
-                transform_luma_4x4(mb, mb->QPY, map_4x4[i], ctx);
+                transform_luma_4x4(mb, mb->QPY, i, ctx);
             }
             transform_chroma(mb, ctx);
-    }
-
-
-
+        }
     }
 }
+
 
 void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
 

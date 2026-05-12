@@ -15,7 +15,7 @@
 
 
 
-ALWAYS_INLINE double  _abs(double x)           { return x >= 0 ? x : -x; }
+ALWAYS_INLINE int32_t  _abs(int32_t x)           { return x >= 0 ? x : -x; }
 ALWAYS_INLINE int32_t _min(int32_t x, int32_t y) { return x <= y ? x : y; }
 ALWAYS_INLINE int32_t _max(int x, int y) { return x >= y ? x : y; }
 ALWAYS_INLINE double  _log2(double x)          { return log2(x); }
@@ -55,8 +55,8 @@ ALWAYS_INLINE int32_t _clip3(int32_t x, int32_t y, int32_t z) {
     return z;
 }
 
-ALWAYS_INLINE int32_t _clip1y(int32_t x, struct CodecContext *ctx) {
-    return _clip3(0, (1 << ctx->ps->sps->bit_depth_luma) - 1, x);
+ALWAYS_INLINE int32_t _clip1y(int32_t x, int bit_depth) {
+    return _clip3(0, (1 << bit_depth) - 1, x);
 }
 
 ALWAYS_INLINE int32_t _clip1c(int32_t x, CodecContext *ctx) {

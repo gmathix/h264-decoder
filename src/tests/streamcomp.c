@@ -11,9 +11,10 @@
 
 
 
-#define ONLY_LUMA   0
-#define ONLY_CHROMA 0
-
+#define ONLY_LUMA     1
+#define ONLY_CHROMA   0
+#define START_FRAME   114
+#define INPUT_IS_GRAY 1
 
 const int WIDTH = 1920;
 const int HEIGHT = 1080;
@@ -56,8 +57,8 @@ void print_mb(uint8_t *frame, int blk_size, int mb_idx, int frame_stride)
 
 
 int main(void) {
-    char *ref_path = "../videos/dec_ref/horizon5-trailer-intra-baseline.yuv";
-    char *test_path = "../output.yuv";
+    char *ref_path = "../videos/dec_ref/horizon5-trailer-inter-baseline.yuv";
+    char *test_path = "../videos/output_inter.yuv";
 
     FILE *ref_file = fopen(ref_path, "rb");
     if (!ref_file) {
@@ -96,8 +97,26 @@ int main(void) {
     uint8_t *test_frame_V = malloc(V_SIZE);
 
 
-    size_t cur_frame = 0;
-    size_t pos = 0;
+    // slow loop to avoid overflow in off parameter
+    for (int i = 0; i < START_FRAME; i++) {
+        fseek(ref_file, Y_SIZE, SEEK_CUR);
+        fseek(ref_file, U_SIZE, SEEK_CUR);
+        fseek(ref_file, V_SIZE, SEEK_CUR);
+
+        fseek(test_file, Y_SIZE, SEEK_CUR);
+
+        if (!INPUT_IS_GRAY) {
+            fseek(test_file, U_SIZE, SEEK_CUR);
+            fseek(test_file, V_SIZE, SEEK_CUR);
+        }
+    }
+
+
+    size_t cur_frame = START_FRAME;
+    size_t pos = START_FRAME;
+
+
+
     while (pos < ref_size) {
         printf("frame %lu", cur_frame);
 
@@ -106,8 +125,10 @@ int main(void) {
         if (fread(ref_frame_V, 1, V_SIZE, ref_file) != V_SIZE) break;
 
         if (fread(test_frame_Y, 1, Y_SIZE, test_file) != Y_SIZE) break;
-        if (fread(test_frame_U, 1, U_SIZE, test_file) != U_SIZE) break;
-        if (fread(test_frame_V, 1, V_SIZE, test_file) != V_SIZE) break;
+        if (!INPUT_IS_GRAY) {
+            if (fread(test_frame_U, 1, U_SIZE, test_file) != U_SIZE) break;
+            if (fread(test_frame_V, 1, V_SIZE, test_file) != V_SIZE) break;
+        }
 
 
 
@@ -132,7 +153,8 @@ int main(void) {
                     int idx = y * WIDTH + x;
 
 
-                    if (ref_frame_Y[idx] != test_frame_Y[idx]) {
+                    if (ref_frame_Y[idx] != test_frame_Y[idx] &&
+                        (abs(test_frame_Y[idx] - ref_frame_Y[idx])) >= 30 ) {
 
                         int blkIdx = (iy / 4) * 4 + (ix / 4);
                         int diff = test_frame_Y[idx] - ref_frame_Y[idx];

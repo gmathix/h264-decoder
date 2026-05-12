@@ -89,58 +89,110 @@ void derive_poc(DPB *dpb, Picture *pic) {
     }
 }
 
-/* index is the slot index in the DPB that gets freed by the bumping process */
-void bump(DPB *dpb, int *index) {
+void decode_pic_nums(DPB *dpb, SliceHeader *sh) {
     for (int i = 0; i < dpb->size; i++) {
-        if (dpb->slots[i] == NULL) {
-            *index = i;
-            return;
-        }
-    }
-    while (dpb->fullness == dpb->size) {
-        int min_poc = INT_MAX;
-        int i = 0;
-        for (int j = 0; j < dpb->size; j++) {
-            if (dpb->slots[j] != NULL && dpb->slots[j]->poc < min_poc && !dpb->slots[j]->is_output) {
-                min_poc = dpb->slots[j]->poc;
-                i = j;
-            }
-        }
-
         Picture *pic = dpb->slots[i];
-
-        dump_picture(pic, dpb->ctx);
-        pic->is_output = true;
-        if (pic->dpb_status == UNUSED_FOR_REF) {
-            picture_free(pic); // FIXME reuse buffers
-            dpb->fullness--;
-            *index = i;
+        if (pic != NULL) {
+            if (pic->dpb_status == USED_SHORT_TERM_REF) {
+                if (pic->frame_num > sh->frame_num)
+                    pic->frame_num_wrap = pic->frame_num - dpb->ctx->maxFrameNum;
+                else
+                    pic->frame_num_wrap = pic->frame_num;
+                pic->pic_num = pic->frame_num_wrap;
+            } else if (pic->dpb_status == USED_LONG_TERM_REF) {
+                pic->pic_num = pic->long_term_frame_idx;
+            }
         }
     }
 }
 
+int output_oldest_pic(DPB *dpb) {
+    int min_poc = INT_MAX;
+    int min_idx = -1;
+    for (int i = 0; i < dpb->size; i++) {
+        Picture *pic = dpb->slots[i];
+        if (pic != NULL && pic->poc < min_poc && !pic->is_output) {
+            min_poc = pic->poc;
+            min_idx = i;
+        }
+    }
+    if (min_idx != -1) {
+        Picture *old_pic = dpb->slots[min_idx];
+
+        dump_picture(old_pic, dpb->ctx);
+        old_pic->is_output = true;
+        picture_free(old_pic);
+        dpb->slots[min_idx] = NULL;
+        dpb->fullness--;
+    }
+
+    return min_idx;
+}
+
+/* index is the slot index in the DPB that gets freed by the bumping process */
+int bump(DPB *dpb) {
+    for (int i = 0; i < dpb->size; i++) {
+        if (dpb->slots[i] == NULL) {
+            return i;
+        }
+    }
+    while (dpb->fullness == dpb->size) {
+        return output_oldest_pic(dpb);
+    }
+    return 0;
+}
+
+
+
 void store_picture(DPB *dpb, Picture *pic) {
     derive_poc(dpb, pic);
+    decode_pic_nums(dpb, pic->sh);
 
     if (pic->is_idr) {
-        dpb_flush(dpb);
-
-        dpb->l0[0] = pic;
-        if (!pic->long_term_ref) {
-            dpb->l0[0]->dpb_status = USED_SHORT_TERM_REF;
+        for (int i = 0; i < dpb->size; i++) {
+            output_oldest_pic(dpb);
+        }
+        dpb->fullness = 0;
+        if (pic->sh->long_term_reference_flag) {
+            pic->dpb_status = USED_LONG_TERM_REF;
+            pic->long_term_frame_idx = 0;
+            dpb->ctx->maxLongTermFrameIdx = 0;
         } else {
-            dpb->l0[0]->dpb_status = USED_LONG_TERM_REF;
+            pic->dpb_status = USED_SHORT_TERM_REF;
         }
     } else {
-        if (!pic->adaptive_ref_pic_marking_mode) {
-
+        if (!pic->sh->adaptive_ref_pic_marking_mode_flag) {
+            int numShortTerm = 0;
+            int numLongTerm = 0;
+            for (int i = 0; i < dpb->size; i++) {
+                if (dpb->slots[i] != NULL && dpb->slots[i]->dpb_status == USED_SHORT_TERM_REF) {
+                    numShortTerm++;
+                } else if (dpb->slots[i] != NULL && dpb->slots[i]->dpb_status == USED_LONG_TERM_REF) {
+                    numLongTerm++;
+                }
+            }
+            if (numShortTerm + numLongTerm == _max(pic->sh->sps->max_num_ref_frames, 1)) {
+                int minFrameNumWrap = INT_MAX;
+                int minIdx = 0;
+                for (int i = 0; i < dpb->size; i++) {
+                    Picture *pic = dpb->slots[i];
+                    if (pic != NULL && pic->dpb_status == USED_SHORT_TERM_REF && pic->frame_num_wrap < minFrameNumWrap) {
+                        minFrameNumWrap = pic->frame_num_wrap;
+                        minIdx = i;
+                    }
+                }
+                dpb->slots[minIdx]->dpb_status = UNUSED_FOR_REF;
+            }
         } else {
-
+            // MMCOs
         }
     }
 
-    int index = 0;
-    bump(dpb, &index);
+    if (pic->dpb_status != USED_LONG_TERM_REF) {
+        pic->dpb_status = USED_SHORT_TERM_REF;
+    }
+
+    int index = bump(dpb);
 
     dpb->slots[index] = pic;
     dpb->prevPic = pic;
@@ -151,17 +203,7 @@ void store_picture(DPB *dpb, Picture *pic) {
 void init_ref_pic_lists(DPB *dpb, SliceHeader *sh) {
     dpb_empty_ref_lists(dpb);
 
-    for (int i = 0; i < dpb->size; i++) {
-        Picture *pic = dpb->slots[i];
-        if (pic != NULL && pic->dpb_status == USED_SHORT_TERM_REF) {
-            if (pic->frame_num > sh->frame_num)
-                pic->pic_num = pic->frame_num - dpb->ctx->maxFrameNum;
-            else
-                pic->pic_num = pic->frame_num;
-        } else if (pic != NULL && pic->dpb_status == USED_LONG_TERM_REF) {
-            pic->pic_num = pic->long_term_frame_idx;
-        }
-    }
+    decode_pic_nums(dpb, sh);
 
     if (IS_P_SLICE(sh->slice_type) || IS_SP_SLICE(sh->slice_type)) {
         /* short-term ref frames first, sorted by descending PicNum
@@ -216,13 +258,13 @@ void init_ref_pic_lists(DPB *dpb, SliceHeader *sh) {
 void ref_pic_list_modification(DPB *dpb, uint8_t type, Slice *slice, int maxFrameNum, int *maxLtIdx, BitReader *br) {
     int refIdxL0 = 0;
     if (type%5 != 2 && type%5 != 4) {
-        printf("REF MODIF FOR P/B SLICE\n");
+        printf("  * l0 modifications\n");
         int l0_modif_flag = read_u(br, 1);
         if (l0_modif_flag) {
             uint32_t modif_idc = 0;
             do {
                 modif_idc = read_ue(br);
-                printf("modif_idc:%d\n", modif_idc);
+                printf("   modif_idc:%d\n", modif_idc);
                 if (modif_idc == 0 || modif_idc == 1) {
                     uint32_t abs_diff = read_ue(br) + 1;
                     ref_pic_list_modif_st(dpb, slice, true, &refIdxL0, modif_idc, abs_diff, maxFrameNum);
@@ -232,12 +274,13 @@ void ref_pic_list_modification(DPB *dpb, uint8_t type, Slice *slice, int maxFram
                 }
             } while (modif_idc != 3);
         } else {
-            printf("no modification\n");
+            printf("    no modification\n");
         }
     }
 
     int refIdxL1 = 0;
     if (type%5 == 1) {
+        printf("  * l1 modifications\n");
         int l1_modif_flag = read_u(br, 1);
         if (l1_modif_flag) {
             uint32_t modif_idc = 0;
@@ -251,6 +294,8 @@ void ref_pic_list_modification(DPB *dpb, uint8_t type, Slice *slice, int maxFram
                     ref_pic_list_modif_lt(dpb, slice, false, &refIdxL1, modif_idc, lt_pic_num, maxLtIdx);
                 }
             } while (modif_idc != 3);
+        } else {
+            printf("    no modifications");
         }
     }
 }
@@ -323,8 +368,8 @@ void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
         slice->sh->long_term_reference_flag      = read_u(br, 1);
 
     } else {
-        int adaptive_ref_pic_marking_mode_flag = read_u(br, 1);
-        if (adaptive_ref_pic_marking_mode_flag) {
+        slice->sh->adaptive_ref_pic_marking_mode_flag = read_u(br, 1);
+        if (slice->sh->adaptive_ref_pic_marking_mode_flag) {
             uint32_t mmco = 1;
             do {
                 printf("mmco:%d\n", mmco);
@@ -332,14 +377,14 @@ void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
                 if (mmco == 1 ||
                     mmco == 3) {
                     uint32_t difference_of_pics_nums_minus1 = read_ue(br);
-                    }
+                }
                 if (mmco == 2) {
                     uint32_t long_term_pic_num = read_ue(br);
                 }
                 if (mmco == 3 ||
                     mmco == 6) {
                     uint32_t max_long_term_frame_idx_plus1 = read_ue(br);
-                    }
+                }
             } while (mmco != 0);
         } else {
             printf("no adaptive ref pic marking\n");
@@ -383,17 +428,10 @@ void dpb_flush(DPB *dpb) {
 void dpb_free(DPB *dpb) {
     for (int i = 0; i < 16; i++) {
         if (dpb->l0[i] != NULL) {
-            if (dpb->l0[i] != NULL) {
-                picture_free(dpb->l0[i]);
-                free(dpb->l0[i]);
-            }
-
+            picture_free(dpb->l0[i]);
         }
         if (dpb->l1[i] != NULL) {
-            if (dpb->l1[i] != NULL) {
-                picture_free(dpb->l1[i]);
-                free(dpb->l1[i]);
-            }
+            picture_free(dpb->l1[i]);
         }
     }
     free(dpb);

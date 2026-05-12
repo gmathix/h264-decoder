@@ -75,10 +75,12 @@ void dump_picture(Picture *f, CodecContext *ctx) {
         fwrite(&f->luma[i*f->strideY + left],   1, right-left, ctx->out_file);
     }
 
-    for (int i = start/2; i < end/2; i++) {
-        fwrite(&f->cb[i*f->strideC + left/2], 1, (right-left)/2, ctx->out_file);
-    }
-    for (int i = start/2; i < end/2; i++) {
-        fwrite(&f->cr[i*f->strideC + left/2], 1, (right-left)/2, ctx->out_file);
+    if (!ctx->dump_monochrome) {
+        for (int i = start/2; i < end/2; i++) {
+            fwrite(&f->cb[i*f->strideC + left/2], 1, (right-left)/2, ctx->out_file);
+        }
+        for (int i = start/2; i < end/2; i++) {
+            fwrite(&f->cr[i*f->strideC + left/2], 1, (right-left)/2, ctx->out_file);
+        }
     }
 }

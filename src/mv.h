@@ -9,7 +9,7 @@
 
 
 typedef struct MotionVector {
-    uint8_t ref_idx;
+    int8_t ref_idx;
     int16_t x;
     int16_t y;
 } MotionVector ;

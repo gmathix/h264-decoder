@@ -23,14 +23,14 @@ uint32_t bitreader_peek_bits(BitReader *br, int n) {
 
     uint32_t res = 0;
 
-    int32_t total = br->size * 8;
-    int32_t start = br->byte_pos*8 + br->bit_pos;
+    size_t total = br->size * 8;
+    size_t start = br->byte_pos*8 + br->bit_pos;
 
 
     for (int i = 0; i < n && start + i < total; i++) {
-        uint32_t bit_index = start + i;
-        uint32_t byte = bit_index >> 3;
-        uint32_t bit = bit_index & 7;
+        size_t bit_index = start + i;
+        size_t byte = bit_index >> 3;
+        size_t bit = bit_index & 7;
 
         res <<= 1;
         res |= (br->data[byte] >> (7-bit)) & 1;

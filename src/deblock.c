@@ -149,7 +149,7 @@ static ALWAYS_INLINE void derive_edge_treshold(Macroblock *mb, int mbAddrN, uint
                 (_abs(samples[blkY][blkX-1] - samples[blkY][blkX]) < *alpha) &&
                 (_abs(samples[blkY][blkX-2] - samples[blkY][blkX-1]) < *beta) &&
                 (_abs(samples[blkY][blkX+1] - samples[blkY][blkX] < *beta));
-            blkY += 24;
+            blkY++;
         }
     } else {
         for (int i = 0; i < 4; i++) {

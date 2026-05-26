@@ -93,13 +93,13 @@ static ALWAYS_INLINE void derive_edge_bS_list(Macroblock *mb, int mbAddrN,
          * bS = 4
          * <=> edge is a macroblock edge and either or both of mb and mb_n are intra macroblocks
          */
-        curr_bS += (mb_edge && (IS_INTRA(mb->mb_type) || IS_INTRA(ctx->mb_types[mbAddrN]))) * 4;
+        curr_bS += (mb_edge && (IS_INTRA(ctx->mb_metadata[mb->mbAddr].mb_type)) || IS_INTRA(ctx->mb_metadata[mbAddrN].mb_type)) * 4;
 
         /*
          * bS = 3
          * <=> either or both of mb and mb_n are intra macroblocks
          */
-        curr_bS += ((curr_bS == 0) && (IS_INTRA(mb->mb_type) || IS_INTRA(ctx->mb_types[mbAddrN]))) * 3;
+        curr_bS += ((curr_bS == 0) && (IS_INTRA(ctx->mb_metadata[mb->mbAddr].mb_type) || IS_INTRA(ctx->mb_metadata[mbAddrN].mb_type))) * 3;
 
         /*
          * bS = 2
@@ -131,7 +131,7 @@ static ALWAYS_INLINE void derive_edge_treshold(Macroblock *mb, int mbAddrN, uint
 
     SPS *sps = mb->p_pic->sh->sps;
 
-    int qpAv = (mb->QPY + ctx->QPs[mbAddrN] + 1) >> 1;
+    int qpAv = (mb->QPY + ctx->mb_metadata[mbAddrN].QPY + 1) >> 1;
 
     *indexA    = _clip3(0, 51, qpAv + mb->p_pic->sh->slice_alpha_c0_offset_div2 * 2);
     int indexB = _clip3(0, 51, qpAv + mb->p_pic->sh->slice_beta_offset_div2 * 2);
@@ -390,14 +390,17 @@ static ALWAYS_INLINE void filter_col_chroma(Macroblock *mb, uint8_t *dst, int x,
     }
 }
 
+static ALWAYS_INLINE void deblock_macroblock(Picture *pic, int mbAddr, CodecContext *ctx) {
+    // make dummy mb just for accessing the neighbors after
+    Macroblock *mb = make_mb(mbAddr, ctx);
+    derive_macroblock_neighbors(mb, ctx);
+    mb->p_pic = pic;
 
-static ALWAYS_INLINE void deblock_inloop(Macroblock *mb, CodecContext *ctx) {
-    Picture *pic = mb->p_pic;
+
     SliceHeader *sh = pic->sh;
     SPS *sps = sh->sps;
     PPS *pps = sh->pps;
     
-
 
     bool fieldMbInFrame      = 0;
     bool filterInternalEdges = !sh->disable_deblocking_filter_idc;
@@ -486,5 +489,12 @@ static ALWAYS_INLINE void deblock_inloop(Macroblock *mb, CodecContext *ctx) {
                 false, false, bS_list, ctx);
             filter_row_luma(mb, mb->mbAddr, luma_base_dst + 12*strideY, 12, 12, luma_block, bS_list, strideY, ctx);
         }
+    }
+}
+
+
+static ALWAYS_INLINE void deblock_picture(Picture *pic, CodecContext *ctx) {
+    for (int i = 0; i < pic->num_mbs; i++) {
+        deblock_macroblock(pic, i, ctx);
     }
 }

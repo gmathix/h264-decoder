@@ -297,7 +297,7 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
         mb->mb_type      = b_mb_type_info[mb_type].type;
     }
 
-    ctx->mb_types[mb->mbAddr] = mb->mb_type;
+    ctx->mb_metadata[mb->mbAddr].mb_type = mb->mb_type;
     int type = mb->mb_type;
 
 
@@ -393,7 +393,10 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
             int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
             mb->QPC = QPcTable[qPi];
 
-            ctx->QPs[mb->mbAddr] = mb->QPY;
+
+            ctx->mb_metadata[mb->mbAddr].QPY = mb->QPY;
+            ctx->mb_metadata[mb->mbAddr].QPC = mb->QPC;
+
 
 
 
@@ -408,7 +411,8 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
             mb->QPY = ctx->prevMb->QPY;
             mb->QPC = ctx->prevMb->QPC;
 
-            ctx->QPs[mb->mbAddr] = mb->QPY;
+            ctx->mb_metadata[mb->mbAddr].QPY = mb->QPY;
+            ctx->mb_metadata[mb->mbAddr].QPC = mb->QPC;
         }
     }
 
@@ -433,25 +437,33 @@ void read_mb_pred(Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
                 Neighbors n = derive_neighbors_4x4(mb, blkIdx, ctx);
                 int dcPredModePredictedFlag;
 
+
+                int mb_a_type = n.a.av
+                    ? ctx->mb_metadata[mbAddr + n.a.mb_off].mb_type
+                    : mb->mb_type;
+                int mb_b_type = n.b.av
+                    ? ctx->mb_metadata[mbAddr + n.b.mb_off].mb_type
+                    : mb->mb_type;
+
                 if (!n.a.av || !n.b.av ||
-                    (n.a.av && IS_INTER(ctx->mb_types[mbAddr + n.a.mb_off]) && ctx->ps->pps->constrained_intra_pred_flag) ||
-                    (n.b.av && IS_INTER(ctx->mb_types[mbAddr + n.b.mb_off]) && ctx->ps->pps->constrained_intra_pred_flag)) {
+                    (n.a.av && IS_INTER(mb_a_type) && ctx->ps->pps->constrained_intra_pred_flag) ||
+                    (n.b.av && IS_INTER(mb_b_type) && ctx->ps->pps->constrained_intra_pred_flag)) {
                     dcPredModePredictedFlag = 1;
                 } else {
                     dcPredModePredictedFlag = 0;
                 }
 
-                if (dcPredModePredictedFlag || !IS_INTRANxN(ctx->mb_types[mbAddr + n.a.mb_off])) {
+                if (dcPredModePredictedFlag || !IS_INTRANxN(mb_a_type)) {
                     intraModeA = DC_PRED;
                 } else {
-                    intraModeA = IS_INTRA4x4(ctx->mb_types[mbAddr + n.a.mb_off])
+                    intraModeA = IS_INTRA4x4(mb_a_type)
                         ? ctx->intra4x4_pred_modes[mbAddr + n.a.mb_off][n.a.idx]
                         : ctx->intra8x8_pred_modes[mbAddr + n.a.mb_off][n.a.idx];
                 }
-                if (dcPredModePredictedFlag || !IS_INTRANxN(ctx->mb_types[mbAddr + n.b.mb_off])) {
+                if (dcPredModePredictedFlag || !IS_INTRANxN(mb_b_type)) {
                     intraModeB = DC_PRED;
                 } else {
-                    intraModeB = IS_INTRA4x4(ctx->mb_types[mbAddr + n.b.mb_off])
+                    intraModeB = IS_INTRA4x4(mb_b_type)
                         ? ctx->intra4x4_pred_modes[mbAddr + n.b.mb_off][n.b.idx]
                         : ctx->intra8x8_pred_modes[mbAddr + n.b.mb_off][n.b.idx];
                 }
@@ -714,7 +726,6 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
     }
 
-    deblock_inloop(mb, ctx);
 
     memset(&ctx->mvs_l0[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
     memset(&ctx->mvs_l1[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
@@ -783,8 +794,6 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
             transform_chroma(mb, ctx);
         }
     }
-
-    deblock_inloop(mb, ctx);
 }
 
 

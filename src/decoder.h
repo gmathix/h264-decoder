@@ -44,8 +44,7 @@ typedef struct CodecContext {
     bool mb_metadata_initialized;
     int  num_mbs;
 
-    int32_t  *mb_types;
-    uint8_t *QPs;
+    struct MacroblockMetadata *mb_metadata;
     uint8_t (*intra8x8_pred_modes) [ 4];
     uint8_t (*intra4x4_pred_modes) [16];
     uint8_t (*luma_total_coeffs)   [16];

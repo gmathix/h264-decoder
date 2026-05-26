@@ -2,61 +2,25 @@
 // Created by gmathix on 3/20/26.
 //
 
-#include "global.h"
-#include "picture.h"
-#include "intra.h"
-#include "slice.h"
-#include "util/expgolomb.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 
+#include "deblock.c"
 #include "dpb.h"
-#include "mvpred.h"
-#include "transform.h"
+#include "intra.h"
+#include "picture.h"
+#include "slice.h"
+
 #include "tests/profiler.h"
+
+#include "util/expgolomb.h"
 #include "util/mbutil.h"
 #include "util/sliceutil.h"
 
 
 // see fig 6-14
-ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, CodecContext *ctx) {
-    int mb_addr = mb->mbAddr;
-    int mb_width = ctx->ps->sps->pic_width_in_mbs;
 
-    if (mb_addr % mb_width != 0) {
-        mb->has_mb_a = 1;
-        mb->mb_a_off = - 1;
-    } else { // top left, can't have A neighbor
-        mb->has_mb_a = 0;
-        mb->mb_a_off = 0;
-    }
-    if (mb_addr / mb_width >= 1) {
-        mb->has_mb_b = 1;
-        mb->mb_b_off = - mb_width;
-    } else { // top row, can't have B neighbor
-        mb->has_mb_b = 0;
-        mb->mb_b_off = 0;
-    }
-    if (mb_addr / mb_width >= 1 &&
-        (mb_addr+1) % mb_width != 0) {
-        mb->has_mb_c = 1;
-        mb->mb_c_off = - mb_width + 1;
-    } else { // top row or right column, can't have C neighbor
-        mb->has_mb_c = 0;
-        mb->mb_c_off = 0;
-    }
-    if (mb_addr / mb_width >= 1 &&
-        mb_addr % mb_width != 0) {
-        mb->has_mb_d = 1;
-        mb->mb_d_off = - mb_width - 1;
-        } else { // top row or left column, can't have D neighbor
-            mb->has_mb_d = 0;
-            mb->mb_d_off = 0;
-        }
-}
 
 
 
@@ -73,6 +37,8 @@ void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
 
     if (slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs ||
         slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs+1) { // end of picture
+
+        deblock_picture(ctx->current_pic, ctx);
         store_picture(ctx->dpb, ctx->current_pic);
 
 
@@ -290,8 +256,9 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
                     int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
                     mb->QPC = QPcTable[qPi];
 
-                    ctx->mb_types[mb->mbAddr] = MB_TYPE_SKIP;
-                    ctx->QPs[mb->mbAddr] = mb->QPY;
+                    ctx->mb_metadata[mb->mbAddr].mb_type = MB_TYPE_SKIP;
+                    ctx->mb_metadata[mb->mbAddr].QPY = mb->QPY;
+                    ctx->mb_metadata[mb->mbAddr].QPC = mb->QPC;
 
 
                     ctx->current_slice->decode_macroblock(mb, ctx->current_slice, ctx);

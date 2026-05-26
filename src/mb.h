@@ -85,6 +85,16 @@ typedef struct {
 } MacroblockResiduals ;
 
 
+/**
+ * Small struct containing only the small information about a macroblock, needed for further decoding
+ *
+ */
+typedef struct MacroblockMetadata {
+    int32_t mb_type;
+    uint8_t QPY;
+    uint8_t QPC;
+    uint8_t t_8x8_flag;
+} MacroblockMetadata ;
 
 
 typedef struct Macroblock {
@@ -250,6 +260,42 @@ ALWAYS_INLINE Neighbors derive_neighbors_2x2(Macroblock *mb, int blkIdx, CodecCo
     && n.c.idx != -1;
 
     return n;
+}
+
+ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, CodecContext *ctx) {
+    int mb_addr = mb->mbAddr;
+    int mb_width = ctx->ps->sps->pic_width_in_mbs;
+
+    if (mb_addr % mb_width != 0) {
+        mb->has_mb_a = 1;
+        mb->mb_a_off = - 1;
+    } else { // top left, can't have A neighbor
+        mb->has_mb_a = 0;
+        mb->mb_a_off = 0;
+    }
+    if (mb_addr / mb_width >= 1) {
+        mb->has_mb_b = 1;
+        mb->mb_b_off = - mb_width;
+    } else { // top row, can't have B neighbor
+        mb->has_mb_b = 0;
+        mb->mb_b_off = 0;
+    }
+    if (mb_addr / mb_width >= 1 &&
+        (mb_addr+1) % mb_width != 0) {
+        mb->has_mb_c = 1;
+        mb->mb_c_off = - mb_width + 1;
+        } else { // top row or right column, can't have C neighbor
+            mb->has_mb_c = 0;
+            mb->mb_c_off = 0;
+        }
+    if (mb_addr / mb_width >= 1 &&
+        mb_addr % mb_width != 0) {
+        mb->has_mb_d = 1;
+        mb->mb_d_off = - mb_width - 1;
+        } else { // top row or left column, can't have D neighbor
+            mb->has_mb_d = 0;
+            mb->mb_d_off = 0;
+        }
 }
 
 ALWAYS_INLINE Macroblock *make_mb(int mbAddr, CodecContext *ctx) {

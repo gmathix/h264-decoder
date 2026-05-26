@@ -50,8 +50,8 @@ typedef struct SliceHeader {
 
 
 void         decode_slice              (NalUnit *nal_unit, CodecContext *ctx);
-SliceHeader  *read_slice_header       (NalUnit *nal_unit, CodecContext *ctx);
-void         read_slice_data         (SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
+SliceHeader  *read_slice_header        (NalUnit *nal_unit, CodecContext *ctx);
+void         decode_slice_data         (SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
 void         pred_weight_table         (uint8_t type, SliceHeader *sh, CodecContext *ctx);
 
 #endif //TOY_H264_SLICE_H

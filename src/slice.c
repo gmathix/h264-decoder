@@ -31,12 +31,14 @@ ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, CodecContext *ctx
         mb->mb_a_off = - 1;
     } else { // top left, can't have A neighbor
         mb->has_mb_a = 0;
+        mb->mb_a_off = 0;
     }
     if (mb_addr / mb_width >= 1) {
         mb->has_mb_b = 1;
         mb->mb_b_off = - mb_width;
     } else { // top row, can't have B neighbor
         mb->has_mb_b = 0;
+        mb->mb_b_off = 0;
     }
     if (mb_addr / mb_width >= 1 &&
         (mb_addr+1) % mb_width != 0) {
@@ -44,6 +46,7 @@ ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, CodecContext *ctx
         mb->mb_c_off = - mb_width + 1;
     } else { // top row or right column, can't have C neighbor
         mb->has_mb_c = 0;
+        mb->mb_c_off = 0;
     }
     if (mb_addr / mb_width >= 1 &&
         mb_addr % mb_width != 0) {
@@ -51,6 +54,7 @@ ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, CodecContext *ctx
         mb->mb_d_off = - mb_width - 1;
         } else { // top row or left column, can't have D neighbor
             mb->has_mb_d = 0;
+            mb->mb_d_off = 0;
         }
 }
 
@@ -63,7 +67,7 @@ void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
 
 
 
-    read_slice_data(sh, nal_unit, ctx);
+    decode_slice_data(sh, nal_unit, ctx);
 
     Slice *slice = ctx->current_slice;
 
@@ -227,7 +231,7 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
 
 
 /* 7.3.4 */
-void read_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
+void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
     BitReader *br = ctx->br;
 
 
@@ -248,10 +252,6 @@ void read_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
 
 
     if (currMbAddr == 0) {
-
-        fprintf(ctx->log_file, "\n***** LOGGING FRAME NUM %d *****\n\n", sh->frame_num);
-
-
         ctx->current_pic = picture_alloc(sh, ctx);
         ctx->current_pic->sh = sh;
         ctx->current_pic->nal_ref_idc = nal_unit->ref_idc;
@@ -265,12 +265,6 @@ void read_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
             ctx->current_slice->decode_macroblock = &decode_b_macroblock;
         }
     }
-
-    fprintf(ctx->log_file, "*** SLICE ***\n");
-    fprintf(ctx->log_file, "   type : %d (%s)\n"
-                           "   first_mb : %d\n\n",
-                           sh->slice_type, slice_type_to_string(sh->slice_type), sh->first_mb);
-
 
     do {
         if (!IS_I_SLICE(sh->slice_type) && !IS_SI_SLICE(sh->slice_type)) {
@@ -296,11 +290,8 @@ void read_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
                     int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
                     mb->QPC = QPcTable[qPi];
 
-
-                    fprintf(ctx->log_file,
-                    "\nMB %d : \n"
-                        "   mb_type : %d (%s)\n",
-                        mb->mbAddr, mb->mb_type, mb_type_to_string(mb->mb_type));
+                    ctx->mb_types[mb->mbAddr] = MB_TYPE_SKIP;
+                    ctx->QPs[mb->mbAddr] = mb->QPY;
 
 
                     ctx->current_slice->decode_macroblock(mb, ctx->current_slice, ctx);

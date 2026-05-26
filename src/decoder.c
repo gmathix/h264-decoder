@@ -71,18 +71,24 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
 }
 
 
-void decoder_run(CodecContext *context) {
-    if (!context->initialized) return;
+void decoder_run(CodecContext *ctx) {
+    if (!ctx->initialized) return;
 
-    BitReader nal_br = make_br(context->data, context->size);
+    BitReader nal_br = make_br(ctx->data, ctx->size);
 
     while (bitreader_bits_remaining(&nal_br) > 8) {
         NalUnit *nal = next_nal_unit(&nal_br);
 
-        dispatch_nal_unit(nal, context);
+        dispatch_nal_unit(nal, ctx);
+
 
         free(nal->data);
         free(nal);
+
+
+        if (ctx->prf->total_frames == 1500) {
+            break;
+        }
     }
 }
 
@@ -105,6 +111,7 @@ void decoder_alloc_metadata(CodecContext *ctx) {
     ctx->num_mbs = (int32_t)ctx->ps->sps->pic_width_in_mbs * (int32_t)ctx->ps->sps->pic_height_in_map_units;
 
     ctx->mb_types            = calloc(ctx->num_mbs, sizeof( int32_t));
+    ctx->QPs                 = calloc(ctx->num_mbs, sizeof( uint8_t));
     ctx->intra8x8_pred_modes = calloc(ctx->num_mbs, sizeof( uint8_t        [ 4] ));
     ctx->intra4x4_pred_modes = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
     ctx->luma_total_coeffs   = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
@@ -130,6 +137,7 @@ void decoder_free(CodecContext *ctx) {
     free(ctx->current_slice);
 
     free(ctx->mb_types);
+    free(ctx->QPs);
     free(ctx->intra8x8_pred_modes);
     free(ctx->intra4x4_pred_modes);
     free(ctx->luma_total_coeffs);

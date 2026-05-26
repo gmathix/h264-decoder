@@ -2,13 +2,14 @@ cmake_minimum_required(VERSION 4.0)
 project(h264_decoder C)
 
 set(CMAKE_C_STANDARD 11)
+set(CMAKE_C_COMPILER clang)
 
 
 # debugging
 #
 #add_compile_options(-fsanitize=address)
 #add_link_options(-fsanitize=address)
-###
+##
 #add_compile_options(-fsanitize=undefined)
 #add_link_options(-fsanitize=undefined)
 
@@ -203,7 +204,6 @@ add_executable(h264_decoder main.c
         src/qpel.h
         src/qpel.c
         src/deblock.c
-        src/deblock.h
 )
 target_compile_options(h264_decoder PRIVATE -O3 -march=native)
 add_executable(compare_streams src/tests/streamcomp.c)

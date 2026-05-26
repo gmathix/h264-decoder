@@ -45,6 +45,7 @@ typedef struct CodecContext {
     int  num_mbs;
 
     int32_t  *mb_types;
+    uint8_t *QPs;
     uint8_t (*intra8x8_pred_modes) [ 4];
     uint8_t (*intra4x4_pred_modes) [16];
     uint8_t (*luma_total_coeffs)   [16];
@@ -73,7 +74,7 @@ typedef struct CodecContext {
 
 
 CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome);
-void decoder_run(CodecContext *context);
+void decoder_run(CodecContext *ctx);
 void decoder_free_metadata(CodecContext *ctx);
 void decoder_alloc_metadata(CodecContext *ctx);
 void decoder_free(CodecContext *ctx);

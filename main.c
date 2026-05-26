@@ -58,7 +58,7 @@ int main(int argc, char *argv[]) {
     madvise(data, size, MADV_SEQUENTIAL);
 
 
-    CodecContext *context = decoder_init(data, size, out_path, log_path, false);
+    CodecContext *context = decoder_init(data, size, out_path, log_path, true);
 
 
     decoder_run(context);

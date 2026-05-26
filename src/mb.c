@@ -14,8 +14,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <unistd.h>
-#include <sys/stat.h>
+
 
 #include "inter.h"
 #include "intra.h"
@@ -24,6 +23,8 @@
 #include "transform.h"
 #include "tests/profiler.h"
 #include "util/sliceutil.h"
+
+#include "deblock.c"
 
 
 /* table 7-11 */
@@ -329,13 +330,6 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
 
 
 
-    fprintf(ctx->log_file,
-        "\nMB %d : \n"
-            "   mb_type : %d (%s)\n",
-            mb->mbAddr, mb->mb_type, mb_type_to_string(mb->mb_type));
-
-
-
 
     if (type == MB_TYPE_INTRA_PCM) { // just inject the samples directly
         while (!bitreader_byte_aligned(br)) {
@@ -364,7 +358,7 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
             read_sub_mb_pred(mb, sh, ctx);
         } else {
             if (pps->transform_8x8_mode_flag && type == MB_TYPE_INTRA4x4) {
-                transform_size_8x8_flag = read_u(br, 1);
+                mb->t_8x8_flag = read_u(br, 1);
             }
             read_mb_pred(mb, sh, ctx);
         }
@@ -394,8 +388,14 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
                 ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + mb->mb_qp_delta + 52) % 52)
                 : _clip3(0, 51, (ctx->prevMb->QPY + mb->mb_qp_delta + 52) % 52);
 
+
+
             int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
             mb->QPC = QPcTable[qPi];
+
+            ctx->QPs[mb->mbAddr] = mb->QPY;
+
+
 
             residual_func residual_block = sh->pps->entropy_coding_mode_flag
                 ? &residual_block_cabac
@@ -407,6 +407,8 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
         } else {
             mb->QPY = ctx->prevMb->QPY;
             mb->QPC = ctx->prevMb->QPC;
+
+            ctx->QPs[mb->mbAddr] = mb->QPY;
         }
     }
 
@@ -712,6 +714,8 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
     }
 
+    deblock_inloop(mb, ctx);
+
     memset(&ctx->mvs_l0[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
     memset(&ctx->mvs_l1[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
     for (int i = 0; i < 16; i++) {
@@ -779,6 +783,8 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
             transform_chroma(mb, ctx);
         }
     }
+
+    deblock_inloop(mb, ctx);
 }
 
 

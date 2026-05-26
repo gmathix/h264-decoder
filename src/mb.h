@@ -107,6 +107,7 @@ typedef struct Macroblock {
 
     uint32_t intra_chroma_pred_mode;
     int32_t mb_qp_delta, QPY, QPC;
+    int     t_8x8_flag;
 
     MacroblockResiduals residuals;
 

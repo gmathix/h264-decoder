@@ -21,4 +21,10 @@
 
 
 
+extern int debugging;
+extern int frame_debug;
+extern int mb_debug;
+extern int nb_frames_before_stop;
+
+
 #endif //TOY_H264_GLOBAL_H

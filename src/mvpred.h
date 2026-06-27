@@ -144,18 +144,23 @@ static ALWAYS_INLINE void derive_p_8x16_mv(Macroblock *mb, CodecContext *ctx) {
     MotionVector mv1 = {mb->u.pb.ref_idx_l0[0], 0, 0};
     MotionVector mv2 = {mb->u.pb.ref_idx_l0[1], 0, 0};
 
-    Neighbors n1 = derive_neighbors_4x4(mb, 0, ctx);
-    Neighbors n2 = derive_neighbors_4x4(mb, 3, ctx); /* let's cheat a little here, as we need the top-right macroblock
-                                                            and using blkIdx=2 would have given us the bottom-right 4x4 block
-                                                            of the macroblock above as the C neighbor */
+	Neighbor a = derive_a_neighbor_4x4(mb, 0, ctx);
+	Neighbor c = derive_c_neighbor_4x4(mb, 3, ctx);
+    Neighbor d = derive_d_neighbor_4x4(mb, 2, ctx); /* let's cheat a little here, as we need the top-right macroblock
+                                                             and using blkIdx=2 would have given us the bottom-right 4x4 block
+                                                             of the macroblock above as the C neighbor */
 
-    if (!n2.c.av) {
-        n2.c = n2.d;
+    if (!c.av) {
+        c = d;
     }
 
-    if (n1.a.av && ctx->mvs_l0[mb->mbAddr + n1.a.mb_off][n1.a.idx].ref_idx == mv1.ref_idx) {
-            mv1.x = ctx->mvs_l0[mb->mbAddr + n1.a.mb_off][n1.a.idx].x;
-            mv1.y = ctx->mvs_l0[mb->mbAddr + n1.a.mb_off][n1.a.idx].y;
+	if (debugging) {
+		printf("%d %d %d %d\n", a.av, 1, c.av, d.av);
+	}
+
+    if (a.av && ctx->mvs_l0[mb->mbAddr + a.mb_off][a.idx].ref_idx == mv1.ref_idx) {
+            mv1.x = ctx->mvs_l0[mb->mbAddr + a.mb_off][a.idx].x;
+            mv1.y = ctx->mvs_l0[mb->mbAddr + a.mb_off][a.idx].y;
     } else {
         mv1 = get_median_mv(mb, mv1.ref_idx, 0, 1, ctx);
     }
@@ -167,9 +172,9 @@ static ALWAYS_INLINE void derive_p_8x16_mv(Macroblock *mb, CodecContext *ctx) {
     }
 
 
-    if (n2.c.av && ctx->mvs_l0[mb->mbAddr + n2.c.mb_off][n2.c.idx].ref_idx == mv2.ref_idx) {
-        mv2.x = ctx->mvs_l0[mb->mbAddr + n2.c.mb_off][n2.c.idx].x;
-        mv2.y = ctx->mvs_l0[mb->mbAddr + n2.c.mb_off][n2.c.idx].y;
+    if (c.av && ctx->mvs_l0[mb->mbAddr + c.mb_off][c.idx].ref_idx == mv2.ref_idx) {
+        mv2.x = ctx->mvs_l0[mb->mbAddr + c.mb_off][c.idx].x;
+        mv2.y = ctx->mvs_l0[mb->mbAddr + c.mb_off][c.idx].y;
     } else {
         mv2 = get_median_mv(mb, mv2.ref_idx, 2, 3, ctx);
     }

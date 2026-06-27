@@ -12,8 +12,6 @@
 #include "mv.h"
 
 
-extern int debugging;
-
 typedef struct CodecContext {
     bool initialized;
 
@@ -44,7 +42,7 @@ typedef struct CodecContext {
     bool mb_metadata_initialized;
     int  num_mbs;
 
-    int32_t  *mb_types;
+    struct MacroblockMetadata *mb_metadata;
     uint8_t (*intra8x8_pred_modes) [ 4];
     uint8_t (*intra4x4_pred_modes) [16];
     uint8_t (*luma_total_coeffs)   [16];
@@ -57,6 +55,9 @@ typedef struct CodecContext {
     uint8_t      (*pred_flag_l1)    [4];
 
 
+
+    /* helper buffers  */
+    uint8_t ref_samples[9][9]; // used in inter_pred to store all the needed luma prediction samples for a 4x4 luma block
 
 
     struct Macroblock *prevMb;
@@ -73,7 +74,7 @@ typedef struct CodecContext {
 
 
 CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome);
-void decoder_run(CodecContext *context);
+void decoder_run(CodecContext *ctx);
 void decoder_free_metadata(CodecContext *ctx);
 void decoder_alloc_metadata(CodecContext *ctx);
 void decoder_free(CodecContext *ctx);

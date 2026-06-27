@@ -2,59 +2,24 @@
 // Created by gmathix on 3/20/26.
 //
 
-#include "global.h"
-#include "picture.h"
-#include "intra.h"
-#include "slice.h"
-#include "util/expgolomb.h"
 
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
 
+#include "deblock.h"
 #include "dpb.h"
-#include "mvpred.h"
-#include "transform.h"
+#include "intra.h"
+#include "picture.h"
+#include "slice.h"
+
 #include "tests/profiler.h"
+
+#include "util/expgolomb.h"
 #include "util/mbutil.h"
 #include "util/sliceutil.h"
 
 
 // see fig 6-14
-ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, CodecContext *ctx) {
-    int mb_addr = mb->mbAddr;
-    int mb_width = ctx->ps->sps->pic_width_in_mbs;
-
-    if (mb_addr % mb_width != 0) {
-        mb->has_mb_a = 1;
-        mb->mb_a_off = - 1;
-    } else { // top left, can't have A neighbor
-        mb->has_mb_a = 0;
-    }
-    if (mb_addr / mb_width >= 1) {
-        mb->has_mb_b = 1;
-        mb->mb_b_off = - mb_width;
-    } else { // top row, can't have B neighbor
-        mb->has_mb_b = 0;
-    }
-    if (mb_addr / mb_width >= 1 &&
-        (mb_addr+1) % mb_width != 0) {
-        mb->has_mb_c = 1;
-        mb->mb_c_off = - mb_width + 1;
-    } else { // top row or right column, can't have C neighbor
-        mb->has_mb_c = 0;
-    }
-    if (mb_addr / mb_width >= 1 &&
-        mb_addr % mb_width != 0) {
-        mb->has_mb_d = 1;
-        mb->mb_d_off = - mb_width - 1;
-        } else { // top row or left column, can't have D neighbor
-            mb->has_mb_d = 0;
-        }
-}
-
-
 
 void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
     profiler_start_frame(ctx->prf);
@@ -63,14 +28,15 @@ void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
 
 
 
-    read_slice_data(sh, nal_unit, ctx);
+    decode_slice_data(sh, nal_unit, ctx);
 
     Slice *slice = ctx->current_slice;
 
     if (slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs ||
         slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs+1) { // end of picture
-        store_picture(ctx->dpb, ctx->current_pic);
 
+        deblock_picture(ctx->current_pic, ctx);
+        store_picture(ctx->dpb, ctx->current_pic);
 
         // picture_free(ctx->current_pic);
     }
@@ -104,14 +70,13 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
     bool sp_slice = IS_SP_SLICE(sh->slice_type);
     bool si_slice = IS_SI_SLICE(sh->slice_type);
 
+
     PPS *pps = ps->pps_list[sh->pps_id];
     SPS *sps = ps->sps_list[pps->sps_id];
 
     sh->pps = pps;
     sh->sps = sps;
-    sh->is_idr_pic = nal_unit->type == NAL_CODED_SLICE_OF_IDR_PICTURE;
-
-
+    sh->idr_pic_flag = nal_unit->type == NAL_CODED_SLICE_OF_IDR_PICTURE;
 
 
 
@@ -133,14 +98,13 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
         }
     }
 
-    sh->idr_pic_flag = nal_unit->type == NAL_CODED_SLICE_OF_IDR_PICTURE ? 1 : 0;
+
     if (sh->idr_pic_flag) {
         sh->idr_pic_id = read_ue(br);
     }
 
     if (sps->poc_type == 0) {
         sh->poc_lsb = read_u(br, sps->log2_max_poc_lsb);
-
         if (pps->bottom_field_pic_order_in_frame_present_flag ) {
             sh->delta_poc_bottom = read_se(br);
         }
@@ -190,7 +154,7 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
         dec_ref_pic_marking(ctx->dpb, ctx->current_slice, ctx->br);
     }
 
-    if (pps->entropy_coding_mode_flag && !i_slice && !si_slice) {
+    if (pps->cabac_flag && !i_slice && !si_slice) {
         /* cabac_init_idc() */
     }
 
@@ -227,14 +191,14 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
 
 
 /* 7.3.4 */
-void read_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
+void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
     BitReader *br = ctx->br;
 
 
     PPS *pps = sh->pps;
     SPS *sps = sh->sps;
 
-    if (pps->entropy_coding_mode_flag) {
+    if (pps->cabac_flag) {
         while (!bitreader_byte_aligned(br)) {
             bitreader_skip_bits(br, 1);
         }
@@ -248,10 +212,6 @@ void read_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
 
 
     if (currMbAddr == 0) {
-
-        fprintf(ctx->log_file, "\n***** LOGGING FRAME NUM %d *****\n\n", sh->frame_num);
-
-
         ctx->current_pic = picture_alloc(sh, ctx);
         ctx->current_pic->sh = sh;
         ctx->current_pic->nal_ref_idc = nal_unit->ref_idc;
@@ -266,22 +226,14 @@ void read_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
         }
     }
 
-    fprintf(ctx->log_file, "*** SLICE ***\n");
-    fprintf(ctx->log_file, "   type : %d (%s)\n"
-                           "   first_mb : %d\n\n",
-                           sh->slice_type, slice_type_to_string(sh->slice_type), sh->first_mb);
-
-
     do {
         if (!IS_I_SLICE(sh->slice_type) && !IS_SI_SLICE(sh->slice_type)) {
-            if (!pps->entropy_coding_mode_flag) {
+            if (!pps->cabac_flag) {
                 uint32_t mb_skip_run = read_ue(br);
                 prevMbSkipped = mb_skip_run > 0;
 
-                // if (mb_skip_run > 0) {
-                //     printf("skipping %d macroblocks\n", mb_skip_run);
-                // }
 
+                // decode skipped macroblocks
                 for (int i = currMbAddr; i < currMbAddr + mb_skip_run; i++) {
                     Macroblock *mb = ctx->currMb;
                     reset_mb(mb, i, ctx);
@@ -291,16 +243,19 @@ void read_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
                     mb->slice_type = sh->slice_type;
                     mb->QPY = mb->mbAddr == 0
                         ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52)
-                        : _clip3(0, 51, (ctx->prevMb->QPY + 52) % 52);
+                        : ctx->prevMb->QPY;
 
                     int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
                     mb->QPC = QPcTable[qPi];
 
+                    MacroblockMetadata *meta = &ctx->mb_metadata[mb->mbAddr];
+                    meta->mb_type    = MB_TYPE_SKIP;
+                    meta->QPY        = mb->QPY;
+                    meta->QPC        = mb->QPC;
+                    meta->cbp_luma   = 0;
+                    meta->cbp_chroma = 0;
+                    meta->t_8x8_flag = 0;
 
-                    fprintf(ctx->log_file,
-                    "\nMB %d : \n"
-                        "   mb_type : %d (%s)\n",
-                        mb->mbAddr, mb->mb_type, mb_type_to_string(mb->mb_type));
 
 
                     ctx->current_slice->decode_macroblock(mb, ctx->current_slice, ctx);
@@ -339,7 +294,7 @@ void read_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
         }
 
 
-        if (!pps->entropy_coding_mode_flag) {
+        if (!pps->cabac_flag) {
             moreDataFlag = more_rbsp_data(br);
         } else {
             /* cabac shit */

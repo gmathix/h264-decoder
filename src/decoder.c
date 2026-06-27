@@ -17,8 +17,10 @@
 #include "tests/profiler.h"
 
 
-int debugging = false;
-
+int debugging = 0;
+int frame_debug = -1;
+int mb_debug = -1;
+int nb_frames_before_stop = -1;
 
 
 CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome) {
@@ -60,7 +62,7 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
         perror("fopen");
         exit(1);
     }
-    setvbuf(ctx->out_file, NULL, _IOFBF, 8*1024*1024); // 4mb buffer
+    setvbuf(ctx->out_file, NULL, _IOFBF, (size_t) 1920*1080*1.5); // 8 frame buffer
 
     ctx->log_path = log_path;
     ctx->log_file = fopen(ctx->log_path, "w");
@@ -71,23 +73,32 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
 }
 
 
-void decoder_run(CodecContext *context) {
-    if (!context->initialized) return;
+void decoder_run(CodecContext *ctx) {
+    if (!ctx->initialized) return;
 
-    BitReader nal_br = make_br(context->data, context->size);
+    BitReader nal_br = make_br(ctx->data, ctx->size);
 
     while (bitreader_bits_remaining(&nal_br) > 8) {
         NalUnit *nal = next_nal_unit(&nal_br);
 
-        dispatch_nal_unit(nal, context);
+        dispatch_nal_unit(nal, ctx);
+
 
         free(nal->data);
         free(nal);
+
+
+        if (ctx->prf->total_frames == nb_frames_before_stop) {
+            break;
+        }
     }
+
+	dpb_flush(ctx->dpb);
+	fflush(ctx->out_file);
 }
 
 void decoder_free_metadata(CodecContext *ctx) {
-    free(ctx->mb_types);
+    free(ctx->mb_metadata);
     free(ctx->intra8x8_pred_modes);
     free(ctx->intra4x4_pred_modes);
     free(ctx->luma_total_coeffs);
@@ -104,7 +115,7 @@ void decoder_alloc_metadata(CodecContext *ctx) {
     printf("allocating metadata : num_mbs %d\n", ctx->num_mbs);
     ctx->num_mbs = (int32_t)ctx->ps->sps->pic_width_in_mbs * (int32_t)ctx->ps->sps->pic_height_in_map_units;
 
-    ctx->mb_types            = calloc(ctx->num_mbs, sizeof( int32_t));
+    ctx->mb_metadata = calloc(ctx->num_mbs, sizeof( MacroblockMetadata));
     ctx->intra8x8_pred_modes = calloc(ctx->num_mbs, sizeof( uint8_t        [ 4] ));
     ctx->intra4x4_pred_modes = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
     ctx->luma_total_coeffs   = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
@@ -119,6 +130,8 @@ void decoder_alloc_metadata(CodecContext *ctx) {
 }
 
 void decoder_free(CodecContext *ctx) {
+    decoder_free_metadata(ctx);
+
     munmap((void*)ctx->data, ctx->size);
     free(ctx->br);
     free(ctx->prf);
@@ -129,12 +142,9 @@ void decoder_free(CodecContext *ctx) {
 
     free(ctx->current_slice);
 
-    free(ctx->mb_types);
-    free(ctx->intra8x8_pred_modes);
-    free(ctx->intra4x4_pred_modes);
-    free(ctx->luma_total_coeffs);
-    free(ctx->cb_total_coeffs);
-    free(ctx->cr_total_coeffs);
+
+    free(ctx->prevMb);
+
 
     dpb_free(ctx->dpb);
 

@@ -34,7 +34,6 @@ typedef struct SliceHeader {
     int32_t  slice_beta_offset_div2;
 
     int      adaptive_ref_pic_marking_mode_flag;
-    int      is_idr_pic;
     int      bottom_field_flag;
     int      direct_spatial_mv_pred_flag;
     int      field_pic_flag;
@@ -50,8 +49,8 @@ typedef struct SliceHeader {
 
 
 void         decode_slice              (NalUnit *nal_unit, CodecContext *ctx);
-SliceHeader  *read_slice_header       (NalUnit *nal_unit, CodecContext *ctx);
-void         read_slice_data         (SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
+SliceHeader  *read_slice_header        (NalUnit *nal_unit, CodecContext *ctx);
+void         decode_slice_data         (SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
 void         pred_weight_table         (uint8_t type, SliceHeader *sh, CodecContext *ctx);
 
 #endif //TOY_H264_SLICE_H

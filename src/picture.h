@@ -42,15 +42,16 @@ typedef struct Picture {
 
     int        num_mbs;
 
-    int        width;
-    int        height;
+	/* uncropped */
+	int widthY, heightY;
+	int widthC, heightC;
 
+	int widthCropY, heightCropY;
+	int widthCropC, heightCropC;
 
     uint8_t   *luma;
     uint8_t   *cb;
     uint8_t   *cr;
-
-    int strideY, strideC;
 } Picture ;
 
 
@@ -68,10 +69,10 @@ typedef struct Slice {
 
 
 
-ALWAYS_INLINE uint8_t *Picture_luma_ptr(Picture *f, int mbAddr, int mb_width, int blk_x, int blk_y) {
+static ALWAYS_INLINE uint8_t *Picture_luma_ptr(Picture *p, int mbAddr, int mb_width, int blk_x, int blk_y) {
     int mb_x = (mbAddr % mb_width) * 16;
     int mb_y = (mbAddr / mb_width) * 16;
-    return &f->luma[(mb_y + blk_y) * f->width + mb_x + blk_x];
+    return &p->luma[(mb_y + blk_y) * p->widthY + mb_x + blk_x];
 }
 
 
@@ -79,9 +80,9 @@ Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx);
 Slice   *slice_alloc();
 void     slice_free(Slice *slice);
 void     slice_reset(Slice *slice);
-void     picture_free(Picture *f);
-void     picture_reset(Picture *f);
-void     dump_picture(Picture *f, CodecContext *ctx);
+void     picture_free(Picture *p);
+void     picture_reset(Picture *p);
+void     dump_picture(Picture *p, CodecContext *ctx);
 
 
 #endif //TOY_H264_Picture_H

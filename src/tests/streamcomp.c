@@ -11,10 +11,10 @@
 
 
 
-#define ONLY_LUMA     1
+#define ONLY_LUMA     0
 #define ONLY_CHROMA   0
-#define START_FRAME   114
-#define INPUT_IS_GRAY 1
+#define START_FRAME   0
+#define INPUT_IS_GRAY 0
 
 const int WIDTH = 1920;
 const int HEIGHT = 1080;
@@ -57,7 +57,7 @@ void print_mb(uint8_t *frame, int blk_size, int mb_idx, int frame_stride)
 
 
 int main(void) {
-    char *ref_path = "../videos/dec_ref/horizon5-trailer-inter-baseline.yuv";
+    char *ref_path = "../videos/dec_ref/horizon5-jm.yuv";
     char *test_path = "../videos/output_inter.yuv";
 
     FILE *ref_file = fopen(ref_path, "rb");
@@ -153,16 +153,15 @@ int main(void) {
                     int idx = y * WIDTH + x;
 
 
-                    if (ref_frame_Y[idx] != test_frame_Y[idx] &&
-                        (abs(test_frame_Y[idx] - ref_frame_Y[idx])) >= 30 ) {
+                    if (ref_frame_Y[idx] != test_frame_Y[idx]) {
 
                         int blkIdx = (iy / 4) * 4 + (ix / 4);
                         int diff = test_frame_Y[idx] - ref_frame_Y[idx];
 
                         printf("    mb %d differs in Y plane : \n"
-                               "           blkIdx %d\n"
-                               "           rel blk: y=%d x=%d\n"
-                               "           diff=%d\n",
+                               "               blkIdx %d\n"
+                               "               rel blk: y=%d x=%d\n"
+                               "               diff=%d\n",
                                mb,
                                blkIdx,
                                iy % 4,

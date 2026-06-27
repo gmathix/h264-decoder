@@ -1,6 +1,6 @@
 # h264-decoder
 
-A toy H.264 decoder written from scratch in C.
+A toy H.264 decoder written in C.
 
 ## *** WIP ***
 ### I'm actively working on this!
@@ -12,10 +12,10 @@ My primary goal is to work up to the full High profile.
 
 ## Performance
 Not great for now.  
-It can reach ~43fps on a single thread, on 1080p streams, without dumping the frames. When writing to the output YUV file, it reaches ~32fps.  
-Compiler optimizations help a lot : without -O3, it runs at ~8fps (feel free to laugh at me)    
+It can reach ~26fps on a single thread on my Intel I5-10300H, on 1080p streams, without dumping the frames. When writing to the output YUV file, it reaches ~22fps.
+Compiler optimizations help a lot : without -O3, it runs at ~5fps (feel free to laugh at me)    
 
-I'd like to understand how the GCC managed to achieve that 8 -> 35 jump, but I'd have to learn assembly and that's a different learning path which I will eventually take when this project is finished. 
+I'd like to understand how the GCC managed to achieve that 5 -> 26 jump, but I'd have to learn assembly and that's a different learning path which I will eventually take when this project is finished. 
 
 
 ## Usage

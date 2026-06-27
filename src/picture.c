@@ -8,25 +8,29 @@
 
 
 Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx) {
-    Picture *f  = calloc(1, sizeof(Picture));
+    Picture *p  = calloc(1, sizeof(Picture));
 
-    f->is_idr                      = sh->is_idr_pic;
-    f->long_term_ref               = sh->long_term_reference_flag;
-    f->num_ref_idx_active_override = sh->num_ref_idx_active_override_flag;
-    f->frame_num                   = sh->frame_num;
-
-    f->width    = sh->sps->pic_width_samples_l;
-    f->height   = sh->sps->pic_height_samples_l;
-    f->num_mbs  = (int32_t)sh->sps->pic_width_in_mbs * (int32_t)sh->sps->pic_height_in_map_units;
-    f->luma     = calloc(f->width * f->height, 1);
-    f->cb       = calloc(f->width/2 * (f->height/2), 1);
-    f->cr       = calloc(f->width/2 * (f->height/2), 1);
-
-    f->strideY  = f->width;
-    f->strideC  = f->width / 2;
+    p->is_idr                      = sh->idr_pic_flag;
+    p->long_term_ref               = sh->long_term_reference_flag;
+    p->num_ref_idx_active_override = sh->num_ref_idx_active_override_flag;
+    p->frame_num                   = sh->frame_num;
 
 
-    if (!ctx->mb_metadata_initialized || f->num_mbs != ctx->num_mbs) {
+	p->widthY      = sh->sps->pic_width_samples_l;
+	p->heightY     = sh->sps->pic_height_samples_l;
+	p->widthC      = p->widthY / 2;
+	p->heightC     = p->heightY / 2;
+	p->widthCropY  = p->widthY - sh->sps->crop_right_offset - sh->sps->crop_left_offset;
+	p->heightCropY = p->heightY - sh->sps->crop_bottom_offset - sh->sps->crop_top_offset;
+	p->widthCropC  = p->widthCropY / 2;
+	p->heightCropC = p->heightCropY / 2;
+    p->num_mbs  = (int32_t)sh->sps->pic_width_in_mbs * (int32_t)sh->sps->pic_height_in_map_units;
+    p->luma     = calloc(p->widthY * p->heightY, 1);
+    p->cb       = calloc(p->widthY/2 * (p->heightY/2), 1);
+    p->cr       = calloc(p->widthY/2 * (p->heightY/2), 1);
+
+
+    if (!ctx->mb_metadata_initialized || p->num_mbs != ctx->num_mbs) {
         if (ctx->mb_metadata_initialized) { /* will have to reallocate the buffers, shouldn't happen mid-stream */
             decoder_free_metadata(ctx);
         }
@@ -34,7 +38,7 @@ Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx) {
     }
 
 
-    return f;
+    return p;
 }
 
 Slice *slice_alloc() {
@@ -52,35 +56,36 @@ void slice_reset(Slice *slice) {
     slice->sh = NULL;
 }
 
-void picture_reset(Picture *f) {
-    memset(&f->luma[0], 0, f->height * f->width);
-    memset(&f->cb[0],   0, f->height/2 * f->width/2);
-    memset(&f->cr[0],   0, f->height/2 * f->width/2);
+void picture_reset(Picture *p) {
+    memset(&p->luma[0], 0, p->heightY * p->widthY);
+    memset(&p->cb[0],   0, p->heightY/2 * p->widthY/2);
+    memset(&p->cr[0],   0, p->heightY/2 * p->widthY/2);
 }
 
-void picture_free(Picture *f) {
-    free(f->luma);
-    free(f->cb);
-    free(f->cr);
-    free(f);
+void picture_free(Picture *p) {
+    free(p->luma);
+    free(p->cb);
+    free(p->cr);
+    free(p->sh);
+    free(p);
 }
 
-void dump_picture(Picture *f, CodecContext *ctx) {
-    int start = ctx->ps->sps->crop_top_offset;
-    int end   = ctx->ps->sps->pic_height_samples_l - ctx->ps->sps->crop_bottom_offset;
-    int left  = ctx->ps->sps->crop_left_offset;
-    int right = ctx->ps->sps->pic_width_samples_l  - ctx->ps->sps->crop_right_offset;
+void dump_picture(Picture *p, CodecContext *ctx) {
+    int top    = ctx->ps->sps->crop_top_offset;
+    int bottom = ctx->ps->sps->crop_bottom_offset;
+    int left   = ctx->ps->sps->crop_left_offset;
+    int right  = ctx->ps->sps->crop_right_offset;
 
-    for (int i = start; i < end; i++) {
-        fwrite(&f->luma[i*f->strideY + left],   1, right-left, ctx->out_file);
+    for (int i = top; i < p->heightY - bottom; i++) {
+        fwrite(&p->luma[i*p->widthY + left],   1, p->widthCropY, ctx->out_file);
     }
 
     if (!ctx->dump_monochrome) {
-        for (int i = start/2; i < end/2; i++) {
-            fwrite(&f->cb[i*f->strideC + left/2], 1, (right-left)/2, ctx->out_file);
+        for (int i = top/2; i < p->heightC - bottom/2; i++) {
+            fwrite(&p->cb[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
         }
-        for (int i = start/2; i < end/2; i++) {
-            fwrite(&f->cr[i*f->strideC + left/2], 1, (right-left)/2, ctx->out_file);
+        for (int i = top/2; i < p->heightC - bottom/2; i++) {
+            fwrite(&p->cr[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
         }
     }
 }

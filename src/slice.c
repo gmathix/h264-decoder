@@ -6,7 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "deblock.c"
+#include "deblock.h"
 #include "dpb.h"
 #include "intra.h"
 #include "picture.h"
@@ -20,9 +20,6 @@
 
 
 // see fig 6-14
-
-
-
 
 void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
     profiler_start_frame(ctx->prf);
@@ -40,7 +37,6 @@ void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
 
         deblock_picture(ctx->current_pic, ctx);
         store_picture(ctx->dpb, ctx->current_pic);
-
 
         // picture_free(ctx->current_pic);
     }
@@ -74,14 +70,13 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
     bool sp_slice = IS_SP_SLICE(sh->slice_type);
     bool si_slice = IS_SI_SLICE(sh->slice_type);
 
+
     PPS *pps = ps->pps_list[sh->pps_id];
     SPS *sps = ps->sps_list[pps->sps_id];
 
     sh->pps = pps;
     sh->sps = sps;
-    sh->is_idr_pic = nal_unit->type == NAL_CODED_SLICE_OF_IDR_PICTURE;
-
-
+    sh->idr_pic_flag = nal_unit->type == NAL_CODED_SLICE_OF_IDR_PICTURE;
 
 
 
@@ -103,14 +98,13 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
         }
     }
 
-    sh->idr_pic_flag = nal_unit->type == NAL_CODED_SLICE_OF_IDR_PICTURE ? 1 : 0;
+
     if (sh->idr_pic_flag) {
         sh->idr_pic_id = read_ue(br);
     }
 
     if (sps->poc_type == 0) {
         sh->poc_lsb = read_u(br, sps->log2_max_poc_lsb);
-
         if (pps->bottom_field_pic_order_in_frame_present_flag ) {
             sh->delta_poc_bottom = read_se(br);
         }
@@ -160,7 +154,7 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
         dec_ref_pic_marking(ctx->dpb, ctx->current_slice, ctx->br);
     }
 
-    if (pps->entropy_coding_mode_flag && !i_slice && !si_slice) {
+    if (pps->cabac_flag && !i_slice && !si_slice) {
         /* cabac_init_idc() */
     }
 
@@ -204,7 +198,7 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
     PPS *pps = sh->pps;
     SPS *sps = sh->sps;
 
-    if (pps->entropy_coding_mode_flag) {
+    if (pps->cabac_flag) {
         while (!bitreader_byte_aligned(br)) {
             bitreader_skip_bits(br, 1);
         }
@@ -234,14 +228,12 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
 
     do {
         if (!IS_I_SLICE(sh->slice_type) && !IS_SI_SLICE(sh->slice_type)) {
-            if (!pps->entropy_coding_mode_flag) {
+            if (!pps->cabac_flag) {
                 uint32_t mb_skip_run = read_ue(br);
                 prevMbSkipped = mb_skip_run > 0;
 
-                // if (mb_skip_run > 0) {
-                //     printf("skipping %d macroblocks\n", mb_skip_run);
-                // }
 
+                // decode skipped macroblocks
                 for (int i = currMbAddr; i < currMbAddr + mb_skip_run; i++) {
                     Macroblock *mb = ctx->currMb;
                     reset_mb(mb, i, ctx);
@@ -251,14 +243,19 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
                     mb->slice_type = sh->slice_type;
                     mb->QPY = mb->mbAddr == 0
                         ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52)
-                        : _clip3(0, 51, (ctx->prevMb->QPY + 52) % 52);
+                        : ctx->prevMb->QPY;
 
                     int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
                     mb->QPC = QPcTable[qPi];
 
-                    ctx->mb_metadata[mb->mbAddr].mb_type = MB_TYPE_SKIP;
-                    ctx->mb_metadata[mb->mbAddr].QPY = mb->QPY;
-                    ctx->mb_metadata[mb->mbAddr].QPC = mb->QPC;
+                    MacroblockMetadata *meta = &ctx->mb_metadata[mb->mbAddr];
+                    meta->mb_type    = MB_TYPE_SKIP;
+                    meta->QPY        = mb->QPY;
+                    meta->QPC        = mb->QPC;
+                    meta->cbp_luma   = 0;
+                    meta->cbp_chroma = 0;
+                    meta->t_8x8_flag = 0;
+
 
 
                     ctx->current_slice->decode_macroblock(mb, ctx->current_slice, ctx);
@@ -297,7 +294,7 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
         }
 
 
-        if (!pps->entropy_coding_mode_flag) {
+        if (!pps->cabac_flag) {
             moreDataFlag = more_rbsp_data(br);
         } else {
             /* cabac shit */

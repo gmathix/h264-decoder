@@ -231,8 +231,8 @@ int decode_pps(size_t global_bit_offset, CodecContext *ctx) {
         return -1;
     }
 
-    pps->entropy_coding_mode_flag = read_u(br, 1);
-    if (pps->entropy_coding_mode_flag == 1) {
+    pps->cabac_flag = read_u(br, 1);
+    if (pps->cabac_flag == 1) {
         printf("CABAC not supported for now\n");
     }
 

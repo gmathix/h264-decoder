@@ -34,7 +34,6 @@ typedef struct SliceHeader {
     int32_t  slice_beta_offset_div2;
 
     int      adaptive_ref_pic_marking_mode_flag;
-    int      is_idr_pic;
     int      bottom_field_flag;
     int      direct_spatial_mv_pred_flag;
     int      field_pic_flag;

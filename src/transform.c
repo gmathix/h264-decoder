@@ -58,7 +58,7 @@ const int16_t hadamard_2x2_mat[2][2] = {
 
 
 void transform_luma_4x4(Macroblock *mb, int qp, int blkIdx, CodecContext *ctx) {
-      int stride = mb->p_pic->strideY;
+      int stride = mb->p_pic->widthY;
 
       int blkY = (blkIdx>>2)<<2;
       int blkX = (blkIdx&3)<<2;
@@ -113,7 +113,7 @@ void transform_luma_16x16(Macroblock *mb, int qp, CodecContext *ctx) {
 
       /* scaling & transform */
       int d[4][4];
-      int stride = mb->p_pic->strideY;
+      int stride = mb->p_pic->widthY;
       for (int i = 0; i < 16; i++) {
             inverse_4x4_coeff_scaling_scan_dc(mb->residuals.luma_16x16_AC[i], dcY[i>>2][i&3], c);
 
@@ -168,7 +168,7 @@ void transform_chroma(Macroblock *mb, CodecContext *ctx) {
 
 
                   int32_t  d[4][4];
-                  int stride = mb->p_pic->strideC;
+                  int stride = mb->p_pic->widthC;
                   for (int i4x4 = 0; i4x4 < nbCr4x4; i4x4++) {
                         int32_t c[4][4];
                         inverse_4x4_coeff_scaling_scan_dc(mb->residuals.chroma_AC[iCbCr][i4x4], dcC[i4x4>>1][i4x4&1], c);

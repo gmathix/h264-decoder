@@ -17,7 +17,7 @@
 
 
 typedef struct SPS {
-    /* only params used for intra + CAVLC for now.
+    /* only params used for baseline profile for now.
      * no scaling matrix or VUI params shit that we don't need for now */
 
 
@@ -82,7 +82,7 @@ typedef struct PPS {
     int      bottom_field_pic_order_in_frame_present_flag;
     int      constrained_intra_pred_flag;
     int      deblocking_filter_control_present_flag;
-    int      entropy_coding_mode_flag;
+    int      cabac_flag;
     int      redundant_pic_cnt_present_flag;
     int      transform_8x8_mode_flag;
     int      weighted_pred_flag;

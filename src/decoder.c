@@ -17,8 +17,10 @@
 #include "tests/profiler.h"
 
 
-int debugging = false;
-
+int debugging = 0;
+int frame_debug = -1;
+int mb_debug = -1;
+int nb_frames_before_stop = -1;
 
 
 CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome) {
@@ -60,7 +62,7 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
         perror("fopen");
         exit(1);
     }
-    setvbuf(ctx->out_file, NULL, _IOFBF, 8*1024*1024); // 4mb buffer
+    setvbuf(ctx->out_file, NULL, _IOFBF, (size_t) 1920*1080*1.5); // 8 frame buffer
 
     ctx->log_path = log_path;
     ctx->log_file = fopen(ctx->log_path, "w");
@@ -86,10 +88,13 @@ void decoder_run(CodecContext *ctx) {
         free(nal);
 
 
-        if (ctx->prf->total_frames == 1500) {
+        if (ctx->prf->total_frames == nb_frames_before_stop) {
             break;
         }
     }
+
+	dpb_flush(ctx->dpb);
+	fflush(ctx->out_file);
 }
 
 void decoder_free_metadata(CodecContext *ctx) {
@@ -125,6 +130,8 @@ void decoder_alloc_metadata(CodecContext *ctx) {
 }
 
 void decoder_free(CodecContext *ctx) {
+    decoder_free_metadata(ctx);
+
     munmap((void*)ctx->data, ctx->size);
     free(ctx->br);
     free(ctx->prf);
@@ -135,12 +142,9 @@ void decoder_free(CodecContext *ctx) {
 
     free(ctx->current_slice);
 
-    free(ctx->mb_metadata);
-    free(ctx->intra8x8_pred_modes);
-    free(ctx->intra4x4_pred_modes);
-    free(ctx->luma_total_coeffs);
-    free(ctx->cb_total_coeffs);
-    free(ctx->cr_total_coeffs);
+
+    free(ctx->prevMb);
+
 
     dpb_free(ctx->dpb);
 

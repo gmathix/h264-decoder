@@ -300,7 +300,7 @@ void residual_block_cavlc(Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t
     BitReader *br = ctx->br;
 
 
-    if (sh->pps->entropy_coding_mode_flag) {
+    if (sh->pps->cabac_flag) {
         printf("CABAC enabled and trying to call CAVLC ? bold move\n");
     }
 

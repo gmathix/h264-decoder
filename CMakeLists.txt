@@ -65,5 +65,6 @@ add_executable(h264_decoder main.c
         src/qpel.h
         src/qpel.c
         src/deblock.c
+        src/deblock.h
 )
 target_compile_options(h264_decoder PRIVATE -O3 -march=native)

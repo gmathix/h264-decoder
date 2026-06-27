@@ -411,18 +411,11 @@ void dpb_empty_ref_lists(DPB *dpb) {
     }
 }
 
+
 void dpb_flush(DPB *dpb) {
-    while (dpb->fullness != 0) {
-        int min_poc = INT_MAX;
-        for (int i = 0; i < dpb->size; i++) {
-            if (dpb->slots[i] != NULL && dpb->slots[i]->poc < min_poc && !dpb->slots[i]->is_output) {
-                dump_picture(dpb->slots[i], dpb->ctx);
-                picture_free(dpb->slots[i]);
-                dpb->slots[i] = NULL;
-                dpb->fullness--;
-            }
-        }
-    }
+	while (dpb->fullness != 0) {
+		output_oldest_pic(dpb);
+	}
 }
 
 void dpb_free(DPB *dpb) {

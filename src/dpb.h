@@ -13,7 +13,7 @@
 #include "picture.h"
 
 
-#define MAX_DPB_SIZE     16;
+#define MAX_DPB_SIZE     16
 
 
 

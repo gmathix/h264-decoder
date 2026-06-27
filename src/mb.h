@@ -78,7 +78,6 @@ typedef struct {
             int16_t luma_16x16_AC[16][15];
         };
     };
-    int16_t chroma_total_coeffs[2][4];
     int16_t chroma_DC[2][4];
     int16_t chroma_AC[2][4][15];
 
@@ -87,13 +86,14 @@ typedef struct {
 
 /**
  * Small struct containing only the small information about a macroblock, needed for further decoding
- *
  */
 typedef struct MacroblockMetadata {
     int32_t mb_type;
     uint8_t QPY;
     uint8_t QPC;
     uint8_t t_8x8_flag;
+    uint8_t cbp_luma;
+    uint8_t cbp_chroma;
 } MacroblockMetadata ;
 
 
@@ -141,7 +141,6 @@ typedef struct Macroblock {
 
 
 
-
 typedef struct Neighbor {
     int mb_off;
     int8_t idx;
@@ -154,7 +153,7 @@ typedef struct Neighbors {
 } Neighbors ;
 
 
-ALWAYS_INLINE Neighbor derive_a_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+static ALWAYS_INLINE Neighbor derive_a_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
@@ -167,7 +166,7 @@ ALWAYS_INLINE Neighbor derive_a_neighbor_4x4(Macroblock *mb, int blkIdx, CodecCo
 
     return n;
 }
-ALWAYS_INLINE Neighbor derive_b_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+static ALWAYS_INLINE Neighbor derive_b_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
@@ -180,7 +179,7 @@ ALWAYS_INLINE Neighbor derive_b_neighbor_4x4(Macroblock *mb, int blkIdx, CodecCo
 
     return n;
 }
-ALWAYS_INLINE Neighbor derive_c_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+static ALWAYS_INLINE Neighbor derive_c_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
@@ -197,7 +196,7 @@ ALWAYS_INLINE Neighbor derive_c_neighbor_4x4(Macroblock *mb, int blkIdx, CodecCo
 
     return n;
 }
-ALWAYS_INLINE Neighbor derive_d_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+static ALWAYS_INLINE Neighbor derive_d_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
@@ -215,7 +214,7 @@ ALWAYS_INLINE Neighbor derive_d_neighbor_4x4(Macroblock *mb, int blkIdx, CodecCo
 }
 
 
-ALWAYS_INLINE Neighbors derive_neighbors_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+static ALWAYS_INLINE Neighbors derive_neighbors_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
@@ -230,7 +229,7 @@ ALWAYS_INLINE Neighbors derive_neighbors_4x4(Macroblock *mb, int blkIdx, CodecCo
 }
 
 
-ALWAYS_INLINE Neighbors derive_neighbors_2x2(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+static ALWAYS_INLINE Neighbors derive_neighbors_2x2(Macroblock *mb, int blkIdx, CodecContext *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
@@ -262,7 +261,7 @@ ALWAYS_INLINE Neighbors derive_neighbors_2x2(Macroblock *mb, int blkIdx, CodecCo
     return n;
 }
 
-ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, CodecContext *ctx) {
+static ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, CodecContext *ctx) {
     int mb_addr = mb->mbAddr;
     int mb_width = ctx->ps->sps->pic_width_in_mbs;
 
@@ -298,7 +297,7 @@ ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, CodecContext *ctx
         }
 }
 
-ALWAYS_INLINE Macroblock *make_mb(int mbAddr, CodecContext *ctx) {
+static ALWAYS_INLINE Macroblock *make_mb(int mbAddr, CodecContext *ctx) {
     Macroblock *mb = calloc(1, sizeof(Macroblock));
 
     mb->mbAddr = mbAddr;
@@ -308,7 +307,7 @@ ALWAYS_INLINE Macroblock *make_mb(int mbAddr, CodecContext *ctx) {
     return mb;
 }
 
-ALWAYS_INLINE void reset_mb(Macroblock *mb, int mbAddr, CodecContext *ctx) {
+static ALWAYS_INLINE void reset_mb(Macroblock *mb, int mbAddr, CodecContext *ctx) {
     memset(&ctx->luma_total_coeffs[mbAddr], 0, 16);
     memset(&ctx->cr_total_coeffs[mbAddr], 0, 16);
     memset(&ctx->cb_total_coeffs[mbAddr], 0, 16);
@@ -348,37 +347,5 @@ void  residual_block_cabac   (Macroblock *mb, int blkIdx, int iCbCr, int pbt, in
 void decode_i_macroblock(Macroblock *mb, struct Slice *slice, CodecContext *ctx);
 void decode_p_macroblock(Macroblock *mb, struct Slice *slice, CodecContext *ctx);
 void decode_b_macroblock(Macroblock *mb, struct Slice *slice, CodecContext *ctx);
-
-
-
-
-
-
-
-static Coord inverse_mb_part_scan(uint8_t mbPartIdx, uint8_t mbPartWidth, uint8_t mbPartHeight) {
-    return (Coord) {
-        _inverse_raster_scan(
-            mbPartIdx,
-            mbPartWidth, mbPartHeight,
-            16, 0),
-
-        _inverse_raster_scan(
-            mbPartIdx,
-            mbPartWidth, mbPartHeight,
-            16, 1)
-        };
-}
-
-static Coord inverse_sub_mb_part_scan(int32_t mb_type, uint8_t mbPartIdx, uint8_t subMbPartIdx, uint8_t subMbPartWidth, uint8_t subMpPartHeight) {
-    return (Coord) {
-        (mb_type == 3 || mb_type == 4 || mb_type == 22)
-            ? _inverse_raster_scan(subMbPartIdx, subMbPartWidth, subMpPartHeight, 8, 0)
-            : _inverse_raster_scan(subMbPartIdx, 4, 4, 8, 0),
-
-        (mb_type == 3 || mb_type == 4 || mb_type == 22)
-            ? _inverse_raster_scan(subMbPartIdx, subMbPartWidth, subMpPartHeight, 8, 1)
-            : _inverse_raster_scan(subMbPartIdx, 4, 4, 8, 1)
-        };
-}
 
 #endif //TOY_H264_MB_H

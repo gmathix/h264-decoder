@@ -24,8 +24,6 @@
 #include "tests/profiler.h"
 #include "util/sliceutil.h"
 
-#include "deblock.c"
-
 
 /* table 7-11 */
 const I_MbInfo i_mb_type_info[26] = {
@@ -300,10 +298,8 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
     ctx->mb_metadata[mb->mbAddr].mb_type = mb->mb_type;
     int type = mb->mb_type;
 
-
     if (intra_mb) mb->pred_mode = i_mb_type_info[mb_type].pred_mode;
     else mb->pred_mode = -1;
-
 
     mb->slice_type = sh->slice_type;
 
@@ -321,6 +317,8 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
 
     mb->residuals.cbp_chroma = cbp_chroma;
     mb->residuals.cbp_luma = cbp_luma;
+    ctx->mb_metadata[mb->mbAddr].cbp_luma = cbp_luma;
+    ctx->mb_metadata[mb->mbAddr].cbp_chroma = cbp_chroma;
 
 
     memset(ctx->luma_total_coeffs[mb->mbAddr], 0, 16);
@@ -336,19 +334,19 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
             bitreader_skip_bits(br, 1);
         }
 
-        int strideY = mb->p_pic->strideY;
-        int strideC = mb->p_pic->strideC;
-        int posY = mb->mb_y*16*strideY+ mb->mb_x*16;
-        int posC = mb->mb_y*mb->mb_height_c*strideC + mb->mb_x*mb->mb_width_c;
+        int widthY = mb->p_pic->widthY;
+        int widthC = mb->p_pic->widthC;
+        int posY = mb->mb_y*16*widthY+ mb->mb_x*16;
+        int posC = mb->mb_y*mb->mb_height_c*widthC + mb->mb_x*mb->mb_width_c;
 
         for (int i = 0; i < 256; i++) {
-            mb->p_pic->luma[posY + (i/16)*strideY + i%16] = read_u(br, 8);
+            mb->p_pic->luma[posY + (i/16)*widthY + i%16] = read_u(br, 8);
         }
         for (int i = 0; i < mb->mb_width_c * mb->mb_height_c; i++) {
-            mb->p_pic->cb[posC + (i/mb->mb_height_c)*strideC + i%mb->mb_width_c] = read_u(br, 8);
+            mb->p_pic->cb[posC + (i/mb->mb_height_c)*widthC + i%mb->mb_width_c] = read_u(br, 8);
         }
         for (int i = 0; i < mb->mb_width_c * mb->mb_height_c; i++) {
-            mb->p_pic->cr[posC + (i/mb->mb_height_c)*strideC + i%mb->mb_width_c] = read_u(br, 8);
+            mb->p_pic->cr[posC + (i/mb->mb_height_c)*widthC + i%mb->mb_width_c] = read_u(br, 8);
         }
     } else {
         int transform_size_8x8_flag = 0;
@@ -371,6 +369,8 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
             cbp_chroma = cbp / 16;
             mb->residuals.cbp_chroma = cbp_chroma;
             mb->residuals.cbp_luma = cbp_luma;
+            ctx->mb_metadata[mb->mbAddr].cbp_luma = cbp_luma;
+            ctx->mb_metadata[mb->mbAddr].cbp_chroma = cbp_chroma;
 
             if (cbp_luma > 0 && transform_size_8x8_flag &&
                 !IS_INTRA4x4(type) && noSubMbPartSizeLessThan8x8Flag &&
@@ -399,8 +399,7 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
 
 
 
-
-            residual_func residual_block = sh->pps->entropy_coding_mode_flag
+            residual_func residual_block = sh->pps->cabac_flag
                 ? &residual_block_cabac
                 : &residual_block_cavlc;
 
@@ -657,7 +656,7 @@ void read_residual_luma(Macroblock *mb, int type, int t_8x8_flag, int cbp_luma,
     }
 
     for (int i8x8 = 0; i8x8 < 4; i8x8++) {
-        if (!t_8x8_flag || !sh->pps->entropy_coding_mode_flag) {
+        if (!t_8x8_flag || !sh->pps->cabac_flag) {
             for (int i4x4 = 0; i4x4 < 4; i4x4++) {
                 int blkIdx = map_4x4[i8x8*4+i4x4];
                 if (cbp_luma & (1 << i8x8)) {
@@ -678,7 +677,7 @@ void read_residual_luma(Macroblock *mb, int type, int t_8x8_flag, int cbp_luma,
                     }
                 }
 
-                if (!sh->pps->entropy_coding_mode_flag && t_8x8_flag) {
+                if (!sh->pps->cabac_flag && t_8x8_flag) {
                     for (int i = 0; i < 16; i++) {
                         mb->residuals.luma_8x8_coeffs[i8x8][4*i + i4x4] = mb->residuals.luma_4x4_coeffs[i8x8*4 + i4x4][i];
                     }
@@ -739,14 +738,11 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
 
 
-const int mb_debug = 3059;
-const int mb_debug_2 = 3059;
-const int frame_debug = 8;
-const int num_frames_before_stop = 186;
 
 
 void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
-    if (mb->mbAddr >= mb_debug && mb->mbAddr <= mb_debug_2 && ctx->prf->total_frames == frame_debug) {
+
+    if (mb->mbAddr == mb_debug && ctx->prf->total_frames == frame_debug) {
         debugging = true;
     } else {
         debugging = false;
@@ -756,6 +752,8 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
             mb->mbAddr, mb->mb_x, mb->mb_y, mb->mb_type, mb_type_to_string(mb->mb_type));
     }
 
+
+	memset(&ctx->mvs_l0[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
 
     if (IS_INTRA(mb->mb_type)) {
         decode_i_macroblock(mb, slice, ctx);
@@ -782,14 +780,15 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
             }
         }
 
-        inter_pred_chroma(mb, 0, &ctx->mvs_l0[mb->mbAddr][0], ctx);
-        inter_pred_chroma(mb, 1, &ctx->mvs_l0[mb->mbAddr][2], ctx);
-        inter_pred_chroma(mb, 2, &ctx->mvs_l0[mb->mbAddr][8], ctx);
-        inter_pred_chroma(mb, 3, &ctx->mvs_l0[mb->mbAddr][10], ctx);
+        for (int i = 0; i < 16; i++) {
+            int y = (i >> 2) << 1;
+            int x = (i &  3) << 1;
+            inter_pred_chroma(mb, y, x, &ctx->mvs_l0[mb->mbAddr][i], ctx);
+        }
 
         if (!IS_SKIP(mb->mb_type)) {
             for (int i = 0; i < 16; i++) {
-                transform_luma_4x4(mb, mb->QPY, i, ctx);
+                transform_luma_4x4(mb, mb->QPY, map_4x4[i], ctx);
             }
             transform_chroma(mb, ctx);
         }

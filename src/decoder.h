@@ -12,8 +12,6 @@
 #include "mv.h"
 
 
-extern int debugging;
-
 typedef struct CodecContext {
     bool initialized;
 
@@ -57,6 +55,9 @@ typedef struct CodecContext {
     uint8_t      (*pred_flag_l1)    [4];
 
 
+
+    /* helper buffers  */
+    uint8_t ref_samples[9][9]; // used in inter_pred to store all the needed luma prediction samples for a 4x4 luma block
 
 
     struct Macroblock *prevMb;

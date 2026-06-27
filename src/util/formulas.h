@@ -22,7 +22,7 @@ static ALWAYS_INLINE double  _log2(double x)          { return log2(x); }
 static ALWAYS_INLINE double  _log10(double x)         { return log10(x); }
 static ALWAYS_INLINE double  _sqrt(double x)          { return sqrt(x); }
 
-static ALWAYS_INLINE int32_t _floor(double x)         { return (int32_t) x; }
+static ALWAYS_INLINE int32_t _floor(double x)         { return (int32_t) (x < 0 ? x - 1.0 : x); }
 static ALWAYS_INLINE int32_t _ceil(double x)          { return (int32_t)x + (x > (int32_t)x ? 1 : 0); }
 static ALWAYS_INLINE int32_t _sign(double x)          { return x >= 0 ? 1 : -1; }
 static ALWAYS_INLINE int32_t _round(double x)         { return _sign(x) * _floor(_abs(x) + 0.5); }

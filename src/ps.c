@@ -233,7 +233,8 @@ int decode_pps(size_t global_bit_offset, CodecContext *ctx) {
 
     pps->cabac_flag = read_u(br, 1);
     if (pps->cabac_flag == 1) {
-        printf("CABAC not supported for now\n");
+        printf("CABAC not supported for now, exiting.\n");
+        exit(1);
     }
 
     pps->bottom_field_pic_order_in_frame_present_flag = read_u(br, 1);
@@ -256,6 +257,7 @@ int decode_pps(size_t global_bit_offset, CodecContext *ctx) {
 
 
     if (more_rbsp_data(br)) {
+        printf("MORE\n");
         pps->transform_8x8_mode_flag = read_u(br, 1);
         // TODO parse next
     }

@@ -50,6 +50,8 @@ void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
 
 /* 7.3.3 */
 SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
+
+
     BitReader *br = ctx->br;
     ParamSets *ps = ctx->ps;
 
@@ -62,6 +64,7 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
     sh->pps_id     = read_ue(br);
 
     printf("DECODING %s SLICE\n", slice_type_to_string(sh->slice_type));
+    printf("  first_mb:%d\n", sh->first_mb);
 
 
     bool i_slice  = IS_I_SLICE(sh->slice_type);
@@ -121,6 +124,13 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
         sh->redundant_pic_cnt = read_ue(br);
     }
 
+
+    // init l0 and l1
+    if (IS_P_SLICE(sh->slice_type) || IS_B_SLICE(sh->slice_type)) {
+        init_ref_pic_lists(ctx->dpb, sh);
+    }
+
+
     if (b_slice) {
         sh->direct_spatial_mv_pred_flag = read_u(br, 1);
     }
@@ -137,18 +147,25 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
             sh->num_ref_idx_l1_active_minus1 = pps->num_ref_idx_l1_default_active_minus1;
         }
     }
+
+
+
+
+
+
+
     if (nal_unit->type == NAL_CODED_SLICE_EXTENSION) {
         /* ref_pic_list_mvc_modification() */
     } else {
-        ref_pic_list_modification(ctx->dpb, sh->slice_type, ctx->current_slice, ctx->maxFrameNum, &ctx->maxLongTermFrameIdx, ctx->br);
+        ref_pic_list_modification(sh->slice_type, ctx->current_slice, ctx->maxFrameNum, &ctx->maxLongTermFrameIdx, ctx);
     }
 
 
     if ((pps->weighted_pred_flag && (p_slice || sp_slice)) ||
-        (pps->weighted_bipred_idc && b_slice)) {
+        (pps->weighted_bipred_idc == 1 && b_slice)) {
 
-        pred_weight_table(nal_unit->type, sh, ctx);
-        }
+        pred_weight_table(sh->slice_type, sh, ctx);
+    }
 
     if (nal_unit->ref_idc != 0) {
         dec_ref_pic_marking(ctx->dpb, ctx->current_slice, ctx->br);
@@ -181,9 +198,7 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
 
 
 
-    if (IS_P_SLICE(sh->slice_type) || IS_B_SLICE(sh->slice_type)) {
-        init_ref_pic_lists(ctx->dpb, sh);
-    }
+
 
 
     return sh;
@@ -230,6 +245,7 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
         if (!IS_I_SLICE(sh->slice_type) && !IS_SI_SLICE(sh->slice_type)) {
             if (!pps->cabac_flag) {
                 uint32_t mb_skip_run = read_ue(br);
+
                 prevMbSkipped = mb_skip_run > 0;
 
 

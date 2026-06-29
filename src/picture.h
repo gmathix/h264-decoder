@@ -6,6 +6,7 @@
 #define TOY_H264_Picture_H
 
 
+#include "global.h"
 #include "slice.h"
 #include "mb.h"
 

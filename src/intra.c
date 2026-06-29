@@ -575,6 +575,7 @@ void intra_chroma_pred(Macroblock *mb, CodecContext *ctx) {
         top_samples_cr[0]        = left_samples_cr[0];
     }
 
+
     intra8x8_chroma_table[mb->intra_chroma_pred_mode](
         &cb[mb_y*8*stride + mb_x*8], &cr[mb_y*8*stride + mb_x*8], stride,
         n.a.av, n.b.av,

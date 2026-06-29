@@ -12,7 +12,7 @@ My primary goal is to work up to the full High profile.
 
 ## Performance
 Not great for now.  
-It can reach ~26fps on a single thread on my Intel I5-10300H, on 1080p streams, without dumping the frames. When writing to the output YUV file, it reaches ~22fps.
+It can reach ~26fps on a single thread on my Intel I5-10300H, on 1080p streams, without dumping the frames. When writing to the output YUV file, it reaches ~22fps.  
 Compiler optimizations help a lot : without -O3, it : 
   - runs at ~5fps (feel free to laugh at me)    
   - looks like color planes are corrupted (feel free to laugh at me harder)

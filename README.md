@@ -13,7 +13,9 @@ My primary goal is to work up to the full High profile.
 ## Performance
 Not great for now.  
 It can reach ~26fps on a single thread on my Intel I5-10300H, on 1080p streams, without dumping the frames. When writing to the output YUV file, it reaches ~22fps.
-Compiler optimizations help a lot : without -O3, it runs at ~5fps (feel free to laugh at me)    
+Compiler optimizations help a lot : without -O3, it : 
+  - runs at ~5fps (feel free to laugh at me)    
+  - looks like color planes are corrupted (feel free to laugh at me harder)
 
 I'd like to understand how the GCC managed to achieve that 5 -> 26 jump, but I'd have to learn assembly and that's a different learning path which I will eventually take when this project is finished. 
 

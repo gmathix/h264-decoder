@@ -3,7 +3,11 @@
 A toy H.264 decoder written in C.
 
 ## *** WIP ***
-### I'm actively working on this!
+## Project Philosophy 
+### Skip the shower, ship the decoder. Priorities.
+
+## Current Status
+Actively fighting with B slices
 
 ## Scope
 It can just decode streams that use Baseline profile for now, and just supports 4:2:0 planar input/output.   

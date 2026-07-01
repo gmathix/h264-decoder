@@ -24,10 +24,17 @@ Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx) {
 	p->heightCropY = p->heightY - sh->sps->crop_bottom_offset - sh->sps->crop_top_offset;
 	p->widthCropC  = p->widthCropY / 2;
 	p->heightCropC = p->heightCropY / 2;
-    p->num_mbs  = (int32_t)sh->sps->pic_width_in_mbs * (int32_t)sh->sps->pic_height_in_map_units;
-    p->luma     = calloc(p->widthY * p->heightY, 1);
-    p->cb       = calloc(p->widthY/2 * (p->heightY/2), 1);
-    p->cr       = calloc(p->widthY/2 * (p->heightY/2), 1);
+    p->num_mbs     = (int32_t)sh->sps->pic_width_in_mbs * (int32_t)sh->sps->pic_height_in_map_units;
+
+    p->luma        = calloc(p->widthY * p->heightY, 1);
+    p->cb          = calloc(p->widthY/2 * (p->heightY/2), 1);
+    p->cr          = calloc(p->widthY/2 * (p->heightY/2), 1);
+
+    p->mb_types     = calloc(p->num_mbs, sizeof( int ));
+    p->mvs_l0       = calloc(p->num_mbs, sizeof( MotionVector [16] ));
+    p->mvs_l1       = calloc(p->num_mbs, sizeof( MotionVector [16] ));
+    p->pred_flag_l0 = calloc(p->num_mbs, sizeof( bool [4] ));
+    p->pred_flag_l1 = calloc(p->num_mbs, sizeof( bool [4] ));
 
 
     if (!ctx->mb_metadata_initialized || p->num_mbs != ctx->num_mbs) {
@@ -67,6 +74,13 @@ void picture_free(Picture *p) {
     free(p->cb);
     free(p->cr);
     free(p->sh);
+
+    free(p->mb_types);
+    free(p->mvs_l0);
+    free(p->mvs_l1);
+    free(p->pred_flag_l0);
+    free(p->pred_flag_l1);
+
     free(p);
 }
 

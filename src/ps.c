@@ -103,7 +103,7 @@ int decode_sps(size_t global_bit_offset, CodecContext *ctx) {
         return -1;
     }
 
-    ctx->maxFrameNum = 2 << (sps->log2_max_frame_num_minus4 + 4);
+    ctx->maxFrameNum = 1 << (sps->log2_max_frame_num_minus4 + 4);
 
     sps->poc_type = read_ue(br);
     if (sps->poc_type == 0) {
@@ -234,7 +234,7 @@ int decode_pps(size_t global_bit_offset, CodecContext *ctx) {
     pps->cabac_flag = read_u(br, 1);
     if (pps->cabac_flag == 1) {
         printf("CABAC not supported for now, exiting.\n");
-        exit(1);
+        exit(6969);
     }
 
     pps->bottom_field_pic_order_in_frame_present_flag = read_u(br, 1);

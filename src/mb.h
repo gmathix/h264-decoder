@@ -12,6 +12,7 @@
 
 #include "nal.h"
 #include "slice.h"
+#include "tests/profiler.h"
 #include "util/formulas.h"
 #include "util/mbutil.h"
 #include "util/sliceutil.h"
@@ -318,7 +319,7 @@ static ALWAYS_INLINE void reset_mb(Macroblock *mb, int mbAddr, CodecContext *ctx
     mb->mbAddr = mbAddr;
     mb->mb_y   = mbAddr / ctx->ps->sps->pic_width_in_mbs;
     mb->mb_x   = mbAddr % ctx->ps->sps->pic_width_in_mbs;
-    mb->p_pic  = ctx->current_pic;
+    mb->p_pic  = ctx->curr_pic;
 }
 
 

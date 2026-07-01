@@ -18,7 +18,12 @@
 
 
 
-/* macroblock types */
+/* macroblock types
+ * yes this comes from ffmpeg. so what?
+ * in this decoder this is literally the only code that comes from an exterior codebase,
+ * and it's also the less brain-tiring code part to read in this whole project.
+ * <==> i have no qualms
+ */
 #define MB_TYPE_INTRA4x4    (1 <<  0)
 #define MB_TYPE_INTRA8x8    (1 <<  1)
 #define MB_TYPE_INTRA16x16  (1 <<  2)
@@ -52,6 +57,8 @@
 #define SUB_MB_TYPE_4x8     (1 << 24)
 #define SUB_MB_TYPE_4x4     (1 << 25)
 #define SUB_MB_TYPE_DIRECT  (1 << 26)
+
+
 
 
 #define IS_INTRA4x4(a)     ((a) & MB_TYPE_INTRA4x4)
@@ -102,6 +109,7 @@ static char* mb_type_to_string(uint32_t type) {
     if (IS_SKIP       (type))  return "Skip";
     if (IS_INTERLACED (type))  return "Interlaced";
     if (IS_GMC        (type))  return "GMC";
+    if (IS_DIRECT     (type))  return "DIRECT";
     if (IS_16x16      (type))  return "16x16";
     if (IS_16x8       (type))  return "16x8";
     if (IS_8x16       (type))  return "8x16";

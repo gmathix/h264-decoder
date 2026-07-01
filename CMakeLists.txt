@@ -6,7 +6,7 @@ set(CMAKE_C_COMPILER gcc)
 
 
 # debugging
-#
+##
 #add_compile_options(-fsanitize=address)
 #add_link_options(-fsanitize=address)
 ##

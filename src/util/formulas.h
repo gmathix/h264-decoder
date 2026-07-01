@@ -27,6 +27,9 @@ static ALWAYS_INLINE int32_t _ceil(double x)          { return (int32_t)x + (x >
 static ALWAYS_INLINE int32_t _sign(double x)          { return x >= 0 ? 1 : -1; }
 static ALWAYS_INLINE int32_t _round(double x)         { return _sign(x) * _floor(_abs(x) + 0.5); }
 
+static ALWAYS_INLINE int32_t _minPositive(int x, int y) { return (x >= 0 && y >= 0) ? _min(x, y) : _max(x, y); }
+
+
 
 static ALWAYS_INLINE int32_t rshift_min(int32_t n, int16_t qp) {
     return (n + (1 << (-qp-1))) >> (-qp);

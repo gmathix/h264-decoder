@@ -69,8 +69,8 @@ void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int b
         int idx_8x8   = blkIdx8x8   + (i/2)*blkAdd8x8;
         int idx_n_8x8 = blkIdx8x8N  + (i/2)*blkAdd8x8;
 
-        MotionVector mv1 = ctx->mvs_l0[mbAddr][idx];
-        MotionVector mv2 = ctx->mvs_l0[mbAddrN][idx_n];
+        MotionVector mv1 = ctx->curr_pic->mvs_l0[mbAddr][idx];
+        MotionVector mv2 = ctx->curr_pic->mvs_l0[mbAddrN][idx_n];
 
         // idx = map_4x4[idx];
         // idx_n = map_4x4[idx_n];
@@ -104,10 +104,10 @@ void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int b
          *     - both use the same MV and | mv1.x - mv2.x | >= 4
          *                             or | mv1.y - mv2.y | >= 4
          */
-    	int flag0 = ctx->pred_flag_l0[mbAddr][idx_8x8];
-    	int flag1 = ctx->pred_flag_l1[mbAddr][idx_8x8];
-    	int flag0n = ctx->pred_flag_l0[mbAddrN][idx_n_8x8];
-    	int flag1n = ctx->pred_flag_l1[mbAddrN][idx_n_8x8];
+    	int flag0 = ctx->curr_pic->pred_flag_l0[mbAddr][idx_8x8];
+    	int flag1 = ctx->curr_pic->pred_flag_l1[mbAddr][idx_8x8];
+    	int flag0n = ctx->curr_pic->pred_flag_l0[mbAddrN][idx_n_8x8];
+    	int flag1n = ctx->curr_pic->pred_flag_l1[mbAddrN][idx_n_8x8];
         curr_bS += ((curr_bS == 0) &&
         	((mv1.ref_idx != mv2.ref_idx) ||
             ((flag0 + flag1) != (flag0n + flag1n)) ||

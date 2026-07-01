@@ -52,7 +52,7 @@ void bitreader_skip_bits(BitReader *br, uint32_t n) {
     if (n > remaining) {
         // printf("%lu\n", remaining);
         printf("bitreader overflow: requested %u, remaining %u\n", n, remaining);
-        exit(1);
+        exit(42);
     }
 
     size_t totalBits = br->byte_pos * 8 + br->bit_pos + n;

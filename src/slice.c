@@ -35,8 +35,8 @@ void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
     if (slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs ||
         slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs+1) { // end of picture
 
-        deblock_picture(ctx->current_pic, ctx);
-        store_picture(ctx->dpb, ctx->current_pic);
+        deblock_picture(ctx->curr_pic, ctx);
+        store_picture(ctx->dpb, ctx->curr_pic);
 
         // picture_free(ctx->current_pic);
     }
@@ -58,7 +58,7 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
 
     SliceHeader *sh = calloc(1, sizeof(SliceHeader));
 
-
+    sh->ref_pic_list_modif_occured = false;
     sh->first_mb   = read_ue(br);
     sh->slice_type = read_ue(br);
     sh->pps_id     = read_ue(br);
@@ -227,10 +227,12 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
 
 
     if (currMbAddr == 0) {
-        ctx->current_pic = picture_alloc(sh, ctx);
-        ctx->current_pic->sh = sh;
-        ctx->current_pic->nal_ref_idc = nal_unit->ref_idc;
-        ctx->current_slice->p_pic = ctx->current_pic;
+        ctx->curr_pic = picture_alloc(sh, ctx);
+        ctx->curr_pic->sh = sh;
+        ctx->curr_pic->nal_ref_idc = nal_unit->ref_idc;
+        ctx->current_slice->p_pic = ctx->curr_pic;
+        derive_poc(ctx->dpb, ctx->curr_pic);
+        printf(" POC : %d\n", ctx->curr_pic->poc);
 
         if (IS_I_SLICE(sh->slice_type)) {
             ctx->current_slice->decode_macroblock = &decode_i_macroblock;
@@ -248,6 +250,9 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
 
                 prevMbSkipped = mb_skip_run > 0;
 
+                // if (ctx->prf->total_frames == 16 && mb_skip_run > 0) {
+                //     printf("skip %d mbs\n", mb_skip_run);
+                // }
 
                 // decode skipped macroblocks
                 for (int i = currMbAddr; i < currMbAddr + mb_skip_run; i++) {
@@ -283,7 +288,7 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
                 ctx->current_slice->num_mbs += mb_skip_run;
 
                 if (mb_skip_run > 0) {
-                    moreDataFlag = more_rbsp_data(br);
+                    moreDataFlag = more_rbsp_data(br) && currMbAddr < ctx->num_mbs;
                 }
             } else {
                 /* read with CABAC */
@@ -318,7 +323,11 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
 
         if (moreDataFlag) {
             currMbAddr++;
-            ctx->current_slice->num_mbs = currMbAddr + 1;
+            if (currMbAddr >= ctx->num_mbs) {
+                moreDataFlag = false;
+            } else {
+                ctx->current_slice->num_mbs = currMbAddr + 1;
+            }
         }
     } while (moreDataFlag);
 }

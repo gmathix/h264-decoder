@@ -785,16 +785,16 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
         for (int part = 0; part < 4; part++) {
             for (int subPart = 0; subPart < 4; subPart++) {
-                int idx = part/2*8 + (part%2)*2  +  subPart/2*4 + subPart%2;
+                int idx = map_4x4[part * 4 + subPart];
                 MotionVector *mv = &ctx->curr_pic->mvs_l0[mb->mbAddr][idx];
-                inter_pred(mb, idx, mv, ctx);
+                inter_pred_single(mb, idx, mv, true, ctx);
             }
         }
 
-        for (int i = 0; i < 16; i++) {
+        for (int i = 0; i < 16; i++) { // loop over 2x2 chroma blocks
             int y = (i >> 2) << 1;
             int x = (i &  3) << 1;
-            inter_pred_chroma(mb, y, x, &ctx->curr_pic->mvs_l0[mb->mbAddr][i], ctx);
+            inter_pred_chroma_single(mb, y, x, &ctx->curr_pic->mvs_l0[mb->mbAddr][i], true, ctx);
         }
 
         if (!IS_SKIP(mb->mb_type)) {
@@ -833,6 +833,43 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
             if (mb->mb_type & MB_TYPE_P1L1) derive_8x16_part_mv(mb, 1, false, ctx);
         } else if (IS_8x8(mb->mb_type)) {
             derive_8x8_mv(mb, ctx);
+        }
+
+        /* luma inter pred */
+        for (int part = 0; part < 4; part++) {
+            for (int subPart = 0; subPart < 4; subPart++) {
+                int idx = map_4x4[part * 4 + subPart];
+                bool l0 = ctx->curr_pic->pred_flag_l0[mb->mbAddr][part];
+                bool l1 = ctx->curr_pic->pred_flag_l1[mb->mbAddr][part];
+                if (l0 + l1 == 1) {
+                    MotionVector *mv = l0 ? &ctx->curr_pic->mvs_l0[mb->mbAddr][idx] : &ctx->curr_pic->mvs_l1[mb->mbAddr][idx];
+                    inter_pred_single(mb, idx, mv, l0, ctx);
+                } else if (l0 + l1 == 2) {
+                    MotionVector *mvL0 = &ctx->curr_pic->mvs_l0[mb->mbAddr][idx];
+                    MotionVector *mvL1 = &ctx->curr_pic->mvs_l1[mb->mbAddr][idx];
+                    inter_pred_bi(mb, idx, mvL0, mvL1, ctx);
+                }
+            }
+        }
+
+        /* chroma inter pred */
+        for (int i = 0; i < 16; i++) { // loop over 2x2 chroma blocks
+            int y = (i >> 2) << 1;
+            int x = (i &  3) << 1;
+
+            int part = map_4x4[i] / 4;
+
+            bool l0 = ctx->curr_pic->pred_flag_l0[mb->mbAddr][part];
+            bool l1 = ctx->curr_pic->pred_flag_l1[mb->mbAddr][part];
+
+            if (l0 + l1 == 1) {
+                MotionVector *mv = l0 ? &ctx->curr_pic->mvs_l0[mb->mbAddr][i] : &ctx->curr_pic->mvs_l1[mb->mbAddr][i];
+                inter_pred_chroma_single(mb, y, x, mv, l0, ctx);
+            } else if (l0 + l1 == 2) {
+                MotionVector *mvL0 = &ctx->curr_pic->mvs_l0[mb->mbAddr][i];
+                MotionVector *mvL1 = &ctx->curr_pic->mvs_l1[mb->mbAddr][i];
+                inter_pred_chroma_bi(mb, y, x, mvL0, mvL1, ctx);
+            }
         }
 
         if (!IS_SKIP(mb->mb_type)) {

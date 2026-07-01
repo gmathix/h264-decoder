@@ -115,8 +115,8 @@ static ALWAYS_INLINE void derive_16x8_part_mv(Macroblock *mb, int partIdx, bool 
 
 
     if (partIdx == 0) {
-        MotionVector mvB = mvList[mb->mbAddr + n1.b.mb_off][n1.b.idx];
-        if (n1.b.av && mvB.ref_idx == mv1.ref_idx) {
+        if (n1.b.av && mvList[mb->mbAddr + n1.b.mb_off][n1.b.idx].ref_idx == mv1.ref_idx) {
+            MotionVector mvB = mvList[mb->mbAddr + n1.b.mb_off][n1.b.idx];
             mv1.x = mvB.x;
             mv1.y = mvB.y;
         } else {
@@ -130,8 +130,8 @@ static ALWAYS_INLINE void derive_16x8_part_mv(Macroblock *mb, int partIdx, bool 
         memset(&predFlagList[mb->mbAddr][0], 1, 2);
     }
     else {
-        MotionVector mvA = mvList[mb->mbAddr + n2.a.mb_off][n2.a.idx];
-        if (n2.a.av && mvA.ref_idx == mv2.ref_idx) {
+        if (n2.a.av && mvList[mb->mbAddr + n2.a.mb_off][n2.a.idx].ref_idx == mv2.ref_idx) {
+            MotionVector mvA = mvList[mb->mbAddr + n2.a.mb_off][n2.a.idx];
             mv2.x = mvA.x;
             mv2.y = mvA.y;
         } else {
@@ -168,8 +168,8 @@ static ALWAYS_INLINE void derive_8x16_part_mv(Macroblock *mb, int partIdx, bool 
 
 
     if (partIdx == 0) {
-        MotionVector mvA = mvList[mb->mbAddr + a.mb_off][a.idx];
-        if (a.av && mvA.ref_idx == mv1.ref_idx) {
+        if (a.av && mvList[mb->mbAddr + a.mb_off][a.idx].ref_idx == mv1.ref_idx) {
+            MotionVector mvA = mvList[mb->mbAddr + a.mb_off][a.idx];
             mv1.x = mvA.x;
             mv1.y = mvA.y;
         } else {
@@ -185,8 +185,8 @@ static ALWAYS_INLINE void derive_8x16_part_mv(Macroblock *mb, int partIdx, bool 
         predFlagList[mb->mbAddr][2] = 1;
     }
     else {
-        MotionVector mvC = mvList[mb->mbAddr + c.mb_off][c.idx];
-        if (c.av && mvC.ref_idx == mv2.ref_idx) {
+        if (c.av && mvList[mb->mbAddr + c.mb_off][c.idx].ref_idx == mv2.ref_idx) {
+            MotionVector mvC = mvList[mb->mbAddr + c.mb_off][c.idx];
             mv2.x = mvC.x;
             mv2.y = mvC.y;
         } else {

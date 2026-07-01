@@ -14,11 +14,6 @@
 typedef struct Picture {
     int nal_ref_idc;
 
-    /* needed for the DPB */
-    bool is_idr;
-    bool long_term_ref;
-    bool num_ref_idx_active_override;
-    bool adaptive_ref_pic_marking_mode;
 
     int  frame_num_offset;
     int  frame_num_wrap;
@@ -76,6 +71,8 @@ typedef struct Slice {
 
     int picNumL0Pred;
     int picNumL1Pred;
+    bool rplm_occured_l0;
+    bool rplm_occured_l1;
 } Slice ;
 
 

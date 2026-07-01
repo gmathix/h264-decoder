@@ -123,6 +123,17 @@ static Picture *findPic(DPB *dpb, PictureField fieldGetter, int fieldValue) {
     return NULL;
 }
 
+static Picture *findRefPic(DPB *dpb, PictureField fieldGetter, int fieldValue) {
+    for (int i = 0; i < dpb->size; i++) {
+        Picture *pic = dpb->slots[i];
+        if (pic == NULL) continue;
+        if ((fieldGetter)(pic) == fieldValue && pic->dpb_status != UNUSED_REF) {
+            return pic;
+        }
+    }
+    return NULL;
+}
+
 
 static DPB *make_dbp(CodecContext *ctx) {
     DPB *dpb = calloc(1, sizeof(DPB));
@@ -144,7 +155,7 @@ static DPB *make_dbp(CodecContext *ctx) {
 
 static inline int picNum(DPB *dpb, Picture **lX, int idx, int maxPicNum) {
     if (lX[idx] != NULL && lX[idx]->dpb_status == SHORT_TERM_REF)
-        return lX[idx]->frame_num;
+        return lX[idx]->pic_num;
     return maxPicNum;
 }
 

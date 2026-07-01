@@ -10,12 +10,7 @@
 Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx) {
     Picture *p  = calloc(1, sizeof(Picture));
 
-    p->is_idr                      = sh->idr_pic_flag;
-    p->long_term_ref               = sh->long_term_reference_flag;
-    p->num_ref_idx_active_override = sh->num_ref_idx_active_override_flag;
-    p->frame_num                   = sh->frame_num;
-
-
+    p->frame_num   = sh->frame_num;
 	p->widthY      = sh->sps->pic_width_samples_l;
 	p->heightY     = sh->sps->pic_height_samples_l;
 	p->widthC      = p->widthY / 2;
@@ -61,6 +56,8 @@ void slice_reset(Slice *slice) {
     slice->num_mbs = 0;
     slice->p_pic = NULL;
     slice->sh = NULL;
+    slice->rplm_occured_l0 = false;
+    slice->rplm_occured_l1 = false;
 }
 
 void picture_reset(Picture *p) {
@@ -94,12 +91,12 @@ void dump_picture(Picture *p, CodecContext *ctx) {
         fwrite(&p->luma[i*p->widthY + left],   1, p->widthCropY, ctx->out_file);
     }
 
-    if (!ctx->dump_monochrome) {
-        for (int i = top/2; i < p->heightC - bottom/2; i++) {
-            fwrite(&p->cb[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
-        }
-        for (int i = top/2; i < p->heightC - bottom/2; i++) {
-            fwrite(&p->cr[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
-        }
-    }
+    // if (!ctx->dump_monochrome) {
+    //     for (int i = top/2; i < p->heightC - bottom/2; i++) {
+    //         fwrite(&p->cb[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
+    //     }
+    //     for (int i = top/2; i < p->heightC - bottom/2; i++) {
+    //         fwrite(&p->cr[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
+    //     }
+    // }
 }

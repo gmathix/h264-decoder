@@ -18,8 +18,6 @@ typedef struct SliceHeader {
     /* position of the MMCO syntax structure in the slice NAL */
     size_t mmco_position_bits; // byte_pos*8 + bit_pos
 
-    bool ref_pic_list_modif_occured;
-    int  prev_picNumLXNoWrap;
 
     uint32_t disable_deblocking_filter_idc;
     uint32_t first_mb;

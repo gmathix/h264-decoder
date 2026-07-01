@@ -26,8 +26,6 @@ void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
 
     SliceHeader *sh = read_slice_header(nal_unit, ctx);
 
-
-
     decode_slice_data(sh, nal_unit, ctx);
 
     Slice *slice = ctx->current_slice;
@@ -45,7 +43,7 @@ void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
     profiler_end_frame(ctx->prf);
 
     printf("done slice %lu %s(frame_num %d)\n\n",
-        ctx->prf->total_frames-1, slice->p_pic->is_idr ? "(IDR) " : "", sh->frame_num);
+        ctx->prf->total_frames-1, slice->p_pic->sh->idr_pic_flag ? "(IDR) " : "", sh->frame_num);
 }
 
 /* 7.3.3 */
@@ -58,7 +56,6 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
 
     SliceHeader *sh = calloc(1, sizeof(SliceHeader));
 
-    sh->ref_pic_list_modif_occured = false;
     sh->first_mb   = read_ue(br);
     sh->slice_type = read_ue(br);
     sh->pps_id     = read_ue(br);
@@ -84,6 +81,7 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
 
 
 
+
     // skip color_plane_id for now
     sh->frame_num = read_u(br, (int32_t)(sps->log2_max_frame_num));
 
@@ -92,6 +90,8 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
     ctx->current_slice->sh = sh;
     ctx->current_slice->picNumL0Pred = sh->frame_num;
     ctx->current_slice->picNumL1Pred = sh->frame_num;
+
+
 
 
     if (!sps->frame_mbs_only_flag) {
@@ -125,9 +125,30 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
     }
 
 
+    /* initialize current picture */
+    if (sh->first_mb == 0) {
+        ctx->curr_pic = picture_alloc(sh, ctx);
+        ctx->curr_pic->sh = sh;
+        ctx->curr_pic->nal_ref_idc = nal_unit->ref_idc;
+        ctx->current_slice->p_pic = ctx->curr_pic;
+        ctx->curr_pic->pic_num = sh->frame_num;
+        derive_poc(ctx->dpb, ctx->curr_pic);
+        printf(" POC : %d\n", ctx->curr_pic->poc);
+
+        if (IS_I_SLICE(sh->slice_type)) {
+            ctx->current_slice->decode_macroblock = &decode_i_macroblock;
+        } else if (IS_P_SLICE(sh->slice_type)) {
+            ctx->current_slice->decode_macroblock = &decode_p_macroblock;
+        } else if (IS_B_SLICE(sh->slice_type)) {
+            ctx->current_slice->decode_macroblock = &decode_b_macroblock;
+        }
+    }
+
+
     // init l0 and l1
     if (IS_P_SLICE(sh->slice_type) || IS_B_SLICE(sh->slice_type)) {
         init_ref_pic_lists(ctx->dpb, sh);
+
     }
 
 
@@ -147,7 +168,6 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
             sh->num_ref_idx_l1_active_minus1 = pps->num_ref_idx_l1_default_active_minus1;
         }
     }
-
 
 
 
@@ -226,22 +246,6 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
     int prevMbSkipped = 0;
 
 
-    if (currMbAddr == 0) {
-        ctx->curr_pic = picture_alloc(sh, ctx);
-        ctx->curr_pic->sh = sh;
-        ctx->curr_pic->nal_ref_idc = nal_unit->ref_idc;
-        ctx->current_slice->p_pic = ctx->curr_pic;
-        derive_poc(ctx->dpb, ctx->curr_pic);
-        printf(" POC : %d\n", ctx->curr_pic->poc);
-
-        if (IS_I_SLICE(sh->slice_type)) {
-            ctx->current_slice->decode_macroblock = &decode_i_macroblock;
-        } else if (IS_P_SLICE(sh->slice_type)) {
-            ctx->current_slice->decode_macroblock = &decode_p_macroblock;
-        } else if (IS_B_SLICE(sh->slice_type)) {
-            ctx->current_slice->decode_macroblock = &decode_b_macroblock;
-        }
-    }
 
     do {
         if (!IS_I_SLICE(sh->slice_type) && !IS_SI_SLICE(sh->slice_type)) {

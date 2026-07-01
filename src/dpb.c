@@ -193,15 +193,8 @@ void store_picture(DPB *dpb, Picture *pic) {
     }
 
 
-    if (pic->dpb_status != LONG_TERM_REF) {
-        if (dpb->prevPic != NULL && !pic->sh->idr_pic_flag) {
-            if (pic->frame_num != dpb->prevPic->frame_num) {
-                pic->dpb_status = SHORT_TERM_REF;
-            }
-        } else {
-            pic->dpb_status = SHORT_TERM_REF;
-        }
-
+    if (pic->dpb_status != LONG_TERM_REF && pic->nal_ref_idc != 0) {
+        pic->dpb_status = SHORT_TERM_REF;
     }
 
 

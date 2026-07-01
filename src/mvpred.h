@@ -407,8 +407,6 @@ static ALWAYS_INLINE void derive_temporal_direct_mv(Macroblock *mb, int partIdx,
     MotionVector mvL1 = {0, 0, 0};
 
 
-
-
     int8_t refIdxL0 = 0;
     int8_t refIdxL1 = 0;
 
@@ -416,14 +414,14 @@ static ALWAYS_INLINE void derive_temporal_direct_mv(Macroblock *mb, int partIdx,
     Picture *pic1 = ctx->dpb->l1[0];
 
 
+    // part8x8 = 1 : do once for the current 8x8 partition
+    // part8x8 = 0 : do for the whole macroblock (4 partitions)
+    // if this was not clear, email at smegmuscarlsen@gmail.com
 
+    for (int part = 0; part < 4; part++) {
+        if (part8x8 && part != partIdx) continue;
 
-#define LOOP_PARTS for (int partIdx = 0; partIdx < 4; partIdx++)
-    if (!part8x8) LOOP_PARTS // !part8x8 = do that for the whole MB
-                             // yeah I know that doesn't look very good
-    {
-
-        /// FIXME when direct_8x8_inference_flag is 1, there is actually just one MV per 8x8 partition so the loop is useless in that case
+        /// FIXME when direct_8x8_inference_flag is 1, there is actually just one MV per 8x8 partition so the subpart loop would be useless
         for (int subPart = 0; subPart < 4; subPart++) {
 
             MotionVector mvCol = get_colocated_mv(mb, partIdx, subPart, ctx);

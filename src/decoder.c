@@ -19,11 +19,14 @@
 
 int debugging = 0;
 int frame_debug = -1;
+int frame_num_debug = -1;
+int poc_debug = -1;
 int mb_debug = -1;
-int nb_frames_before_stop = 1000;
+int nb_frames_before_stop = -1;
 
 
 CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome) {
+
     if (data == NULL) return NULL;
 
     CodecContext *ctx = calloc(1, sizeof(CodecContext));

@@ -15,13 +15,16 @@
 
 
 
-
+void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1, CodecContext *ctx);
 
 void inter_pred_single(Macroblock *mb, int idx, MotionVector *mv, bool l0, CodecContext *ctx);
 void inter_pred_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVector *mvL1, CodecContext *ctx);
+void inter_pred_chroma_single(Macroblock *mb, int idx, MotionVector *mv, bool l0, CodecContext *ctx);
+void inter_pred_chroma_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVector *mvL1, CodecContext *ctx);
 
-void inter_pred_chroma_single(Macroblock *mb, int y, int x, MotionVector *mv, bool l0, CodecContext *ctx);
-void inter_pred_chroma_bi(Macroblock *mb, int y, int x, MotionVector *mvL0, MotionVector *mvL1, CodecContext *ctx);
+void weight_pred_single(Macroblock *mb, int idx, bool l0, CodecContext *ctx);
+void weight_pred_bi(Macroblock *mb, int idx, CodecContext *ctx);
+
 
 
 static ALWAYS_INLINE void fetch_ref_mb(Macroblock *mb, int refIdx, CodecContext *ctx) {

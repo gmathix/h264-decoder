@@ -118,9 +118,6 @@ int decode_sps(size_t global_bit_offset, CodecContext *ctx) {
         for (int i = 0; i < sps->num_ref_frames_in_poc_cycle; i++) {
             sps->offset_for_ref_frame[i] = read_se(br);
         }
-        /// TODO: use cycles
-        printf("poc type not supported : %d\n", sps->poc_type);
-        return -1;
     } else if (sps->poc_type != 2) {
         printf("invalid poc type : %d", sps->poc_type);
         return -1;
@@ -141,6 +138,9 @@ int decode_sps(size_t global_bit_offset, CodecContext *ctx) {
     sps->frame_mbs_only_flag = read_u(br, 1);
     if (!sps->frame_mbs_only_flag) {
         sps->mb_aff_flag = read_u(br, 1);
+
+        fprintf(stderr, "field coding not supported, exiting.\n");
+        exit(67);
     }
 
 

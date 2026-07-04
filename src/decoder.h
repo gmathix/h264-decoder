@@ -9,6 +9,7 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "common.h"
 #include "mv.h"
 
 
@@ -48,6 +49,24 @@ typedef struct CodecContext {
     uint8_t (*luma_total_coeffs)   [16];
     uint8_t (*cb_total_coeffs)     [16];
     uint8_t (*cr_total_coeffs)     [16];
+
+
+
+    /* weighted prediction variables */
+    bool wpred_active;; // implicitMode == 1 || explicitMode == 1
+    int logWD[3], w0[3], w1[3], o0[3], o1[3];
+    unsigned luma_log2_weight_denom;
+    unsigned chroma_log2_weight_denom;
+    int luma_weight_l0[MAX_NUM_REF_PICTURES];
+    int luma_weight_l1[MAX_NUM_REF_PICTURES];
+    int luma_offset_l0[MAX_NUM_REF_PICTURES];
+    int luma_offset_l1[MAX_NUM_REF_PICTURES];
+    int chroma_weight_l0[MAX_NUM_REF_PICTURES][2];
+    int chroma_weight_l1[MAX_NUM_REF_PICTURES][2];
+    int chroma_offset_l0[MAX_NUM_REF_PICTURES][2];
+    int chroma_offset_l1[MAX_NUM_REF_PICTURES][2];
+
+
 
 
 

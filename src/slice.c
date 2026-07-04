@@ -280,6 +280,7 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
                     meta->cbp_luma   = 0;
                     meta->cbp_chroma = 0;
                     meta->t_8x8_flag = 0;
+                    ctx->curr_pic->mb_types[mb->mbAddr] = mb->mb_type;
 
 
 
@@ -348,32 +349,35 @@ void pred_weight_table(uint8_t type, SliceHeader *sh, CodecContext *ctx) {
     PPS *pps = sh->pps;
 
 
-    uint32_t luma_log2_weight_denom = read_ue(br);
+    ctx->luma_log2_weight_denom = read_ue(br);
     if (sps->chroma_format_idc != 0) {
-        uint32_t chroma_log2_weight_denom = read_ue(br);
+        ctx->chroma_log2_weight_denom = read_ue(br);
     }
 
     int luma_weight_l0_flag;
-    int32_t luma_weight_l0[sh->num_ref_idx_l0_active_minus1+1];
-    int32_t luma_offset_l0[sh->num_ref_idx_l0_active_minus1+1];
-
     int chroma_weight_l0_flag;
-    int32_t chroma_weight_l0[sh->num_ref_idx_l0_active_minus1+1][2];
-    int32_t chroma_offset_l0[sh->num_ref_idx_l0_active_minus1+1][2];
 
     for (int i = 0; i < sh->num_ref_idx_l0_active_minus1+1; i++) {
         luma_weight_l0_flag = read_u(br, 1);
         if (luma_weight_l0_flag) {
-            luma_weight_l0[i] = read_se(br);
-            luma_offset_l0[i] = read_se(br);
+            ctx->luma_weight_l0[i] = read_se(br);
+            ctx->luma_offset_l0[i] = read_se(br);
+        } else {
+            ctx->luma_weight_l0[i] = 1 << ctx->luma_log2_weight_denom;
+            ctx->luma_offset_l0[i] = 0;
         }
 
         if (sps->chroma_format_idc != 0) {
             chroma_weight_l0_flag = read_u(br, 1);
             if (chroma_weight_l0_flag) {
                 for (int j = 0; j < 2; j++) {
-                    chroma_weight_l0[i][j] = read_se(br);
-                    chroma_offset_l0[i][j] = read_se(br);
+                    ctx->chroma_weight_l0[i][j] = read_se(br);
+                    ctx->chroma_offset_l0[i][j] = read_se(br);
+                }
+            } else {
+                for (int j = 0; j < 2; j++) {
+                    ctx->chroma_weight_l0[i][j] = 1 << ctx->chroma_log2_weight_denom;
+                    ctx->chroma_offset_l0[i][j] = 0;
                 }
             }
         }
@@ -381,27 +385,30 @@ void pred_weight_table(uint8_t type, SliceHeader *sh, CodecContext *ctx) {
 
 
     int luma_weight_l1_flag;
-    int32_t luma_weight_l1[sh->num_ref_idx_l1_active_minus1+1];
-    int32_t luma_offset_l1[sh->num_ref_idx_l1_active_minus1+1];
-
     int chroma_weight_l1_flag;
-    int32_t chroma_weight_l1[sh->num_ref_idx_l1_active_minus1+1][2];
-    int32_t chroma_offset_l1[sh->num_ref_idx_l1_active_minus1+1][2];
 
     if (type%5 == 1) {
         for (int i = 0; i < sh->num_ref_idx_l1_active_minus1+1; i++) {
             luma_weight_l1_flag = read_u(br, 1);
             if (luma_weight_l1_flag) {
-                luma_weight_l1[i] = read_se(br);
-                luma_offset_l1[i] = read_se(br);
+                ctx->luma_weight_l1[i] = read_se(br);
+                ctx->luma_offset_l1[i] = read_se(br);
+            } else {
+                ctx->luma_weight_l1[i] = 1 << ctx->luma_log2_weight_denom;
+                ctx->luma_offset_l1[i] = 0;
             }
 
             if (sps->chroma_format_idc != 0) {
                 chroma_weight_l1_flag = read_u(br, 1);
                 if (chroma_weight_l1_flag) {
                     for (int j = 0; j < 2; j++) {
-                        chroma_weight_l1[i][j] = read_se(br);
-                        chroma_offset_l1[i][j] = read_se(br);
+                        ctx->chroma_weight_l1[i][j] = read_se(br);
+                        ctx->chroma_offset_l1[i][j] = read_se(br);
+                    }
+                } else {
+                    for (int j = 0; j < 2; j++) {
+                        ctx->chroma_weight_l1[i][j] = 1 << ctx->chroma_log2_weight_denom;
+                        ctx->chroma_offset_l1[i][j] = 0;
                     }
                 }
             }

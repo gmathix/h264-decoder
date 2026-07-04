@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 
 #include "inter.h"
@@ -300,6 +301,7 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
 
 
     ctx->mb_metadata[mb->mbAddr].mb_type = mb->mb_type;
+    ctx->curr_pic->mb_types[mb->mbAddr] = mb->mb_type;
     int type = mb->mb_type;
 
     if (intra_mb) mb->pred_mode = i_mb_type_info[mb_type].pred_mode;
@@ -391,7 +393,6 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
             mb->QPY = mb->mbAddr == 0
                 ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + mb->mb_qp_delta + 52) % 52)
                 : _clip3(0, 51, (ctx->prevMb->QPY + mb->mb_qp_delta + 52) % 52);
-
 
 
             int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
@@ -748,14 +749,25 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
 void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
-    if (mb->mbAddr == mb_debug && ctx->prf->total_frames == frame_debug) {
+    if (mb->mbAddr == mb_debug && ctx->curr_pic->poc == poc_debug && ctx->curr_pic->frame_num == frame_num_debug) {
         debugging = true;
     } else {
         debugging = false;
     }
     if (debugging) {
-        printf("DEBUGGING: mb %d (x:%d y:%d) type %d (%s) \n",
-            mb->mbAddr, mb->mb_x, mb->mb_y, mb->mb_type, mb_type_to_string(mb->mb_type));
+        fprintf(stderr, "DEBUGGING: mb %d (x:%d y:%d) type %d (%s) qp:%d ",
+            mb->mbAddr, mb->mb_x, mb->mb_y, mb->mb_type, mb_type_to_string(mb->mb_type), mb->QPY);
+        if (mb->mb_type & MB_TYPE_P0L0) fprintf(stderr, " L0 ");
+        if (mb->mb_type & MB_TYPE_P0L1) fprintf(stderr, " L1 ");
+        fprintf(stderr, "\n");
+        for (int i = 0; i < 32; i++) {
+            fprintf(stderr, "%d ", *(&mb->u.pb.mvd_l0[0][0][0] + i));
+        }
+        fprintf(stderr, "\n");
+        for (int i = 0; i < 32; i++) {
+            fprintf(stderr, "%d ", *(&mb->u.pb.mvd_l1[0][0][0] + i));
+        }
+        fprintf(stderr, "\n");
     }
 
 
@@ -783,19 +795,23 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
             }
         }
 
+
+
+        if (debugging) {
+            fprintf(stderr, "%s\n", slice->sh->pps->weighted_pred_flag ? "weighted" : "not weighted");
+        }
         for (int part = 0; part < 4; part++) {
             for (int subPart = 0; subPart < 4; subPart++) {
                 int idx = map_4x4[part * 4 + subPart];
                 MotionVector *mv = &ctx->curr_pic->mvs_l0[mb->mbAddr][idx];
+
+                derive_pred_weights(mv->ref_idx, 0, true, false, ctx);
+
                 inter_pred_single(mb, idx, mv, true, ctx);
+                inter_pred_chroma_single(mb, idx, mv, true, ctx);
             }
         }
 
-        for (int i = 0; i < 16; i++) { // loop over 2x2 chroma blocks
-            int y = (i >> 2) << 1;
-            int x = (i &  3) << 1;
-            inter_pred_chroma_single(mb, y, x, &ctx->curr_pic->mvs_l0[mb->mbAddr][i], true, ctx);
-        }
 
         if (!IS_SKIP(mb->mb_type)) {
             for (int i = 0; i < 16; i++) {
@@ -808,8 +824,26 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
 
 void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
-    memset(&ctx->curr_pic->mvs_l0[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
-    memset(&ctx->curr_pic->mvs_l1[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
+
+    if (mb->mbAddr == mb_debug && ctx->curr_pic->poc == poc_debug && ctx->curr_pic->frame_num == frame_num_debug) {
+        debugging = true;
+    } else {
+        debugging = false;
+    }
+    if (debugging) {
+        fprintf(stderr, "DEBUGGING: mb %d (x:%d y:%d) type %d (%s) qp:%d ",
+            mb->mbAddr, mb->mb_x, mb->mb_y, mb->mb_type, mb_type_to_string(mb->mb_type), mb->QPY);
+        if (mb->mb_type & MB_TYPE_P0L0) fprintf(stderr, " L0 ");
+        if (mb->mb_type & MB_TYPE_P0L1) fprintf(stderr, " L1 ");
+        fprintf(stderr, "\n");
+        sleep(1);
+    }
+
+
+    for (int i = 0; i < 16; i++) {
+        ctx->curr_pic->mvs_l0[mb->mbAddr][i] = (MotionVector) {-1, 0, 0};
+        ctx->curr_pic->mvs_l1[mb->mbAddr][i] = (MotionVector) {-1, 0, 0};
+    }
     memset(&ctx->curr_pic->pred_flag_l0[mb->mbAddr][0], 0, 4);
     memset(&ctx->curr_pic->pred_flag_l1[mb->mbAddr][0], 0, 4);
 
@@ -817,7 +851,7 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
         decode_i_macroblock(mb, slice, ctx);
     } else {
         if (IS_SKIP(mb->mb_type) || IS_DIRECT(mb->mb_type)) {
-            derive_direct_mv(mb, 0, false, ctx);
+            for (int part = 0; part < 4; part++) derive_direct_mv(mb, part, true, ctx);
         } else if (IS_16x16(mb->mb_type)) {
             if (mb->mb_type & MB_TYPE_P0L0) derive_16x16_mv(mb, true, ctx);
             if (mb->mb_type & MB_TYPE_P0L1) derive_16x16_mv(mb, false, ctx);
@@ -835,42 +869,42 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
             derive_8x8_mv(mb, ctx);
         }
 
+
         /* luma inter pred */
         for (int part = 0; part < 4; part++) {
+            bool l0 = ctx->curr_pic->pred_flag_l0[mb->mbAddr][part];
+            bool l1 = ctx->curr_pic->pred_flag_l1[mb->mbAddr][part];
+
+            int subType = mb->u.pb.sub_mb_info[part].type;
+            if (debugging) {
+                fprintf(stderr, "sub part %d : type %s ", part, sub_mb_type_to_string(subType));
+                if (subType & MB_TYPE_P0L0) fprintf(stderr, "L0 ");
+                if (subType & MB_TYPE_P0L1) fprintf(stderr, "L1 ");
+                fprintf(stderr, "\n");
+            }
+
             for (int subPart = 0; subPart < 4; subPart++) {
                 int idx = map_4x4[part * 4 + subPart];
-                bool l0 = ctx->curr_pic->pred_flag_l0[mb->mbAddr][part];
-                bool l1 = ctx->curr_pic->pred_flag_l1[mb->mbAddr][part];
+
                 if (l0 + l1 == 1) {
                     MotionVector *mv = l0 ? &ctx->curr_pic->mvs_l0[mb->mbAddr][idx] : &ctx->curr_pic->mvs_l1[mb->mbAddr][idx];
+
+                    derive_pred_weights(mv->ref_idx, mv->ref_idx, l0, l1, ctx);
+
                     inter_pred_single(mb, idx, mv, l0, ctx);
+                    inter_pred_chroma_single(mb, idx,  mv, l0, ctx);
                 } else if (l0 + l1 == 2) {
                     MotionVector *mvL0 = &ctx->curr_pic->mvs_l0[mb->mbAddr][idx];
                     MotionVector *mvL1 = &ctx->curr_pic->mvs_l1[mb->mbAddr][idx];
+
+                    derive_pred_weights(mvL0->ref_idx, mvL1->ref_idx, true, true, ctx);
+
                     inter_pred_bi(mb, idx, mvL0, mvL1, ctx);
+                    inter_pred_chroma_bi(mb, idx, mvL0, mvL1, ctx);
                 }
             }
         }
 
-        /* chroma inter pred */
-        for (int i = 0; i < 16; i++) { // loop over 2x2 chroma blocks
-            int y = (i >> 2) << 1;
-            int x = (i &  3) << 1;
-
-            int part = map_4x4[i] / 4;
-
-            bool l0 = ctx->curr_pic->pred_flag_l0[mb->mbAddr][part];
-            bool l1 = ctx->curr_pic->pred_flag_l1[mb->mbAddr][part];
-
-            if (l0 + l1 == 1) {
-                MotionVector *mv = l0 ? &ctx->curr_pic->mvs_l0[mb->mbAddr][i] : &ctx->curr_pic->mvs_l1[mb->mbAddr][i];
-                inter_pred_chroma_single(mb, y, x, mv, l0, ctx);
-            } else if (l0 + l1 == 2) {
-                MotionVector *mvL0 = &ctx->curr_pic->mvs_l0[mb->mbAddr][i];
-                MotionVector *mvL1 = &ctx->curr_pic->mvs_l1[mb->mbAddr][i];
-                inter_pred_chroma_bi(mb, y, x, mvL0, mvL1, ctx);
-            }
-        }
 
         if (!IS_SKIP(mb->mb_type)) {
             for (int i = 0; i < 16; i++) {

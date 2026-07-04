@@ -91,12 +91,12 @@ void dump_picture(Picture *p, CodecContext *ctx) {
         fwrite(&p->luma[i*p->widthY + left],   1, p->widthCropY, ctx->out_file);
     }
 
-    // if (!ctx->dump_monochrome) {
-    //     for (int i = top/2; i < p->heightC - bottom/2; i++) {
-    //         fwrite(&p->cb[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
-    //     }
-    //     for (int i = top/2; i < p->heightC - bottom/2; i++) {
-    //         fwrite(&p->cr[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
-    //     }
-    // }
+    if (!ctx->dump_monochrome) {
+        for (int i = top/2; i < p->heightC - bottom/2; i++) {
+            fwrite(&p->cb[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
+        }
+        for (int i = top/2; i < p->heightC - bottom/2; i++) {
+            fwrite(&p->cr[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
+        }
+    }
 }

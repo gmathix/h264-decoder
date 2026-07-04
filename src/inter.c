@@ -101,15 +101,6 @@ void inter_pred_single(Macroblock *mb, int idx, MotionVector *mv, bool l0, Codec
     qpel_funcs[(yFrac<<2) | xFrac] (ctx->ref_samples, dst, stride, ctx->ps->sps->bit_depth_luma_minus8 + 8);
     // qpel_00(ref_samples, dst, stride, ctx->ps->sps->bit_depth_luma_minus8 + 8); // fun testing
 
-    if (debugging && idx == 0) {
-        for (int y = 0; y < 16; y++) {
-            for (int x = 0; x < 16; x++) {
-                fprintf(stderr, "%3d ", refPic->luma[(yBase+yOffInt+y)*refPic->widthY + xBase+xOffInt+x]);
-            }
-            fprintf(stderr, "\n");
-        }
-        fprintf(stderr, "\n");
-    }
 
     if (weighted) {
         int logWD = ctx->logWD[0];

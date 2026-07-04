@@ -312,9 +312,6 @@ static ALWAYS_INLINE MotionVector get_colocated_mv(Macroblock *mb, int partIdx, 
 }
 
 static ALWAYS_INLINE void derive_spatial_direct_mv(Macroblock *mb, int partIdx, bool part8x8, CodecContext *ctx) {
-    if (debugging) {
-        printf("debugging\n");
-    }
     Picture *currPic = ctx->curr_pic;
 
     MotionVector mvL0 = {0, 0, 0};
@@ -324,12 +321,6 @@ static ALWAYS_INLINE void derive_spatial_direct_mv(Macroblock *mb, int partIdx, 
     Neighbor b = derive_b_neighbor_4x4(mb, 0, ctx);
     Neighbor c = derive_c_neighbor_4x4(mb, 3, ctx);
     Neighbor d = derive_d_neighbor_4x4(mb, 0, ctx);
-
-    if (debugging) {
-        printf("a type : %s\n", mb_type_to_string(currPic->mb_types[mb->mbAddr + a.mb_off]));
-        printf("b type : %s\n", mb_type_to_string(currPic->mb_types[mb->mbAddr + b.mb_off]));
-        printf("c type : %s\n", mb_type_to_string(currPic->mb_types[mb->mbAddr + c.mb_off]));
-    }
 
     if (!c.av) {
         c = d;

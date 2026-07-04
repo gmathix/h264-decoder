@@ -754,21 +754,6 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
     } else {
         debugging = false;
     }
-    if (debugging) {
-        fprintf(stderr, "DEBUGGING: mb %d (x:%d y:%d) type %d (%s) qp:%d ",
-            mb->mbAddr, mb->mb_x, mb->mb_y, mb->mb_type, mb_type_to_string(mb->mb_type), mb->QPY);
-        if (mb->mb_type & MB_TYPE_P0L0) fprintf(stderr, " L0 ");
-        if (mb->mb_type & MB_TYPE_P0L1) fprintf(stderr, " L1 ");
-        fprintf(stderr, "\n");
-        for (int i = 0; i < 32; i++) {
-            fprintf(stderr, "%d ", *(&mb->u.pb.mvd_l0[0][0][0] + i));
-        }
-        fprintf(stderr, "\n");
-        for (int i = 0; i < 32; i++) {
-            fprintf(stderr, "%d ", *(&mb->u.pb.mvd_l1[0][0][0] + i));
-        }
-        fprintf(stderr, "\n");
-    }
 
 
 	memset(&ctx->curr_pic->mvs_l0[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
@@ -797,9 +782,6 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
 
 
-        if (debugging) {
-            fprintf(stderr, "%s\n", slice->sh->pps->weighted_pred_flag ? "weighted" : "not weighted");
-        }
         for (int part = 0; part < 4; part++) {
             for (int subPart = 0; subPart < 4; subPart++) {
                 int idx = map_4x4[part * 4 + subPart];
@@ -829,14 +811,6 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
         debugging = true;
     } else {
         debugging = false;
-    }
-    if (debugging) {
-        fprintf(stderr, "DEBUGGING: mb %d (x:%d y:%d) type %d (%s) qp:%d ",
-            mb->mbAddr, mb->mb_x, mb->mb_y, mb->mb_type, mb_type_to_string(mb->mb_type), mb->QPY);
-        if (mb->mb_type & MB_TYPE_P0L0) fprintf(stderr, " L0 ");
-        if (mb->mb_type & MB_TYPE_P0L1) fprintf(stderr, " L1 ");
-        fprintf(stderr, "\n");
-        sleep(1);
     }
 
 
@@ -874,14 +848,6 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
         for (int part = 0; part < 4; part++) {
             bool l0 = ctx->curr_pic->pred_flag_l0[mb->mbAddr][part];
             bool l1 = ctx->curr_pic->pred_flag_l1[mb->mbAddr][part];
-
-            int subType = mb->u.pb.sub_mb_info[part].type;
-            if (debugging) {
-                fprintf(stderr, "sub part %d : type %s ", part, sub_mb_type_to_string(subType));
-                if (subType & MB_TYPE_P0L0) fprintf(stderr, "L0 ");
-                if (subType & MB_TYPE_P0L1) fprintf(stderr, "L1 ");
-                fprintf(stderr, "\n");
-            }
 
             for (int subPart = 0; subPart < 4; subPart++) {
                 int idx = map_4x4[part * 4 + subPart];

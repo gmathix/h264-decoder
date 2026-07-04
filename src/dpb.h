@@ -28,6 +28,7 @@ enum DpbStatus {
 typedef struct DPB {
     int size;
     int fullness;
+    size_t pictures_dumped;
 
     Picture *slots[MAX_DPB_SIZE];
     Picture *l0[MAX_DPB_SIZE+1]; // safety extra slot

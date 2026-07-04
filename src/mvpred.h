@@ -97,8 +97,7 @@ static ALWAYS_INLINE void derive_16x16_mv(Macroblock *mb, bool l0, CodecContext 
                                             (int16_t) (mv.x + mvdList[0][0][0]),
                                             (int16_t) (mv.y + mvdList[0][0][1])};
     }
-    memset(&ctx->curr_pic->pred_flag_l0[mb->mbAddr][0], l0, 4);
-    memset(&ctx->curr_pic->pred_flag_l1[mb->mbAddr][0], !l0, 4);
+    memset(&predFlagList[mb->mbAddr][0], 1, 4);
 }
 
 static ALWAYS_INLINE void derive_16x8_part_mv(Macroblock *mb, int partIdx, bool l0, CodecContext *ctx) {
@@ -302,8 +301,6 @@ static ALWAYS_INLINE MotionVector get_colocated_mv(Macroblock *mb, int partIdx, 
     int mbAddrCol = mb->mbAddr;
     int partIdxCol = partIdx;
     if (!IS_INTRA(refPic->mb_types[mbAddrCol])) {
-        currPic->pred_flag_l0[mb->mbAddr][partIdx] = refPic->pred_flag_l0[mbAddrCol][partIdxCol];
-        currPic->pred_flag_l1[mb->mbAddr][partIdx] = refPic->pred_flag_l1[mbAddrCol][partIdxCol];
         if (refPic->pred_flag_l0[mbAddrCol][partIdxCol]) {
             return refPic->mvs_l0[mbAddrCol][blkIdx];
         } else {
@@ -315,6 +312,9 @@ static ALWAYS_INLINE MotionVector get_colocated_mv(Macroblock *mb, int partIdx, 
 }
 
 static ALWAYS_INLINE void derive_spatial_direct_mv(Macroblock *mb, int partIdx, bool part8x8, CodecContext *ctx) {
+    if (debugging) {
+        printf("debugging\n");
+    }
     Picture *currPic = ctx->curr_pic;
 
     MotionVector mvL0 = {0, 0, 0};
@@ -324,6 +324,13 @@ static ALWAYS_INLINE void derive_spatial_direct_mv(Macroblock *mb, int partIdx, 
     Neighbor b = derive_b_neighbor_4x4(mb, 0, ctx);
     Neighbor c = derive_c_neighbor_4x4(mb, 3, ctx);
     Neighbor d = derive_d_neighbor_4x4(mb, 0, ctx);
+
+    if (debugging) {
+        printf("a type : %s\n", mb_type_to_string(currPic->mb_types[mb->mbAddr + a.mb_off]));
+        printf("b type : %s\n", mb_type_to_string(currPic->mb_types[mb->mbAddr + b.mb_off]));
+        printf("c type : %s\n", mb_type_to_string(currPic->mb_types[mb->mbAddr + c.mb_off]));
+    }
+
     if (!c.av) {
         c = d;
     }
@@ -336,18 +343,29 @@ static ALWAYS_INLINE void derive_spatial_direct_mv(Macroblock *mb, int partIdx, 
     MotionVector mvL1C = {-1, 0, 0};
 
     if (a.av && !IS_INTRA(currPic->mb_types[mb->mbAddr + a.mb_off])) {
-        if (currPic->pred_flag_l0[mb->mbAddr+a.mb_off][map_4x4[a.idx] / 4] == 1) mvL0A = currPic->mvs_l0[mb->mbAddr + a.mb_off][a.idx];
-        if (currPic->pred_flag_l1[mb->mbAddr+a.mb_off][map_4x4[a.idx] / 4] == 1) mvL1A = currPic->mvs_l1[mb->mbAddr + a.mb_off][a.idx];
+        if (currPic->pred_flag_l0[mb->mbAddr+a.mb_off][map_4x4[a.idx] / 4] == 1) {
+            mvL0A = currPic->mvs_l0[mb->mbAddr + a.mb_off][a.idx];
+        }
+        if (currPic->pred_flag_l1[mb->mbAddr+a.mb_off][map_4x4[a.idx] / 4] == 1) {
+            mvL1A = currPic->mvs_l1[mb->mbAddr + a.mb_off][a.idx];
+        }
     }
     if (b.av && !IS_INTRA(currPic->mb_types[mb->mbAddr + b.mb_off])) {
-        if (currPic->pred_flag_l0[mb->mbAddr+b.mb_off][map_4x4[b.idx] / 4] == 1) mvL0B = currPic->mvs_l0[mb->mbAddr + b.mb_off][b.idx];
-        if (currPic->pred_flag_l1[mb->mbAddr+b.mb_off][map_4x4[b.idx] / 4] == 1) mvL1B = currPic->mvs_l1[mb->mbAddr + b.mb_off][b.idx];
+        if (currPic->pred_flag_l0[mb->mbAddr+b.mb_off][map_4x4[b.idx] / 4] == 1) {
+            mvL0B = currPic->mvs_l0[mb->mbAddr + b.mb_off][b.idx];
+        }
+        if (currPic->pred_flag_l1[mb->mbAddr+b.mb_off][map_4x4[b.idx] / 4] == 1) {
+            mvL1B = currPic->mvs_l1[mb->mbAddr + b.mb_off][b.idx];
+        }
     }
     if (c.av && !IS_INTRA(currPic->mb_types[mb->mbAddr + c.mb_off])) {
-        if (currPic->pred_flag_l0[mb->mbAddr+c.mb_off][map_4x4[c.idx] / 4] == 1) mvL0C = currPic->mvs_l0[mb->mbAddr + c.mb_off][c.idx];
-        if (currPic->pred_flag_l1[mb->mbAddr+c.mb_off][map_4x4[c.idx] / 4] == 1) mvL1C = currPic->mvs_l1[mb->mbAddr + c.mb_off][c.idx];
+        if (currPic->pred_flag_l0[mb->mbAddr+c.mb_off][map_4x4[c.idx] / 4] == 1) {
+            mvL0C = currPic->mvs_l0[mb->mbAddr + c.mb_off][c.idx];
+        }
+        if (currPic->pred_flag_l1[mb->mbAddr+c.mb_off][map_4x4[c.idx] / 4] == 1) {
+            mvL1C = currPic->mvs_l1[mb->mbAddr + c.mb_off][c.idx];
+        }
     }
-
 
 
     int refIdxL0 = _minPositive(mvL0A.ref_idx, _minPositive(mvL0B.ref_idx, mvL0C.ref_idx));
@@ -395,8 +413,10 @@ static ALWAYS_INLINE void derive_spatial_direct_mv(Macroblock *mb, int partIdx, 
         memset(&currPic->pred_flag_l0[mb->mbAddr][0], predFlagL0, 4);
         memset(&currPic->pred_flag_l1[mb->mbAddr][0], predFlagL1, 4);
         for (int i = 0; i < 16; i++) {
-            currPic->mvs_l0[mb->mbAddr][i] = mvL0;
-            currPic->mvs_l1[mb->mbAddr][i] = mvL1;
+            memcpy(&currPic->mvs_l0[mb->mbAddr][i], &mvL0, sizeof(MotionVector));
+            memcpy(&currPic->mvs_l1[mb->mbAddr][i], &mvL1, sizeof(MotionVector));
+            // currPic->mvs_l0[mb->mbAddr][i] = mvL0;
+            // currPic->mvs_l1[mb->mbAddr][i] = mvL1;
         }
     }
 }
@@ -433,11 +453,10 @@ static ALWAYS_INLINE void derive_temporal_direct_mv(Macroblock *mb, int partIdx,
             } else {
                 int td = _clip3(-128, 127, pic1->poc - pic0->poc);
                 int tb = _clip3(-128, 127, currPic->poc - pic0->poc);
-
                 int tx = (16384 + _abs(td / 2)) / td;
-                int distFactor = _clip3(-1024, 1023, (tb * tx + 32) >> 6);
-                mvL0 = (MotionVector) {refIdxL0, (int16_t) ((distFactor * mvCol.x + 128) >> 8),
-                                                 (int16_t) ((distFactor * mvCol.y + 128) >> 8)};
+                int distScaleFactor = _clip3(-1024, 1023, (tb * tx + 32) >> 6);
+                mvL0 = (MotionVector) {refIdxL0, (int16_t) ((distScaleFactor * mvCol.x + 128) >> 8),
+                                                 (int16_t) ((distScaleFactor * mvCol.y + 128) >> 8)};
                 mvL1 = (MotionVector) {refIdxL1, (int16_t) (mvL0.x - mvCol.x),
                                                  (int16_t) (mvL0.y - mvCol.y)};
             }

@@ -7,7 +7,7 @@ A toy H.264 decoder written in C.
 ### Skip the shower, ship the decoder. Priorities.
 
 ## Current Status
-Actively fighting with B slices
+Achieving the Intra8x8 side quest
 
 ## Features and Scope
 Baseline profile, Main profile without CABAC :

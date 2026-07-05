@@ -58,3 +58,7 @@ ffmpeg -i input.264 -c:v libx264 -profile:v main -x264-params "no-cabac:1" -pres
 ```
 This will output a stream in Main profile, without CABAC.  
 Use  ```--preset veryslow``` if you want to minimize quality loss.
+
+
+## License
+MIT, see LICENSE file for details.

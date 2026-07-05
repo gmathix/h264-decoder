@@ -26,8 +26,6 @@ void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
 
     SliceHeader *sh = read_slice_header(nal_unit, ctx);
 
-
-
     decode_slice_data(sh, nal_unit, ctx);
 
     Slice *slice = ctx->current_slice;
@@ -35,8 +33,8 @@ void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
     if (slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs ||
         slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs+1) { // end of picture
 
-        deblock_picture(ctx->current_pic, ctx);
-        store_picture(ctx->dpb, ctx->current_pic);
+        deblock_picture(ctx->curr_pic, ctx);
+        store_picture(ctx->dpb, ctx->curr_pic);
 
         // picture_free(ctx->current_pic);
     }
@@ -45,7 +43,7 @@ void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
     profiler_end_frame(ctx->prf);
 
     printf("done slice %lu %s(frame_num %d)\n\n",
-        ctx->prf->total_frames-1, slice->p_pic->is_idr ? "(IDR) " : "", sh->frame_num);
+        ctx->prf->total_frames-1, slice->p_pic->sh->idr_pic_flag ? "(IDR) " : "", sh->frame_num);
 }
 
 /* 7.3.3 */
@@ -57,7 +55,6 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
 
 
     SliceHeader *sh = calloc(1, sizeof(SliceHeader));
-
 
     sh->first_mb   = read_ue(br);
     sh->slice_type = read_ue(br);
@@ -84,6 +81,7 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
 
 
 
+
     // skip color_plane_id for now
     sh->frame_num = read_u(br, (int32_t)(sps->log2_max_frame_num));
 
@@ -92,6 +90,8 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
     ctx->current_slice->sh = sh;
     ctx->current_slice->picNumL0Pred = sh->frame_num;
     ctx->current_slice->picNumL1Pred = sh->frame_num;
+
+
 
 
     if (!sps->frame_mbs_only_flag) {
@@ -125,9 +125,30 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
     }
 
 
+    /* initialize current picture */
+    if (sh->first_mb == 0) {
+        ctx->curr_pic = picture_alloc(sh, ctx);
+        ctx->curr_pic->sh = sh;
+        ctx->curr_pic->nal_ref_idc = nal_unit->ref_idc;
+        ctx->current_slice->p_pic = ctx->curr_pic;
+        ctx->curr_pic->pic_num = sh->frame_num;
+        derive_poc(ctx->dpb, ctx->curr_pic);
+        printf(" POC : %d\n", ctx->curr_pic->poc);
+
+        if (IS_I_SLICE(sh->slice_type)) {
+            ctx->current_slice->decode_macroblock = &decode_i_macroblock;
+        } else if (IS_P_SLICE(sh->slice_type)) {
+            ctx->current_slice->decode_macroblock = &decode_p_macroblock;
+        } else if (IS_B_SLICE(sh->slice_type)) {
+            ctx->current_slice->decode_macroblock = &decode_b_macroblock;
+        }
+    }
+
+
     // init l0 and l1
     if (IS_P_SLICE(sh->slice_type) || IS_B_SLICE(sh->slice_type)) {
         init_ref_pic_lists(ctx->dpb, sh);
+
     }
 
 
@@ -147,7 +168,6 @@ SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
             sh->num_ref_idx_l1_active_minus1 = pps->num_ref_idx_l1_default_active_minus1;
         }
     }
-
 
 
 
@@ -226,20 +246,6 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
     int prevMbSkipped = 0;
 
 
-    if (currMbAddr == 0) {
-        ctx->current_pic = picture_alloc(sh, ctx);
-        ctx->current_pic->sh = sh;
-        ctx->current_pic->nal_ref_idc = nal_unit->ref_idc;
-        ctx->current_slice->p_pic = ctx->current_pic;
-
-        if (IS_I_SLICE(sh->slice_type)) {
-            ctx->current_slice->decode_macroblock = &decode_i_macroblock;
-        } else if (IS_P_SLICE(sh->slice_type)) {
-            ctx->current_slice->decode_macroblock = &decode_p_macroblock;
-        } else if (IS_B_SLICE(sh->slice_type)) {
-            ctx->current_slice->decode_macroblock = &decode_b_macroblock;
-        }
-    }
 
     do {
         if (!IS_I_SLICE(sh->slice_type) && !IS_SI_SLICE(sh->slice_type)) {
@@ -248,6 +254,9 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
 
                 prevMbSkipped = mb_skip_run > 0;
 
+                // if (ctx->prf->total_frames == 16 && mb_skip_run > 0) {
+                //     printf("skip %d mbs\n", mb_skip_run);
+                // }
 
                 // decode skipped macroblocks
                 for (int i = currMbAddr; i < currMbAddr + mb_skip_run; i++) {
@@ -257,7 +266,7 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
 
                     mb->mb_type = MB_TYPE_SKIP;
                     mb->slice_type = sh->slice_type;
-                    mb->QPY = mb->mbAddr == 0
+                    mb->QPY = mb->mbAddr == sh->first_mb
                         ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52)
                         : ctx->prevMb->QPY;
 
@@ -271,6 +280,7 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
                     meta->cbp_luma   = 0;
                     meta->cbp_chroma = 0;
                     meta->t_8x8_flag = 0;
+                    ctx->curr_pic->mb_types[mb->mbAddr] = mb->mb_type;
 
 
 
@@ -283,7 +293,7 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
                 ctx->current_slice->num_mbs += mb_skip_run;
 
                 if (mb_skip_run > 0) {
-                    moreDataFlag = more_rbsp_data(br);
+                    moreDataFlag = more_rbsp_data(br) && currMbAddr < ctx->num_mbs;
                 }
             } else {
                 /* read with CABAC */
@@ -318,7 +328,11 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
 
         if (moreDataFlag) {
             currMbAddr++;
-            ctx->current_slice->num_mbs = currMbAddr + 1;
+            if (currMbAddr >= ctx->num_mbs) {
+                moreDataFlag = false;
+            } else {
+                ctx->current_slice->num_mbs = currMbAddr + 1;
+            }
         }
     } while (moreDataFlag);
 }
@@ -335,32 +349,35 @@ void pred_weight_table(uint8_t type, SliceHeader *sh, CodecContext *ctx) {
     PPS *pps = sh->pps;
 
 
-    uint32_t luma_log2_weight_denom = read_ue(br);
+    ctx->luma_log2_weight_denom = read_ue(br);
     if (sps->chroma_format_idc != 0) {
-        uint32_t chroma_log2_weight_denom = read_ue(br);
+        ctx->chroma_log2_weight_denom = read_ue(br);
     }
 
     int luma_weight_l0_flag;
-    int32_t luma_weight_l0[sh->num_ref_idx_l0_active_minus1+1];
-    int32_t luma_offset_l0[sh->num_ref_idx_l0_active_minus1+1];
-
     int chroma_weight_l0_flag;
-    int32_t chroma_weight_l0[sh->num_ref_idx_l0_active_minus1+1][2];
-    int32_t chroma_offset_l0[sh->num_ref_idx_l0_active_minus1+1][2];
 
     for (int i = 0; i < sh->num_ref_idx_l0_active_minus1+1; i++) {
         luma_weight_l0_flag = read_u(br, 1);
         if (luma_weight_l0_flag) {
-            luma_weight_l0[i] = read_se(br);
-            luma_offset_l0[i] = read_se(br);
+            ctx->luma_weight_l0[i] = read_se(br);
+            ctx->luma_offset_l0[i] = read_se(br);
+        } else {
+            ctx->luma_weight_l0[i] = 1 << ctx->luma_log2_weight_denom;
+            ctx->luma_offset_l0[i] = 0;
         }
 
         if (sps->chroma_format_idc != 0) {
             chroma_weight_l0_flag = read_u(br, 1);
             if (chroma_weight_l0_flag) {
                 for (int j = 0; j < 2; j++) {
-                    chroma_weight_l0[i][j] = read_se(br);
-                    chroma_offset_l0[i][j] = read_se(br);
+                    ctx->chroma_weight_l0[i][j] = read_se(br);
+                    ctx->chroma_offset_l0[i][j] = read_se(br);
+                }
+            } else {
+                for (int j = 0; j < 2; j++) {
+                    ctx->chroma_weight_l0[i][j] = 1 << ctx->chroma_log2_weight_denom;
+                    ctx->chroma_offset_l0[i][j] = 0;
                 }
             }
         }
@@ -368,27 +385,30 @@ void pred_weight_table(uint8_t type, SliceHeader *sh, CodecContext *ctx) {
 
 
     int luma_weight_l1_flag;
-    int32_t luma_weight_l1[sh->num_ref_idx_l1_active_minus1+1];
-    int32_t luma_offset_l1[sh->num_ref_idx_l1_active_minus1+1];
-
     int chroma_weight_l1_flag;
-    int32_t chroma_weight_l1[sh->num_ref_idx_l1_active_minus1+1][2];
-    int32_t chroma_offset_l1[sh->num_ref_idx_l1_active_minus1+1][2];
 
     if (type%5 == 1) {
         for (int i = 0; i < sh->num_ref_idx_l1_active_minus1+1; i++) {
             luma_weight_l1_flag = read_u(br, 1);
             if (luma_weight_l1_flag) {
-                luma_weight_l1[i] = read_se(br);
-                luma_offset_l1[i] = read_se(br);
+                ctx->luma_weight_l1[i] = read_se(br);
+                ctx->luma_offset_l1[i] = read_se(br);
+            } else {
+                ctx->luma_weight_l1[i] = 1 << ctx->luma_log2_weight_denom;
+                ctx->luma_offset_l1[i] = 0;
             }
 
             if (sps->chroma_format_idc != 0) {
                 chroma_weight_l1_flag = read_u(br, 1);
                 if (chroma_weight_l1_flag) {
                     for (int j = 0; j < 2; j++) {
-                        chroma_weight_l1[i][j] = read_se(br);
-                        chroma_offset_l1[i][j] = read_se(br);
+                        ctx->chroma_weight_l1[i][j] = read_se(br);
+                        ctx->chroma_offset_l1[i][j] = read_se(br);
+                    }
+                } else {
+                    for (int j = 0; j < 2; j++) {
+                        ctx->chroma_weight_l1[i][j] = 1 << ctx->chroma_log2_weight_denom;
+                        ctx->chroma_offset_l1[i][j] = 0;
                     }
                 }
             }

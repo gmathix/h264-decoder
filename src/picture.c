@@ -6,16 +6,13 @@
 #include <stdlib.h>
 
 
+const Picture EMPTY_PICTURE = {};
+
 
 Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx) {
     Picture *p  = calloc(1, sizeof(Picture));
 
-    p->is_idr                      = sh->idr_pic_flag;
-    p->long_term_ref               = sh->long_term_reference_flag;
-    p->num_ref_idx_active_override = sh->num_ref_idx_active_override_flag;
-    p->frame_num                   = sh->frame_num;
-
-
+    p->frame_num   = sh->frame_num;
 	p->widthY      = sh->sps->pic_width_samples_l;
 	p->heightY     = sh->sps->pic_height_samples_l;
 	p->widthC      = p->widthY / 2;
@@ -24,10 +21,17 @@ Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx) {
 	p->heightCropY = p->heightY - sh->sps->crop_bottom_offset - sh->sps->crop_top_offset;
 	p->widthCropC  = p->widthCropY / 2;
 	p->heightCropC = p->heightCropY / 2;
-    p->num_mbs  = (int32_t)sh->sps->pic_width_in_mbs * (int32_t)sh->sps->pic_height_in_map_units;
-    p->luma     = calloc(p->widthY * p->heightY, 1);
-    p->cb       = calloc(p->widthY/2 * (p->heightY/2), 1);
-    p->cr       = calloc(p->widthY/2 * (p->heightY/2), 1);
+    p->num_mbs     = (int32_t)sh->sps->pic_width_in_mbs * (int32_t)sh->sps->pic_height_in_map_units;
+
+    p->luma        = calloc(p->widthY * p->heightY, 1);
+    p->cb          = calloc(p->widthY/2 * (p->heightY/2), 1);
+    p->cr          = calloc(p->widthY/2 * (p->heightY/2), 1);
+
+    p->mb_types     = calloc(p->num_mbs, sizeof( int ));
+    p->mvs_l0       = calloc(p->num_mbs, sizeof( MotionVector [16] ));
+    p->mvs_l1       = calloc(p->num_mbs, sizeof( MotionVector [16] ));
+    p->pred_flag_l0 = calloc(p->num_mbs, sizeof( bool [4] ));
+    p->pred_flag_l1 = calloc(p->num_mbs, sizeof( bool [4] ));
 
 
     if (!ctx->mb_metadata_initialized || p->num_mbs != ctx->num_mbs) {
@@ -54,6 +58,8 @@ void slice_reset(Slice *slice) {
     slice->num_mbs = 0;
     slice->p_pic = NULL;
     slice->sh = NULL;
+    slice->rplm_occured_l0 = false;
+    slice->rplm_occured_l1 = false;
 }
 
 void picture_reset(Picture *p) {
@@ -67,6 +73,13 @@ void picture_free(Picture *p) {
     free(p->cb);
     free(p->cr);
     free(p->sh);
+
+    free(p->mb_types);
+    free(p->mvs_l0);
+    free(p->mvs_l1);
+    free(p->pred_flag_l0);
+    free(p->pred_flag_l1);
+
     free(p);
 }
 

@@ -19,11 +19,14 @@
 
 int debugging = 0;
 int frame_debug = -1;
+int frame_num_debug = -1;
+int poc_debug = -1;
 int mb_debug = -1;
-int nb_frames_before_stop = 1000;
+int nb_frames_before_stop = -1;
 
 
 CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome) {
+
     if (data == NULL) return NULL;
 
     CodecContext *ctx = calloc(1, sizeof(CodecContext));
@@ -60,9 +63,9 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
     ctx->dump_monochrome = dump_monochrome;
     if (!ctx->out_file) {
         perror("fopen");
-        exit(1);
+        exit(123454321);
     }
-    setvbuf(ctx->out_file, NULL, _IOFBF, (size_t) 1920*1080*1.5); // 8 frame buffer
+    setvbuf(ctx->out_file, NULL, _IOFBF, (size_t) 8 * 1920*1080*1.5); // 8 frame buffer for HD
 
     ctx->log_path = log_path;
     ctx->log_file = fopen(ctx->log_path, "w");
@@ -104,10 +107,6 @@ void decoder_free_metadata(CodecContext *ctx) {
     free(ctx->luma_total_coeffs);
     free(ctx->cb_total_coeffs);
     free(ctx->cr_total_coeffs);
-    free(ctx->mvs_l0);
-    free(ctx->mvs_l1);
-    free(ctx->pred_flag_l0);
-    free(ctx->pred_flag_l1);
 }
 
 /* caller's job to make sure metadata gets free beforehand */
@@ -121,10 +120,6 @@ void decoder_alloc_metadata(CodecContext *ctx) {
     ctx->luma_total_coeffs   = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
     ctx->cb_total_coeffs     = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
     ctx->cr_total_coeffs     = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
-    ctx->mvs_l0              = calloc(ctx->num_mbs, sizeof( MotionVector   [16] ));
-    ctx->mvs_l1              = calloc(ctx->num_mbs, sizeof( MotionVector   [16] ));
-    ctx->pred_flag_l0        = calloc(ctx->num_mbs, sizeof( uint8_t        [ 4] ));
-    ctx->pred_flag_l1        = calloc(ctx->num_mbs, sizeof( uint8_t        [ 4] ));
 
     ctx->mb_metadata_initialized = true;
 }

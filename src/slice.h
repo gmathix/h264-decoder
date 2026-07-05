@@ -15,6 +15,10 @@ typedef struct SliceHeader {
     SPS *sps;
     PPS *pps;
 
+    /* position of the MMCO syntax structure in the slice NAL */
+    size_t mmco_position_bits; // byte_pos*8 + bit_pos
+
+
     uint32_t disable_deblocking_filter_idc;
     uint32_t first_mb;
     uint32_t frame_num;
@@ -42,6 +46,8 @@ typedef struct SliceHeader {
     int      num_ref_idx_active_override_flag;
     int      no_output_of_prior_pics_flag;
     int      sp_for_switch_flag;
+
+
 
 
 } SliceHeader ;

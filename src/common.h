@@ -10,6 +10,8 @@
 #include <stdint.h>
 
 
+#define MAX_NUM_REF_PICTURES        32
+
 enum NalUnitType : uint8_t {
     NAL_UNSPECIFIED = 0,
     NAL_CODED_SLICE_OF_NON_IDR_PICTURE = 1,

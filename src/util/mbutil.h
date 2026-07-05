@@ -18,7 +18,12 @@
 
 
 
-/* macroblock types */
+/* macroblock types
+ * yes this comes from ffmpeg. so what?
+ * in this decoder this is literally the only code that comes from an exterior codebase,
+ * and it's also the less brain-tiring code part to read in this whole project.
+ * <==> i have no qualms
+ */
 #define MB_TYPE_INTRA4x4    (1 <<  0)
 #define MB_TYPE_INTRA8x8    (1 <<  1)
 #define MB_TYPE_INTRA16x16  (1 <<  2)
@@ -54,6 +59,8 @@
 #define SUB_MB_TYPE_DIRECT  (1 << 26)
 
 
+
+
 #define IS_INTRA4x4(a)     ((a) & MB_TYPE_INTRA4x4)
 #define IS_INTRA8x8(a)     ((a) & MB_TYPE_INTRA8x8)
 #define IS_INTRA16x16(a)   ((a) & MB_TYPE_INTRA16x16)
@@ -75,6 +82,12 @@
 #define IS_ACPRED(a)       ((a) & MB_TYPE_ACPRED)
 #define IS_QUANT(a)        ((a) & MB_TYPE_QUANT)
 
+#define IS_SUB_8x8(a)      ((a) & SUB_MB_TYPE_8x8)
+#define IS_SUB_8x4(a)      ((a) & SUB_MB_TYPE_8x4)
+#define IS_SUB_4x8(a)      ((a) & SUB_MB_TYPE_4x8)
+#define IS_SUB_4x4(a)      ((a) & SUB_MB_TYPE_4x4)
+#define IS_SUB_DIRECT(a)   ((a) & SUB_MB_TYPE_DIRECT)
+
 #define HAS_CBP(a)         ((a) & MB_TYPE_CBP)
 #define HAS_FORWARD_MV(a)  ((a) & MB_TYPE_FORWARD_MV)
 #define HAS_BACKWARD_MV(a) ((a) & MB_TYPE_BACKWARD_MV)
@@ -94,7 +107,7 @@
 
 
 
-static char* mb_type_to_string(uint32_t type) {
+static char* mb_type_to_string(int type) {
     if (IS_INTRA4x4   (type))  return "Intra_4x4";
     if (IS_INTRA16x16 (type))  return "Intra_16x16";
     if (IS_PCM        (type))  return "PCM";
@@ -102,12 +115,22 @@ static char* mb_type_to_string(uint32_t type) {
     if (IS_SKIP       (type))  return "Skip";
     if (IS_INTERLACED (type))  return "Interlaced";
     if (IS_GMC        (type))  return "GMC";
+    if (IS_DIRECT     (type))  return "DIRECT";
     if (IS_16x16      (type))  return "16x16";
     if (IS_16x8       (type))  return "16x8";
     if (IS_8x16       (type))  return "8x16";
     if (IS_8x8        (type))  return "8x8";
     if (IS_ACPRED     (type))  return "ACPRED";
     if (IS_QUANT      (type))  return "Quant";
+    return "UNDEF";
+}
+
+static char *sub_mb_type_to_string(int type) {
+    if (IS_SUB_DIRECT(type)) return "SUB_DIRECT";
+    if (IS_SUB_8x8(type))    return "SUB_8x8";
+    if (IS_SUB_8x4(type))    return "SUB_8x4";
+    if (IS_SUB_4x8(type))    return "SUB_4x8";
+    if (IS_SUB_4x4(type))    return "SUB_4x4";
     return "UNDEF";
 }
 

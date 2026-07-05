@@ -14,6 +14,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 
 #include "inter.h"
@@ -137,13 +138,13 @@ const int QPcTable[52] = {
    10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
    20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
    29, 30, 31, 32, 32, 33, 34, 34, 35, 35,
-   36, 36, 37, 37, 38, 38, 39, 39, 40, 40,
+   36, 36, 37, 37, 37, 38, 38, 38, 39, 39,
    39, 39
 };
-const uint8_t map_4x4[16] = {
-    0,   1,  4,  5,
-    2,   3,  6,  7,
-    8,   9, 12, 13,
+const uint8_t map_4x4[16] = { // this little fucker is bound to be trapped in L1 forever
+     0,  1,  4,  5,
+     2,  3,  6,  7,
+     8,  9, 12, 13,
     10, 11, 14, 15,
 };
 
@@ -294,8 +295,13 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
         mb->u.pb.mb_info = b_mb_type_info[mb_type];
         mb->mb_type      = b_mb_type_info[mb_type].type;
     }
+    // if (ctx->prf->total_frames == 16) {
+    //     printf("mb %d : type %d (%s)\n", mb->mbAddr, mb_type, mb_type_to_string(mb->mb_type));
+    // }
+
 
     ctx->mb_metadata[mb->mbAddr].mb_type = mb->mb_type;
+    ctx->curr_pic->mb_types[mb->mbAddr] = mb->mb_type;
     int type = mb->mb_type;
 
     if (intra_mb) mb->pred_mode = i_mb_type_info[mb_type].pred_mode;
@@ -389,7 +395,6 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
                 : _clip3(0, 51, (ctx->prevMb->QPY + mb->mb_qp_delta + 52) % 52);
 
 
-
             int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
             mb->QPC = QPcTable[qPi];
 
@@ -407,8 +412,12 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
             read_residual(mb, type, transform_size_8x8_flag, 0, 15, cbp_luma, cbp_chroma,
                         residual_block, sh, ctx);
         } else {
-            mb->QPY = ctx->prevMb->QPY;
-            mb->QPC = ctx->prevMb->QPC;
+            mb->QPY = mb->mbAddr == 0
+                ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52)
+                : ctx->prevMb->QPY;
+
+            int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
+            mb->QPC = QPcTable[qPi];
 
             ctx->mb_metadata[mb->mbAddr].QPY = mb->QPY;
             ctx->mb_metadata[mb->mbAddr].QPC = mb->QPC;
@@ -492,31 +501,33 @@ void read_mb_pred(Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
             mb->intra_chroma_pred_mode = read_ue(br);
         }
     } else if (!IS_DIRECT(mb->mb_type)) {
+        int type = mb->u.pb.mb_info.type;
+
         for (int part = 0; part < mb->u.pb.mb_info.part_count; part++) {
             if (sh->num_ref_idx_l0_active_minus1 > 0 &&
-                ((part == 0 && (mb->u.pb.mb_info.type & MB_TYPE_P0L1)==0) ||
-                 (part == 1 && (mb->u.pb.mb_info.type & MB_TYPE_P1L1)==0))) {
+                ((part == 0 && (type & MB_TYPE_P0L0)) ||
+                 (part == 1 && (type & MB_TYPE_P1L0)))) {
                 mb->u.pb.ref_idx_l0[part] = read_te(br, sh->num_ref_idx_l0_active_minus1);
             }
         }
         for (int part = 0; part < mb->u.pb.mb_info.part_count; part++) {
             if (sh->num_ref_idx_l1_active_minus1 > 0 &&
-                ((part == 0 && (mb->u.pb.mb_info.type & MB_TYPE_P0L0)==0) ||
-                 (part == 1 && (mb->u.pb.mb_info.type & MB_TYPE_P1L0)==0))) {
+                ((part == 0 && (type & MB_TYPE_P0L1)) ||
+                 (part == 1 && (type & MB_TYPE_P1L1)))) {
                 mb->u.pb.ref_idx_l1[part] = read_te(br, sh->num_ref_idx_l1_active_minus1);
             }
         }
         for (int part = 0; part < mb->u.pb.mb_info.part_count; part++) {
-            if ((part == 0 && (mb->u.pb.mb_info.type & MB_TYPE_P0L1)==0) ||
-                (part == 1 && (mb->u.pb.mb_info.type & MB_TYPE_P1L1)==0)) {
+            if ((part == 0 && (type & MB_TYPE_P0L0)) ||
+                (part == 1 && (type & MB_TYPE_P1L0))) {
                 for (int i = 0; i < 2; i++) {
                     mb->u.pb.mvd_l0[part][0][i] = read_se(br);
                 }
             }
         }
         for (int part = 0; part < mb->u.pb.mb_info.part_count; part++) {
-            if ((part == 0 && (mb->u.pb.mb_info.type & MB_TYPE_P0L0)==0) ||
-                (part == 1 && (mb->u.pb.mb_info.type & MB_TYPE_P1L0)==0)) {
+            if ((part == 0 && (type & MB_TYPE_P0L1)) ||
+                (part == 1 && (type & MB_TYPE_P1L1))) {
                 for (int i = 0; i < 2; i++) {
                     mb->u.pb.mvd_l1[part][0][i] = read_se(br);
                 }
@@ -538,20 +549,20 @@ void read_sub_mb_pred(Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
     for (int part = 0; part < 4; part++) {
         if (sh->num_ref_idx_l0_active_minus1 > 0 && !(mb->mb_type & MB_TYPE_REF0) &&
             !(mb->u.pb.sub_mb_info[part].type & SUB_MB_TYPE_DIRECT && IS_B_SLICE(sh->slice_type)) &&
-            !(mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L1)) {
+            (mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L0)) {
             mb->u.pb.ref_idx_l0[part] = read_te(br, sh->num_ref_idx_l0_active_minus1);
         }
     }
     for (int part = 0; part < 4; part++) {
         if (sh->num_ref_idx_l1_active_minus1 > 0 && !(mb->mb_type & MB_TYPE_REF0) &&
             !(mb->u.pb.sub_mb_info[part].type & SUB_MB_TYPE_DIRECT && IS_B_SLICE(sh->slice_type)) &&
-            !(mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L0)) {
+            (mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L1)) {
             mb->u.pb.ref_idx_l1[part] = read_te(br, sh->num_ref_idx_l1_active_minus1);
-            }
+        }
     }
     for (int part = 0; part < 4; part++) {
         if (!(mb->u.pb.sub_mb_info[part].type & SUB_MB_TYPE_DIRECT && IS_B_SLICE(sh->slice_type)) &&
-            !(mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L1)) {
+            (mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L0)) {
             for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
                 for (int i = 0; i < 2; i++) {
                     mb->u.pb.mvd_l0[part][subPart][i] = read_se(br);
@@ -561,7 +572,7 @@ void read_sub_mb_pred(Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
     }
     for (int part = 0; part < 4; part++) {
         if (!(mb->u.pb.sub_mb_info[part].type & SUB_MB_TYPE_DIRECT && IS_B_SLICE(sh->slice_type)) &&
-            !(mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L0)) {
+            (mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L1)) {
             for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
                 for (int i = 0; i < 2; i++) {
                     mb->u.pb.mvd_l1[part][subPart][i] = read_se(br);
@@ -726,14 +737,14 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
     }
 
 
-    memset(&ctx->mvs_l0[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
-    memset(&ctx->mvs_l1[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
+    memset(&ctx->curr_pic->mvs_l0[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
+    memset(&ctx->curr_pic->mvs_l1[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
     for (int i = 0; i < 16; i++) {
-        ctx->mvs_l0[mb->mbAddr][i].ref_idx = -1;
-        ctx->mvs_l1[mb->mbAddr][i].ref_idx = -1;
+        ctx->curr_pic->mvs_l0[mb->mbAddr][i].ref_idx = -1;
+        ctx->curr_pic->mvs_l1[mb->mbAddr][i].ref_idx = -1;
     }
-    memset(&ctx->pred_flag_l0[mb->mbAddr][0], 0, 4);
-    memset(&ctx->pred_flag_l1[mb->mbAddr][0], 0, 4);
+    memset(&ctx->curr_pic->pred_flag_l0[mb->mbAddr][0], 0, 4);
+    memset(&ctx->curr_pic->pred_flag_l1[mb->mbAddr][0], 0, 4);
 }
 
 
@@ -747,13 +758,12 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
     } else {
         debugging = false;
     }
-    if (debugging) {
-        printf("DEBUGGING: mb %d (x:%d y:%d) type %d (%s) \n",
-            mb->mbAddr, mb->mb_x, mb->mb_y, mb->mb_type, mb_type_to_string(mb->mb_type));
-    }
 
 
-	memset(&ctx->mvs_l0[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
+	memset(&ctx->curr_pic->mvs_l0[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
+    memset(&ctx->curr_pic->mvs_l1[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
+    memset(&ctx->curr_pic->pred_flag_l0[mb->mbAddr][0], 0, 4);
+    memset(&ctx->curr_pic->pred_flag_l1[mb->mbAddr][0], 0, 4);
 
     if (IS_INTRA(mb->mb_type)) {
         decode_i_macroblock(mb, slice, ctx);
@@ -762,29 +772,31 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
             derive_p_skip_mv(mb, ctx);
         } else {
             if (IS_16x16(mb->mb_type)) {
-                derive_p_16x16_mv(mb, ctx);
+                derive_16x16_mv(mb, true, ctx);
             } else if (IS_16x8(mb->mb_type)) {
-                derive_p_16x8_mv(mb, ctx);
+                derive_16x8_part_mv(mb, 0, true, ctx);
+                derive_16x8_part_mv(mb, 1, true, ctx);
             } else if (IS_8x16(mb->mb_type)) {
-                derive_p_8x16_mv(mb, ctx);
+                derive_8x16_part_mv(mb, 0, true, ctx);
+                derive_8x16_part_mv(mb, 1, true, ctx);
             } else if (IS_8x8(mb->mb_type)) {
-                derive_p_8x8_mv(mb, ctx);
+                derive_8x8_mv(mb, ctx);
             }
         }
+
+
 
         for (int part = 0; part < 4; part++) {
             for (int subPart = 0; subPart < 4; subPart++) {
-                int idx = part/2*8 + (part%2)*2  +  subPart/2*4 + subPart%2;
-                MotionVector *mv = &ctx->mvs_l0[mb->mbAddr][idx];
-                inter_pred(mb, idx, mv, ctx);
+                int idx = map_4x4[part * 4 + subPart];
+                MotionVector *mv = &ctx->curr_pic->mvs_l0[mb->mbAddr][idx];
+                derive_pred_weights(mv->ref_idx, 0, true, false, ctx);
+
+                inter_pred_single(mb, idx, mv, true, ctx);
+                inter_pred_chroma_single(mb, idx, mv, true, ctx);
             }
         }
 
-        for (int i = 0; i < 16; i++) {
-            int y = (i >> 2) << 1;
-            int x = (i &  3) << 1;
-            inter_pred_chroma(mb, y, x, &ctx->mvs_l0[mb->mbAddr][i], ctx);
-        }
 
         if (!IS_SKIP(mb->mb_type)) {
             for (int i = 0; i < 16; i++) {
@@ -798,4 +810,76 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
 void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
 
+    if (mb->mbAddr == mb_debug && ctx->curr_pic->poc == poc_debug && ctx->curr_pic->frame_num == frame_num_debug) {
+        debugging = true;
+    } else {
+        debugging = false;
+    }
+
+
+    for (int i = 0; i < 16; i++) {
+        ctx->curr_pic->mvs_l0[mb->mbAddr][i] = (MotionVector) {-1, 0, 0};
+        ctx->curr_pic->mvs_l1[mb->mbAddr][i] = (MotionVector) {-1, 0, 0};
+    }
+    memset(&ctx->curr_pic->pred_flag_l0[mb->mbAddr][0], 0, 4);
+    memset(&ctx->curr_pic->pred_flag_l1[mb->mbAddr][0], 0, 4);
+
+    if (IS_INTRA(mb->mb_type)) {
+        decode_i_macroblock(mb, slice, ctx);
+    } else {
+        if (IS_SKIP(mb->mb_type) || IS_DIRECT(mb->mb_type)) {
+            for (int part = 0; part < 4; part++) derive_direct_mv(mb, part, true, ctx);
+        } else if (IS_16x16(mb->mb_type)) {
+            if (mb->mb_type & MB_TYPE_P0L0) derive_16x16_mv(mb, true, ctx);
+            if (mb->mb_type & MB_TYPE_P0L1) derive_16x16_mv(mb, false, ctx);
+        } else if (IS_16x8(mb->mb_type)) {
+            if (mb->mb_type & MB_TYPE_P0L0) derive_16x8_part_mv(mb, 0, true, ctx);
+            if (mb->mb_type & MB_TYPE_P0L1) derive_16x8_part_mv(mb, 0, false, ctx);
+            if (mb->mb_type & MB_TYPE_P1L0) derive_16x8_part_mv(mb, 1, true, ctx);
+            if (mb->mb_type & MB_TYPE_P1L1) derive_16x8_part_mv(mb, 1, false, ctx);
+        } else if (IS_8x16(mb->mb_type)) {
+            if (mb->mb_type & MB_TYPE_P0L0) derive_8x16_part_mv(mb, 0, true, ctx);
+            if (mb->mb_type & MB_TYPE_P0L1) derive_8x16_part_mv(mb, 0, false, ctx);
+            if (mb->mb_type & MB_TYPE_P1L0) derive_8x16_part_mv(mb, 1, true, ctx);
+            if (mb->mb_type & MB_TYPE_P1L1) derive_8x16_part_mv(mb, 1, false, ctx);
+        } else if (IS_8x8(mb->mb_type)) {
+            derive_8x8_mv(mb, ctx);
+        }
+
+
+        /* luma inter pred */
+        for (int part = 0; part < 4; part++) {
+            bool l0 = ctx->curr_pic->pred_flag_l0[mb->mbAddr][part];
+            bool l1 = ctx->curr_pic->pred_flag_l1[mb->mbAddr][part];
+
+            for (int subPart = 0; subPart < 4; subPart++) {
+                int idx = map_4x4[part * 4 + subPart];
+
+                if (l0 + l1 == 1) {
+                    MotionVector *mv = l0 ? &ctx->curr_pic->mvs_l0[mb->mbAddr][idx] : &ctx->curr_pic->mvs_l1[mb->mbAddr][idx];
+
+                    derive_pred_weights(mv->ref_idx, mv->ref_idx, l0, l1, ctx);
+
+                    inter_pred_single(mb, idx, mv, l0, ctx);
+                    inter_pred_chroma_single(mb, idx,  mv, l0, ctx);
+                } else if (l0 + l1 == 2) {
+                    MotionVector *mvL0 = &ctx->curr_pic->mvs_l0[mb->mbAddr][idx];
+                    MotionVector *mvL1 = &ctx->curr_pic->mvs_l1[mb->mbAddr][idx];
+
+                    derive_pred_weights(mvL0->ref_idx, mvL1->ref_idx, true, true, ctx);
+
+                    inter_pred_bi(mb, idx, mvL0, mvL1, ctx);
+                    inter_pred_chroma_bi(mb, idx, mvL0, mvL1, ctx);
+                }
+            }
+        }
+
+
+        if (!IS_SKIP(mb->mb_type)) {
+            for (int i = 0; i < 16; i++) {
+                transform_luma_4x4(mb, mb->QPY, map_4x4[i], ctx);
+            }
+            transform_chroma(mb, ctx);
+        }
+    }
 }

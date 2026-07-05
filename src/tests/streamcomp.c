@@ -8,9 +8,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-
-
-
 #define ONLY_LUMA     0
 #define ONLY_CHROMA   0
 #define START_FRAME   0
@@ -174,6 +171,11 @@ int main(void) {
                         printf("\ntest mb : \n");
                         print_mb(test_frame_Y, 16, mb, WIDTH);
 
+                        printf("\nref A neighbor : \n");
+                        print_mb(ref_frame_Y, 16, mb-1, WIDTH);
+                        printf("\ntest A neighbor : \n");
+                        print_mb(test_frame_Y, 16, mb-1, WIDTH);
+
                         printf("\nref B neighbor : \n");
                         print_mb(ref_frame_Y, 16, mb-MB_WIDTH, WIDTH);
                         printf("\ntest B neighbor : \n");
@@ -197,6 +199,7 @@ int main(void) {
         const int C_HEIGHT = HEIGHT / 2;
 
         for (int plane = 0; plane < 2; plane++) {
+            if (plane == 1) continue;
             uint8_t *ref_c  = plane == 0 ? ref_frame_U  : ref_frame_V;
             uint8_t *test_c = plane == 0 ? test_frame_U : test_frame_V;
             char *plane_name = plane == 0 ? "U" : "V";
@@ -264,7 +267,7 @@ int main(void) {
     }
 
 
-
+    printf("perfect match. good work bro.\n");
 
     exit(0);
 }

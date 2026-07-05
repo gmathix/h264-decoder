@@ -300,10 +300,6 @@ void residual_block_cavlc(Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t
     BitReader *br = ctx->br;
 
 
-    if (sh->pps->cabac_flag) {
-        printf("CABAC enabled and trying to call CAVLC ? bold move\n");
-    }
-
     if (!vlc_initialized) {
         init_vlc_tables();
     }
@@ -347,10 +343,16 @@ void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, int bt, int *startIdx, i
 
 
     if (n.a.av) {
-        nA = total_coeffs_table[mb->mbAddr + n.a.mb_off][n.a.idx];
+        int mbTypeA = ctx->curr_pic->mb_types[mb->mbAddr + n.a.mb_off];
+        if (IS_SKIP(mbTypeA)) nA = 0;
+        if (IS_PCM(mbTypeA)) nA = 16;
+        else nA = total_coeffs_table[mb->mbAddr + n.a.mb_off][n.a.idx];
     }
     if (n.b.av) {
-        nB = total_coeffs_table[mb->mbAddr + n.b.mb_off][n.b.idx];
+        int mbTypeB = ctx->curr_pic->mb_types[mb->mbAddr + n.b.mb_off];
+        if (IS_SKIP(mbTypeB)) nB = 0;
+        if (IS_PCM(mbTypeB)) nB = 16;
+        else nB = total_coeffs_table[mb->mbAddr + n.b.mb_off][n.b.idx];
     }
 
 

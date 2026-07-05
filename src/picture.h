@@ -14,17 +14,13 @@
 typedef struct Picture {
     int nal_ref_idc;
 
-    /* needed for the DPB */
-    bool is_idr;
-    bool long_term_ref;
-    bool num_ref_idx_active_override;
-    bool adaptive_ref_pic_marking_mode;
 
     int  frame_num_offset;
     int  frame_num_wrap;
     int  frame_num;
     int  pic_num;
     int  poc;
+    int  dpb_pic_id; // 0..MAX_DPB_SIZE
 
 
     /* after dpb storing */
@@ -47,13 +43,25 @@ typedef struct Picture {
 	int widthY, heightY;
 	int widthC, heightC;
 
+    /* cropped */
 	int widthCropY, heightCropY;
 	int widthCropC, heightCropC;
+
+
+    /* metadata used for B slices prediction */
+    int *mb_types;
+    MotionVector (*mvs_l0) [16];
+    MotionVector (*mvs_l1) [16];
+    bool (*pred_flag_l0) [4];
+    bool (*pred_flag_l1) [4];
+
 
     uint8_t   *luma;
     uint8_t   *cb;
     uint8_t   *cr;
 } Picture ;
+
+extern const Picture EMPTY_PICTURE;
 
 
 typedef struct Slice {
@@ -66,6 +74,8 @@ typedef struct Slice {
 
     int picNumL0Pred;
     int picNumL1Pred;
+    bool rplm_occured_l0;
+    bool rplm_occured_l1;
 } Slice ;
 
 
@@ -82,6 +92,7 @@ Slice   *slice_alloc();
 void     slice_free(Slice *slice);
 void     slice_reset(Slice *slice);
 void     picture_free(Picture *p);
+
 void     picture_reset(Picture *p);
 void     dump_picture(Picture *p, CodecContext *ctx);
 

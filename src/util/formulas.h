@@ -27,6 +27,9 @@ static ALWAYS_INLINE int32_t _ceil(double x)          { return (int32_t)x + (x >
 static ALWAYS_INLINE int32_t _sign(double x)          { return x >= 0 ? 1 : -1; }
 static ALWAYS_INLINE int32_t _round(double x)         { return _sign(x) * _floor(_abs(x) + 0.5); }
 
+static ALWAYS_INLINE int32_t _minPositive(int x, int y) { return (x >= 0 && y >= 0) ? _min(x, y) : _max(x, y); }
+
+
 
 static ALWAYS_INLINE int32_t rshift_min(int32_t n, int16_t qp) {
     return (n + (1 << (-qp-1))) >> (-qp);
@@ -59,12 +62,12 @@ static ALWAYS_INLINE int32_t _clip2(int32_t x, int32_t y) {
     return y > x ? y : x;
 }
 
-static ALWAYS_INLINE int32_t _clip1y(int32_t x, int bit_depth) {
-    return _clip3(0, (1 << bit_depth) - 1, x);
+static ALWAYS_INLINE uint32_t _clip1y(int32_t x, int bit_depth) {
+    return (uint32_t) _clip3(0, (1 << bit_depth) - 1, x);
 }
 
-static ALWAYS_INLINE int32_t _clip1c(int32_t x, int bit_depth) {
-    return _clip3(0, (1 << bit_depth) - 1, x);
+static ALWAYS_INLINE uint32_t _clip1c(int32_t x, int bit_depth) {
+    return (uint32_t) _clip3(0, (1 << bit_depth) - 1, x);
 }
 
 static ALWAYS_INLINE int32_t _inverse_raster_scan(int32_t a, int32_t b, int32_t c, int32_t d, int32_t e) {

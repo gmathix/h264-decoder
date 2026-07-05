@@ -26,8 +26,8 @@ void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1,
             ctx->o0[i] = ctx->o1[i] = 0;
         }
 
-        Picture *pic0 = ctx->dpb->l0[refL0];
-        Picture *pic1 = ctx->dpb->l1[refL1];
+        Picture *pic0 = ctx->dpb->l0[1+refL0];
+        Picture *pic1 = ctx->dpb->l1[1+refL1];
 
         int td = _clip3(-128, 127, pic1->poc - pic0->poc);
 
@@ -79,7 +79,7 @@ void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1,
 void inter_pred_single(Macroblock *mb, int idx, MotionVector *mv, bool l0, CodecContext *ctx) {
 
     Picture *currPic = mb->p_pic;
-    Picture *refPic  = l0 ? ctx->dpb->l0[mv->ref_idx] : ctx->dpb->l1[mv->ref_idx];
+    Picture *refPic  = l0 ? ctx->dpb->l0[1+mv->ref_idx] : ctx->dpb->l1[1+mv->ref_idx];
     bool weighted = ctx->wpred_active;
 
     // top-left sample coords relative to picture
@@ -123,8 +123,8 @@ void inter_pred_single(Macroblock *mb, int idx, MotionVector *mv, bool l0, Codec
 void inter_pred_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVector *mvL1, CodecContext *ctx) {
 
     Picture *currPic = mb->p_pic;
-    Picture *refPic0 = ctx->dpb->l0[mvL0->ref_idx];
-    Picture *refPic1 = ctx->dpb->l1[mvL1->ref_idx];
+    Picture *refPic0 = ctx->dpb->l0[1+mvL0->ref_idx];
+    Picture *refPic1 = ctx->dpb->l1[1+mvL1->ref_idx];
     bool weighted = ctx->wpred_active;
 
 
@@ -192,7 +192,7 @@ void inter_pred_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVector *mv
 
 void inter_pred_chroma_single(Macroblock *mb, int idx, MotionVector *mv, bool l0, CodecContext *ctx) {
     Picture *currPic = mb->p_pic;
-    Picture *refPic  = l0 ? ctx->dpb->l0[mv->ref_idx] : ctx->dpb->l1[mv->ref_idx];
+    Picture *refPic  = l0 ? ctx->dpb->l0[1+mv->ref_idx] : ctx->dpb->l1[1+mv->ref_idx];
     bool weighted = ctx->wpred_active;
 
     const int yBase = mb->mb_y*8 + ((idx>>2) << 1);
@@ -254,8 +254,8 @@ void inter_pred_chroma_single(Macroblock *mb, int idx, MotionVector *mv, bool l0
 
 void inter_pred_chroma_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVector *mvL1, CodecContext *ctx) {
     Picture *currPic = mb->p_pic;
-    Picture *refPic0 = ctx->dpb->l0[mvL0->ref_idx];
-    Picture *refPic1 = ctx->dpb->l1[mvL1->ref_idx];
+    Picture *refPic0 = ctx->dpb->l0[1+mvL0->ref_idx];
+    Picture *refPic1 = ctx->dpb->l1[1+mvL1->ref_idx];
     bool weighted = ctx->wpred_active;
 
 

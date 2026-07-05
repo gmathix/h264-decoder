@@ -289,7 +289,7 @@ static ALWAYS_INLINE void derive_sub_4x4_mv(Macroblock *mb, int partIdx, bool l0
  */
 static ALWAYS_INLINE MotionVector get_colocated_mv(Macroblock *mb, int partIdx, int subPartIdx, CodecContext *ctx) {
     Picture *currPic = ctx->curr_pic;
-    Picture *refPic  = ctx->dpb->l1[0];
+    Picture *refPic  = ctx->dpb->l1[1+0];
 
     int luma4x4Idx = ctx->curr_pic->sh->sps->direct_8x8_inference_flag
         ? 5 * partIdx
@@ -371,7 +371,7 @@ static ALWAYS_INLINE void derive_spatial_direct_mv(Macroblock *mb, int partIdx, 
 
     MotionVector mvCol = get_colocated_mv(mb, partIdx, 0, ctx);
 
-    bool colZero = (ctx->dpb->l1[0]->dpb_status == SHORT_TERM_REF) &&
+    bool colZero = (ctx->dpb->l1[1+0]->dpb_status == SHORT_TERM_REF) &&
                    (mvCol.ref_idx == 0) &&
                    (mvCol.x >= -1 && mvCol.x <= 1) &&
                    (mvCol.y >= -1 && mvCol.y <= 1);
@@ -422,8 +422,8 @@ static ALWAYS_INLINE void derive_temporal_direct_mv(Macroblock *mb, int partIdx,
     int8_t refIdxL0 = 0;
     int8_t refIdxL1 = 0;
 
-    Picture *pic0 = ctx->dpb->l0[0];
-    Picture *pic1 = ctx->dpb->l1[0];
+    Picture *pic0 = ctx->dpb->l0[1+0];
+    Picture *pic1 = ctx->dpb->l1[1+0];
 
 
     // part8x8 = 1 : do once for the current 8x8 partition

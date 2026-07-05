@@ -6,6 +6,8 @@
 #include <stdlib.h>
 
 
+const Picture EMPTY_PICTURE = {};
+
 
 Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx) {
     Picture *p  = calloc(1, sizeof(Picture));

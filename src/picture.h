@@ -20,6 +20,7 @@ typedef struct Picture {
     int  frame_num;
     int  pic_num;
     int  poc;
+    int  dpb_pic_id; // 0..MAX_DPB_SIZE
 
 
     /* after dpb storing */
@@ -59,6 +60,8 @@ typedef struct Picture {
     uint8_t   *cb;
     uint8_t   *cr;
 } Picture ;
+
+extern const Picture EMPTY_PICTURE;
 
 
 typedef struct Slice {

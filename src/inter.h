@@ -28,7 +28,7 @@ void weight_pred_bi(Macroblock *mb, int idx, CodecContext *ctx);
 
 
 static ALWAYS_INLINE void fetch_ref_mb(Macroblock *mb, int refIdx, CodecContext *ctx) {
-    Picture *ref = ctx->dpb->l0[refIdx];
+    Picture *ref = ctx->dpb->l0[1+refIdx];
     for (int i = 0; i < 16; i++) {
         void *a = &ref->luma[mb->mb_y * (16+i) * ref->widthY + mb->mb_x * 16];
     }

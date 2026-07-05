@@ -18,7 +18,7 @@ static void print_ref_lists(DPB *dpb, Picture *pic) {
     fprintf(stderr, "FRAME_NUM %d (total %d)\n", pic->frame_num, dpb->ctx->prf->total_frames);
     fprintf(stderr, "ref pic list 0:\n");
     for (int i = 0; i < MAX_DPB_SIZE+1; i++) {
-        Picture *ref = dpb->l0[i];
+        Picture *ref = dpb->l0[1+i];
         if (ref) {
             fprintf(stderr, " ref poc : %d\n", ref->poc);
         }
@@ -26,7 +26,7 @@ static void print_ref_lists(DPB *dpb, Picture *pic) {
 
     fprintf(stderr, "\nref pic list 1:\n");
     for (int i = 0; i < MAX_DPB_SIZE+1; i++) {
-        Picture *ref = dpb->l1[i];
+        Picture *ref = dpb->l1[1+i];
         if (ref) {
             fprintf(stderr, " ref poc : %d\n", ref->poc);
         }
@@ -227,6 +227,11 @@ void store_picture(DPB *dpb, Picture *pic) {
     }
 
 
+    pic->dpb_pic_id = dpb->curr_pic_dpb_id;
+    dpb->curr_pic_dpb_id = (dpb->curr_pic_dpb_id + 1) % (MAX_DPB_SIZE+1); // 0 reserved for EMPTY_PICTURE
+    if (dpb->curr_pic_dpb_id == 0) dpb->curr_pic_dpb_id = 1;
+
+
     int index = bump(dpb);
 
     dpb->slots[index] = pic;
@@ -234,6 +239,15 @@ void store_picture(DPB *dpb, Picture *pic) {
     dpb->fullness++;
 }
 
+
+
+void pad_list_with_empty(DPB *dpb, Picture **list) {
+    for (int i = 0; i < MAX_DPB_SIZE+1; i++) {
+        if (list[i] == NULL) {
+            list[i] = &EMPTY_PICTURE;
+        }
+    }
+}
 
 void init_ref_pic_lists(DPB *dpb, SliceHeader *sh) {
     dpb_empty_ref_lists(dpb);
@@ -321,17 +335,20 @@ void init_ref_pic_lists(DPB *dpb, SliceHeader *sh) {
         /* check if l0 == l1 */
         bool equal = true;
         for (int i = 0; i < dpb->size; i++) {
-            if (dpb->l0[i] != dpb->l1[i]) {
+            if (dpb->l0[1+i] != dpb->l1[1+i]) {
                 equal = false;
                 break;
             }
         }
         if (equal && dpb->effective_ref_idx_l1_active > 1) {
-            Picture *tmp = dpb->l1[0];
-            dpb->l1[0] = dpb->l1[1];
-            dpb->l1[1] = tmp;
+            Picture *tmp = dpb->l1[1+0];
+            dpb->l1[1+0] = dpb->l1[1+1];
+            dpb->l1[1+1] = tmp;
         }
     }
+
+    pad_list_with_empty(dpb, dpb->l0);
+    pad_list_with_empty(dpb, dpb->l1);
 
 
 }
@@ -462,13 +479,13 @@ void ref_pic_list_modif_st(Slice *slice, bool is_l0, int *refIdxLX, int modif_id
 
     Picture *refpic = findRefPic(dpb, returnPicNum, picNumLX);
     for (int cIdx = num_ref_frames_active; cIdx > *refIdxLX; cIdx--) {
-        lX[cIdx] = lX[cIdx-1];
+        lX[1+cIdx] = lX[1+cIdx-1];
     }
-    lX[(*refIdxLX)++] = refpic;
+    lX[1+(*refIdxLX)++] = refpic;
     int nIdx = *refIdxLX;
     for (int cIdx = *refIdxLX; cIdx <= num_ref_frames_active; cIdx++) {
         if (picNum(dpb, lX, cIdx, maxFrameNum) != picNumLX) {
-            lX[nIdx++] = lX[cIdx];
+            lX[1+nIdx++] = lX[1+cIdx];
         }
     }
 }
@@ -483,13 +500,13 @@ void ref_pic_list_modif_lt(Slice *slice, bool is_l0,  int *refIdxLX, int modif_i
 
     Picture *refpic = findRefPic(dpb, returnLTPicNum, lt_pic_num);
     for (int cIdx = num_ref_idx_lX_active; cIdx > *refIdxLX; cIdx--) {
-        lX[cIdx] = lX[cIdx-1];
+        lX[1+cIdx] = lX[1+cIdx-1];
     }
     lX[(*refIdxLX)++] = refpic;
     int nIdx = *refIdxLX;
     for (int cIdx = *refIdxLX; cIdx <= num_ref_idx_lX_active; cIdx++) {
         if (ltPicNum(dpb, lX, cIdx, *maxLtIdx) != lt_pic_num) {
-            lX[nIdx++] = lX[cIdx];
+            lX[1+nIdx++] = lX[1+cIdx];
         }
     }
 }
@@ -580,16 +597,16 @@ void dpb_empty_slots(DPB *dpb) {
             picture_free(dpb->slots[i]);
             free(dpb->slots[i]);
         }
-        dpb->l0[i] = NULL;
-        dpb->l1[i] = NULL;
+        dpb->l0[1+i] = NULL;
+        dpb->l1[1+i] = NULL;
     }
-    dpb->l0[dpb->size-1] = NULL;
-    dpb->l1[dpb->size-1] = NULL;
+    dpb->l0[1+dpb->size-1] = NULL;
+    dpb->l1[1+dpb->size-1] = NULL;
 }
 void dpb_empty_ref_lists(DPB *dpb) {
     for (int i = 0; i < dpb->size + 1; i++) {
-        dpb->l0[i] = NULL;
-        dpb->l1[i] = NULL;
+        dpb->l0[1+i] = NULL;
+        dpb->l1[1+i] = NULL;
     }
     dpb->effective_ref_idx_l0_active = 0;
     dpb->effective_ref_idx_l1_active = 0;

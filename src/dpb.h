@@ -24,15 +24,14 @@ enum DpbStatus {
     NON_EXISTING_REF  = 3,
 };
 
-
 typedef struct DPB {
     int size;
     int fullness;
     size_t pictures_dumped;
 
     Picture *slots[MAX_DPB_SIZE];
-    Picture *l0[MAX_DPB_SIZE+1]; // safety extra slot
-    Picture *l1[MAX_DPB_SIZE+1];
+    Picture *l0[1+MAX_DPB_SIZE+1]; // empty picture slot + pictures + safety extra slot at the end
+    Picture *l1[1+MAX_DPB_SIZE+1];
     int effective_ref_idx_l0_active;
     int effective_ref_idx_l1_active;
 
@@ -45,6 +44,9 @@ typedef struct DPB {
     int prevPocMsb;
     int prevPocLsb;
     int maxPocLsb;
+
+    int curr_pic_dpb_id; // assign a unique id to each picture currently present in the DPB slots
+                         // value 0 is reserved to EMPTY_PIC
 } DPB ;
 
 
@@ -103,7 +105,7 @@ static int sortToRefList(DPB *dpb, bool descending, Picture **dest, int *idx,
             }
         }
         if ((descending && best > INT32_MIN) || (!descending && best < INT32_MAX)) {
-            dest[(*idx)++] = dpb->slots[bestIdx];
+            dest[1+(*idx)++] = dpb->slots[bestIdx];
             nbAdded++;
             prevBest = best;
             best = descending ? INT32_MIN : INT32_MAX;
@@ -145,6 +147,8 @@ static DPB *make_dbp(CodecContext *ctx) {
     dpb->fullness = 0;
 
     dpb->maxPocLsb = -1;
+
+    dpb->curr_pic_dpb_id = 1;
 
     /* start at 0 for first picture */
     dpb->prevPocLsb = 0;

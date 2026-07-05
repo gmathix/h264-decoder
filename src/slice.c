@@ -266,7 +266,7 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
 
                     mb->mb_type = MB_TYPE_SKIP;
                     mb->slice_type = sh->slice_type;
-                    mb->QPY = mb->mbAddr == 0
+                    mb->QPY = mb->mbAddr == sh->first_mb
                         ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52)
                         : ctx->prevMb->QPY;
 

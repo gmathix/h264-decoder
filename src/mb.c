@@ -138,7 +138,7 @@ const int QPcTable[52] = {
    10, 11, 12, 13, 14, 15, 16, 17, 18, 19,
    20, 21, 22, 23, 24, 25, 26, 27, 28, 29,
    29, 30, 31, 32, 32, 33, 34, 34, 35, 35,
-   36, 36, 37, 37, 38, 38, 39, 39, 40, 40,
+   36, 36, 37, 37, 37, 38, 38, 38, 39, 39,
    39, 39
 };
 const uint8_t map_4x4[16] = { // this little fucker is bound to be trapped in L1 forever
@@ -412,8 +412,12 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
             read_residual(mb, type, transform_size_8x8_flag, 0, 15, cbp_luma, cbp_chroma,
                         residual_block, sh, ctx);
         } else {
-            mb->QPY = ctx->prevMb->QPY;
-            mb->QPC = ctx->prevMb->QPC;
+            mb->QPY = mb->mbAddr == 0
+                ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52)
+                : ctx->prevMb->QPY;
+
+            int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
+            mb->QPC = QPcTable[qPi];
 
             ctx->mb_metadata[mb->mbAddr].QPY = mb->QPY;
             ctx->mb_metadata[mb->mbAddr].QPC = mb->QPC;
@@ -749,7 +753,7 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
 void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
-    if (mb->mbAddr == mb_debug && ctx->curr_pic->poc == poc_debug && ctx->curr_pic->frame_num == frame_num_debug) {
+    if (mb->mbAddr == mb_debug && ctx->prf->total_frames == frame_debug) {
         debugging = true;
     } else {
         debugging = false;
@@ -786,7 +790,6 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
             for (int subPart = 0; subPart < 4; subPart++) {
                 int idx = map_4x4[part * 4 + subPart];
                 MotionVector *mv = &ctx->curr_pic->mvs_l0[mb->mbAddr][idx];
-
                 derive_pred_weights(mv->ref_idx, 0, true, false, ctx);
 
                 inter_pred_single(mb, idx, mv, true, ctx);

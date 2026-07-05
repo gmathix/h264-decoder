@@ -68,21 +68,27 @@ void derive_edge_treshold_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t 
     uint8_t samples[16][16], CodecContext *ctx);
 
 static ALWAYS_INLINE void fetch_24x24_luma_block(uint8_t block[24][24], int pos, int stride, Picture *pic) {
-    int pos_clip;
+    int yc, xc;
+    int posy = pos / stride;
+    int posx = pos % stride;
     for (int y = 0; y < 24; y++) {
         for (int x = 0; x < 24; x++) {
-            pos_clip = _clip3(0, pic->widthY*pic->heightY - 1, pos + (y-4)*stride + x-4);
-            block[y][x] = pic->luma[pos_clip];
+            yc = _clip3(0, pic->heightY - 1, posy - 4 + y);
+            xc = _clip3(0, pic->widthY - 1, posx - 4 + x);
+            block[y][x] = pic->luma[yc*stride + xc];
         }
     }
 }
 static ALWAYS_INLINE void fetch_16x16_chroma_block(uint8_t cb_block[16][16], uint8_t cr_block[16][16], int pos, int stride, Picture *pic) {
-    int pos_clip;
+    int yc, xc;
+    int posy = pos / stride;
+    int posx = pos % stride;
     for (int y = 0; y < 16; y++) {
         for (int x = 0; x < 16; x++) {
-            pos_clip = _clip3(0, pic->widthC *pic->heightC - 1, pos + (y-4)*stride + x-4);
-            cb_block[y][x] = pic->cb[pos_clip];
-            cr_block[y][x] = pic->cr[pos_clip];
+            yc = _clip3(0, pic->heightC - 1, posy - 4 + y);
+            xc = _clip3(0, pic->widthC - 1, posx - 4 + x);
+            cb_block[y][x] = pic->cb[yc*stride + xc];
+            cr_block[y][x] = pic->cr[yc*stride + xc];
         }
     }
 }

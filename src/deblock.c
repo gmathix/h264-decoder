@@ -4,6 +4,8 @@
 
 #include "deblock.h"
 
+#include "dpb.h"
+
 
 const uint8_t alpha_table[52] = {
       0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
@@ -42,6 +44,28 @@ const uint8_t treshold_table[3][52] = {
 
 
 
+static ALWAYS_INLINE bool same_ref_pics(int refL0_0, int refL0_1, int refL1_0, int refL1_1, CodecContext *ctx) {
+    // when refLX_X is -1 (no ref) we just get EMPTY_PIC which has dpb_pic_id = 0
+    Picture *picL0_0 = ctx->dpb->l0[1+refL0_0];
+    Picture *picL0_1 = ctx->dpb->l0[1+refL0_1];
+    Picture *picL1_0 = ctx->dpb->l1[1+refL1_0];
+    Picture *picL1_1 = ctx->dpb->l1[1+refL1_1];
+    int hash0 = ((picL0_0->dpb_pic_id != 0) * (1 << picL0_0->dpb_pic_id)) |
+                ((picL1_0->dpb_pic_id != 0) * (1 << picL1_0->dpb_pic_id));
+    int hash1 = ((picL0_1->dpb_pic_id != 0) * (1 << picL0_1->dpb_pic_id)) |
+                ((picL1_1->dpb_pic_id != 0) * (1 << picL1_1->dpb_pic_id));
+    return hash0 == hash1;
+}
+
+static ALWAYS_INLINE bool same_ref_pics_one_block(int refL0, int refL1, CodecContext *ctx) {
+    return ctx->dpb->l0[1+refL0]->dpb_pic_id == ctx->dpb->l1[1+refL1]->dpb_pic_id;
+}
+
+static ALWAYS_INLINE bool mv_diff_g4(MotionVector mv1, MotionVector mv2) {
+    return (_abs(mv1.x - mv2.x) >= 4) || (_abs(mv1.y - mv2.y) >= 4);
+}
+
+
 
 /**
  * derive the 4 bS values needed for a vertical or horizontal edge
@@ -69,11 +93,10 @@ void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int b
         int idx_8x8   = blkIdx8x8   + (i/2)*blkAdd8x8;
         int idx_n_8x8 = blkIdx8x8N  + (i/2)*blkAdd8x8;
 
-        MotionVector mv1 = ctx->curr_pic->mvs_l0[mbAddr][idx];
-        MotionVector mv2 = ctx->curr_pic->mvs_l0[mbAddrN][idx_n];
-
-        // idx = map_4x4[idx];
-        // idx_n = map_4x4[idx_n];
+        MotionVector mvL0_0 = ctx->curr_pic->mvs_l0[mbAddr][idx];
+        MotionVector mvL0_1 = ctx->curr_pic->mvs_l0[mbAddrN][idx_n];
+        MotionVector mvL1_0 = ctx->curr_pic->mvs_l1[mbAddr][idx];
+        MotionVector mvL1_1 = ctx->curr_pic->mvs_l1[mbAddrN][idx_n];
 
         /*
          * bS = 4
@@ -93,25 +116,37 @@ void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int b
          * <=> the corresponding 4x4 or 8x8 transform blocks (depending on transform_8x8_flag) have non-zero coeff levels
          */
         curr_bS += ((curr_bS == 0) &&
-        	((meta.t_8x8_flag    && (meta.cbp_luma & (1 << idx_8x8))) ||
+        	(((meta.t_8x8_flag  && (meta.cbp_luma   & (1 << idx_8x8))) ||
             (meta_n.t_8x8_flag  && (meta_n.cbp_luma & (1 << idx_n_8x8))) ||
             (!meta.t_8x8_flag   && (ctx->luma_total_coeffs[mbAddr][idx] > 0)) ||
-            (!meta_n.t_8x8_flag && (ctx->luma_total_coeffs[mbAddrN][idx_n] > 0)))) * 2;
+            (!meta_n.t_8x8_flag && (ctx->luma_total_coeffs[mbAddrN][idx_n] > 0))))) * 2;
 
-        /* bS = 1 (simplified for now)
-         * <=> - the respective macroblock partitions containing p0 and q0 use different reference pictures
-         *       or a different number or MVs
-         *     - both use the same MV and | mv1.x - mv2.x | >= 4
-         *                             or | mv1.y - mv2.y | >= 4
+        /* bS = 1
+         * <=> too much writing, 8.7.2.1
          */
-    	int flag0 = ctx->curr_pic->pred_flag_l0[mbAddr][idx_8x8];
-    	int flag1 = ctx->curr_pic->pred_flag_l1[mbAddr][idx_8x8];
-    	int flag0n = ctx->curr_pic->pred_flag_l0[mbAddrN][idx_n_8x8];
-    	int flag1n = ctx->curr_pic->pred_flag_l1[mbAddrN][idx_n_8x8];
+    	int flag0_0 = ctx->curr_pic->pred_flag_l0[mbAddr][idx_8x8];
+    	int flag1_0 = ctx->curr_pic->pred_flag_l1[mbAddr][idx_8x8];
+    	int flag0_1 = ctx->curr_pic->pred_flag_l0[mbAddrN][idx_n_8x8];
+    	int flag1_1 = ctx->curr_pic->pred_flag_l1[mbAddrN][idx_n_8x8];
+        int nbMV0   = flag0_0 + flag1_0;
+        int nbMV1   = flag0_1 + flag1_1;
+        MotionVector singleMV0 = flag0_0 ? mvL0_0 : mvL1_0;
+        MotionVector singleMV1 = flag0_1 ? mvL0_1 : mvL1_1;
+
+        bool same_pics = same_ref_pics(mvL0_0.ref_idx, mvL0_1.ref_idx, mvL1_0.ref_idx, mvL1_1.ref_idx, ctx);
+
         curr_bS += ((curr_bS == 0) &&
-        	((mv1.ref_idx != mv2.ref_idx) ||
-            ((flag0 + flag1) != (flag0n + flag1n)) ||
-            ((flag0 && flag0n) && ((_abs(mv1.x - mv2.x) >= 4) || (_abs(mv1.y - mv2.y) >= 4)))));
+        	(
+        	    (!same_pics) ||
+                (nbMV0 != nbMV1) || // different number of MVs
+                ((nbMV0 == 1 && nbMV1 == 1) && mv_diff_g4(singleMV0, singleMV1)) || // one MV on each side and abs(mv0-mv1) >= 4 for x or y
+                ((nbMV0 == 2 && nbMV1 == 2) && !same_ref_pics_one_block(mvL0_1.ref_idx, mvL1_1.ref_idx, ctx) &&
+                     ((mvL0_0.ref_idx == mvL0_1.ref_idx && (mv_diff_g4(mvL0_0, mvL0_1) || mv_diff_g4(mvL1_0, mvL1_1))) ||
+                      (mvL0_0.ref_idx != mvL0_1.ref_idx && (mv_diff_g4(mvL0_0, mvL1_1) || mv_diff_g4(mvL1_0, mvL0_1))))) ||
+                ((nbMV0 == 2 && nbMV1 == 2) && same_ref_pics_one_block(mvL0_0.ref_idx, mvL1_0.ref_idx, ctx) &&
+                     ((mv_diff_g4(mvL0_0, mvL0_1) || mv_diff_g4(mvL1_0, mvL1_1)) &&
+                      (mv_diff_g4(mvL0_1, mvL1_0) || mv_diff_g4(mvL1_1, mvL0_0))))
+            )) * 1;
 
         bS_list[i] = curr_bS;
         curr_bS = 0;
@@ -359,8 +394,8 @@ void filter_2p_vert_edge_low_bS_chroma(int y, int x, const int filter_flags[2],
             delta = _clip3(-t, t,
                 (((q0 - p0) << 2) + (p1 - q1) + 4) >> 3);
 
-            /*p0*/ samples[y][x-1] = _clip1y(p0 + delta, 8);
-            /*q0*/ samples[y][x]   = _clip1y(q0 - delta, 8);
+            /*p0*/ samples[y][x-1] = _clip1c(p0 + delta, 8);
+            /*q0*/ samples[y][x]   = _clip1c(q0 - delta, 8);
         }
 
         y++;

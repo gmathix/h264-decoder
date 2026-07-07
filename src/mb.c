@@ -2,28 +2,21 @@
 // Created by gmathix on 3/21/26.
 //
 
-#include "cavlc.h"
-#include "global.h"
+
 #include "mb.h"
-#include "util/expgolomb.h"
-#include "util/formulas.h"
-#include "util/mbutil.h"
-#include "util/predutil.h"
 
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
-
+#include "cavlc.h"
 #include "inter.h"
 #include "intra.h"
 #include "mvpred.h"
-#include "picture.h"
 #include "transform.h"
+
 #include "tests/profiler.h"
 #include "util/sliceutil.h"
+#include "util/expgolomb.h"
+#include "util/mbutil.h"
+#include "util/predutil.h"
 
 
 /* table 7-11 */
@@ -507,21 +500,21 @@ void read_mb_pred(Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
             if (sh->num_ref_idx_l0_active_minus1 > 0 &&
                 ((part == 0 && (type & MB_TYPE_P0L0)) ||
                  (part == 1 && (type & MB_TYPE_P1L0)))) {
-                mb->u.pb.ref_idx_l0[part] = read_te(br, sh->num_ref_idx_l0_active_minus1);
+                mb->u.pb.ref_idx[L0][part] = read_te(br, sh->num_ref_idx_l0_active_minus1);
             }
         }
         for (int part = 0; part < mb->u.pb.mb_info.part_count; part++) {
             if (sh->num_ref_idx_l1_active_minus1 > 0 &&
                 ((part == 0 && (type & MB_TYPE_P0L1)) ||
                  (part == 1 && (type & MB_TYPE_P1L1)))) {
-                mb->u.pb.ref_idx_l1[part] = read_te(br, sh->num_ref_idx_l1_active_minus1);
+                mb->u.pb.ref_idx[L1][part] = read_te(br, sh->num_ref_idx_l1_active_minus1);
             }
         }
         for (int part = 0; part < mb->u.pb.mb_info.part_count; part++) {
             if ((part == 0 && (type & MB_TYPE_P0L0)) ||
                 (part == 1 && (type & MB_TYPE_P1L0))) {
                 for (int i = 0; i < 2; i++) {
-                    mb->u.pb.mvd_l0[part][0][i] = read_se(br);
+                    mb->u.pb.mvd[L0][part][0][i] = read_se(br);
                 }
             }
         }
@@ -529,7 +522,7 @@ void read_mb_pred(Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
             if ((part == 0 && (type & MB_TYPE_P0L1)) ||
                 (part == 1 && (type & MB_TYPE_P1L1))) {
                 for (int i = 0; i < 2; i++) {
-                    mb->u.pb.mvd_l1[part][0][i] = read_se(br);
+                    mb->u.pb.mvd[L1][part][0][i] = read_se(br);
                 }
             }
         }
@@ -550,14 +543,14 @@ void read_sub_mb_pred(Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
         if (sh->num_ref_idx_l0_active_minus1 > 0 && !(mb->mb_type & MB_TYPE_REF0) &&
             !(mb->u.pb.sub_mb_info[part].type & SUB_MB_TYPE_DIRECT && IS_B_SLICE(sh->slice_type)) &&
             (mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L0)) {
-            mb->u.pb.ref_idx_l0[part] = read_te(br, sh->num_ref_idx_l0_active_minus1);
+            mb->u.pb.ref_idx[L0][part] = read_te(br, sh->num_ref_idx_l0_active_minus1);
         }
     }
     for (int part = 0; part < 4; part++) {
         if (sh->num_ref_idx_l1_active_minus1 > 0 && !(mb->mb_type & MB_TYPE_REF0) &&
             !(mb->u.pb.sub_mb_info[part].type & SUB_MB_TYPE_DIRECT && IS_B_SLICE(sh->slice_type)) &&
             (mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L1)) {
-            mb->u.pb.ref_idx_l1[part] = read_te(br, sh->num_ref_idx_l1_active_minus1);
+            mb->u.pb.ref_idx[L1][part] = read_te(br, sh->num_ref_idx_l1_active_minus1);
         }
     }
     for (int part = 0; part < 4; part++) {
@@ -565,7 +558,7 @@ void read_sub_mb_pred(Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
             (mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L0)) {
             for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
                 for (int i = 0; i < 2; i++) {
-                    mb->u.pb.mvd_l0[part][subPart][i] = read_se(br);
+                    mb->u.pb.mvd[L0][part][subPart][i] = read_se(br);
                 }
             }
         }
@@ -575,7 +568,7 @@ void read_sub_mb_pred(Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
             (mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L1)) {
             for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
                 for (int i = 0; i < 2; i++) {
-                    mb->u.pb.mvd_l1[part][subPart][i] = read_se(br);
+                    mb->u.pb.mvd[L1][part][subPart][i] = read_se(br);
                 }
             }
         }
@@ -737,14 +730,12 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
     }
 
 
-    memset(&ctx->curr_pic->mvs_l0[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
-    memset(&ctx->curr_pic->mvs_l1[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
     for (int i = 0; i < 16; i++) {
-        ctx->curr_pic->mvs_l0[mb->mbAddr][i].ref_idx = -1;
-        ctx->curr_pic->mvs_l1[mb->mbAddr][i].ref_idx = -1;
+        ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L0] = (MotionVector) {-1, 0, 0};
+        ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L1] = (MotionVector) {-1, 0, 0};
     }
-    memset(&ctx->curr_pic->pred_flag_l0[mb->mbAddr][0], 0, 4);
-    memset(&ctx->curr_pic->pred_flag_l1[mb->mbAddr][0], 0, 4);
+    memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L0][0], false, 4);
+    memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L1][0], false, 4);
 }
 
 
@@ -759,11 +750,12 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
         debugging = false;
     }
 
-
-	memset(&ctx->curr_pic->mvs_l0[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
-    memset(&ctx->curr_pic->mvs_l1[mb->mbAddr][0], 0, 16 * sizeof(MotionVector));
-    memset(&ctx->curr_pic->pred_flag_l0[mb->mbAddr][0], 0, 4);
-    memset(&ctx->curr_pic->pred_flag_l1[mb->mbAddr][0], 0, 4);
+    for (int i = 0; i < 16; i++) {
+        ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L0] = (MotionVector) {-1, 0, 0};
+        ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L1] = (MotionVector) {-1, 0, 0};
+    }
+    memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L0][0], false, 4);
+    memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L1][0], false, 4);
 
     if (IS_INTRA(mb->mb_type)) {
         decode_i_macroblock(mb, slice, ctx);
@@ -772,13 +764,13 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
             derive_p_skip_mv(mb, ctx);
         } else {
             if (IS_16x16(mb->mb_type)) {
-                derive_16x16_mv(mb, true, ctx);
+                derive_16x16_mv(mb, L0, ctx);
             } else if (IS_16x8(mb->mb_type)) {
-                derive_16x8_part_mv(mb, 0, true, ctx);
-                derive_16x8_part_mv(mb, 1, true, ctx);
+                derive_16x8_part_mv(mb, 0, L0, ctx);
+                derive_16x8_part_mv(mb, 1, L0, ctx);
             } else if (IS_8x16(mb->mb_type)) {
-                derive_8x16_part_mv(mb, 0, true, ctx);
-                derive_8x16_part_mv(mb, 1, true, ctx);
+                derive_8x16_part_mv(mb, 0, L0, ctx);
+                derive_8x16_part_mv(mb, 1, L0, ctx);
             } else if (IS_8x8(mb->mb_type)) {
                 derive_8x8_mv(mb, ctx);
             }
@@ -789,11 +781,11 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
         for (int part = 0; part < 4; part++) {
             for (int subPart = 0; subPart < 4; subPart++) {
                 int idx = map_4x4[part * 4 + subPart];
-                MotionVector *mv = &ctx->curr_pic->mvs_l0[mb->mbAddr][idx];
+                MotionVector *mv = &ctx->curr_pic->motion_info[mb->mbAddr][idx].mvs[L0];
                 derive_pred_weights(mv->ref_idx, 0, true, false, ctx);
 
-                inter_pred_single(mb, idx, mv, true, ctx);
-                inter_pred_chroma_single(mb, idx, mv, true, ctx);
+                inter_pred_single(mb, idx, mv, L0, ctx);
+                inter_pred_chroma_single(mb, idx, mv, L0, ctx);
             }
         }
 
@@ -816,32 +808,40 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
         debugging = false;
     }
 
+    if (debugging) {
+        fprintf(stderr, "DEBUGGING MB %d type:%s qpy:%d qpc:%d\n",
+            mb->mbAddr, mb_type_to_string(mb->mb_type), mb->QPY, mb->QPC);
+
+    }
+
+    // printf("%d\n", mb->mbAddr);
+
 
     for (int i = 0; i < 16; i++) {
-        ctx->curr_pic->mvs_l0[mb->mbAddr][i] = (MotionVector) {-1, 0, 0};
-        ctx->curr_pic->mvs_l1[mb->mbAddr][i] = (MotionVector) {-1, 0, 0};
+        ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L0] = (MotionVector) {-1, 0, 0};
+        ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L1] = (MotionVector) {-1, 0, 0};
     }
-    memset(&ctx->curr_pic->pred_flag_l0[mb->mbAddr][0], 0, 4);
-    memset(&ctx->curr_pic->pred_flag_l1[mb->mbAddr][0], 0, 4);
+    memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L0][0], false, 4);
+    memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L1][0], false, 4);
 
     if (IS_INTRA(mb->mb_type)) {
         decode_i_macroblock(mb, slice, ctx);
     } else {
         if (IS_SKIP(mb->mb_type) || IS_DIRECT(mb->mb_type)) {
-            for (int part = 0; part < 4; part++) derive_direct_mv(mb, part, true, ctx);
+            for (int part = 0; part < 4; part++) derive_direct_mv(mb, part, ctx);
         } else if (IS_16x16(mb->mb_type)) {
-            if (mb->mb_type & MB_TYPE_P0L0) derive_16x16_mv(mb, true, ctx);
-            if (mb->mb_type & MB_TYPE_P0L1) derive_16x16_mv(mb, false, ctx);
+            if (mb->mb_type & MB_TYPE_P0L0) derive_16x16_mv(mb, L0, ctx);
+            if (mb->mb_type & MB_TYPE_P0L1) derive_16x16_mv(mb, L1, ctx);
         } else if (IS_16x8(mb->mb_type)) {
-            if (mb->mb_type & MB_TYPE_P0L0) derive_16x8_part_mv(mb, 0, true, ctx);
-            if (mb->mb_type & MB_TYPE_P0L1) derive_16x8_part_mv(mb, 0, false, ctx);
-            if (mb->mb_type & MB_TYPE_P1L0) derive_16x8_part_mv(mb, 1, true, ctx);
-            if (mb->mb_type & MB_TYPE_P1L1) derive_16x8_part_mv(mb, 1, false, ctx);
+            if (mb->mb_type & MB_TYPE_P0L0) derive_16x8_part_mv(mb, 0, L0, ctx);
+            if (mb->mb_type & MB_TYPE_P0L1) derive_16x8_part_mv(mb, 0, L1, ctx);
+            if (mb->mb_type & MB_TYPE_P1L0) derive_16x8_part_mv(mb, 1, L0, ctx);
+            if (mb->mb_type & MB_TYPE_P1L1) derive_16x8_part_mv(mb, 1, L1, ctx);
         } else if (IS_8x16(mb->mb_type)) {
-            if (mb->mb_type & MB_TYPE_P0L0) derive_8x16_part_mv(mb, 0, true, ctx);
-            if (mb->mb_type & MB_TYPE_P0L1) derive_8x16_part_mv(mb, 0, false, ctx);
-            if (mb->mb_type & MB_TYPE_P1L0) derive_8x16_part_mv(mb, 1, true, ctx);
-            if (mb->mb_type & MB_TYPE_P1L1) derive_8x16_part_mv(mb, 1, false, ctx);
+            if (mb->mb_type & MB_TYPE_P0L0) derive_8x16_part_mv(mb, 0, L0, ctx);
+            if (mb->mb_type & MB_TYPE_P0L1) derive_8x16_part_mv(mb, 0, L1, ctx);
+            if (mb->mb_type & MB_TYPE_P1L0) derive_8x16_part_mv(mb, 1, L0, ctx);
+            if (mb->mb_type & MB_TYPE_P1L1) derive_8x16_part_mv(mb, 1, L1, ctx);
         } else if (IS_8x8(mb->mb_type)) {
             derive_8x8_mv(mb, ctx);
         }
@@ -849,22 +849,26 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
 
         /* luma inter pred */
         for (int part = 0; part < 4; part++) {
-            bool l0 = ctx->curr_pic->pred_flag_l0[mb->mbAddr][part];
-            bool l1 = ctx->curr_pic->pred_flag_l1[mb->mbAddr][part];
+            bool l0 = ctx->curr_pic->pred_flags[mb->mbAddr][L0][part];
+            bool l1 = ctx->curr_pic->pred_flags[mb->mbAddr][L1][part];
+
 
             for (int subPart = 0; subPart < 4; subPart++) {
                 int idx = map_4x4[part * 4 + subPart];
 
                 if (l0 + l1 == 1) {
-                    MotionVector *mv = l0 ? &ctx->curr_pic->mvs_l0[mb->mbAddr][idx] : &ctx->curr_pic->mvs_l1[mb->mbAddr][idx];
+                    int list = l0 == 1 ? L0 : L1;
+                    MotionVector *mv = &ctx->curr_pic->motion_info[mb->mbAddr][idx].mvs[list];
+                    if (debugging) fprintf(stderr, "part %d sub %d --- %s mv:(%d,%d)\n", part, subPart, l0 ? "L0" : "L1", mv->x, mv->y);
 
                     derive_pred_weights(mv->ref_idx, mv->ref_idx, l0, l1, ctx);
 
-                    inter_pred_single(mb, idx, mv, l0, ctx);
-                    inter_pred_chroma_single(mb, idx,  mv, l0, ctx);
+                    inter_pred_single(mb, idx, mv, list, ctx);
+                    inter_pred_chroma_single(mb, idx,  mv, list, ctx);
                 } else if (l0 + l1 == 2) {
-                    MotionVector *mvL0 = &ctx->curr_pic->mvs_l0[mb->mbAddr][idx];
-                    MotionVector *mvL1 = &ctx->curr_pic->mvs_l1[mb->mbAddr][idx];
+                    MotionVector *mvL0 = &ctx->curr_pic->motion_info[mb->mbAddr][idx].mvs[L0];
+                    MotionVector *mvL1 = &ctx->curr_pic->motion_info[mb->mbAddr][idx].mvs[L1];
+                    if (debugging) fprintf(stderr, "part %d sub %d --- L0 L1 mv0:(%d,%d) mv1:(%d,%d)\n", part, subPart,  mvL0->x, mvL0->y, mvL1->x, mvL1->y);
 
                     derive_pred_weights(mvL0->ref_idx, mvL1->ref_idx, true, true, ctx);
 

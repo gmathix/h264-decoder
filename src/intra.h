@@ -6,7 +6,9 @@
 #define TOY_H264_INTRA_H
 
 
-#include "decoder.h"
+#include "global.h"
+
+
 #include "mb.h"
 
 

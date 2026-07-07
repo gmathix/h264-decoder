@@ -6,9 +6,6 @@
 #define TOY_H264_VLC_H
 
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdlib.h>
 
 #include "global.h"
 #include "util/bitreader.h"

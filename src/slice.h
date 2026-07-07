@@ -6,7 +6,8 @@
 #define TOY_H264_SLICE_H
 
 
-#include "common.h"
+#include "global.h"
+
 #include "decoder.h"
 #include "ps.h"
 
@@ -53,6 +54,26 @@ typedef struct SliceHeader {
 } SliceHeader ;
 
 
+typedef void (*decode_macroblock_func) (struct Macroblock *mb, struct Slice *slice, CodecContext *ctx);
+typedef struct Slice {
+    SliceHeader *sh;
+
+    struct Picture *p_pic;
+    int num_mbs;
+
+    decode_macroblock_func decode_macroblock;
+
+    int picNumL0Pred;
+    int picNumL1Pred;
+    bool rplm_occured_l0;
+    bool rplm_occured_l1;
+} Slice ;
+
+
+
+Slice   *slice_alloc();
+void     slice_free(Slice *slice);
+void     slice_reset(Slice *slice);
 
 void         decode_slice              (NalUnit *nal_unit, CodecContext *ctx);
 SliceHeader  *read_slice_header        (NalUnit *nal_unit, CodecContext *ctx);

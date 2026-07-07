@@ -5,7 +5,8 @@
 #ifndef TOY_H264_MV_H
 #define TOY_H264_MV_H
 
-#include <stdint.h>
+
+#include "global.h"
 
 
 typedef struct MotionVector {
@@ -15,5 +16,11 @@ typedef struct MotionVector {
 } MotionVector ;
 
 static MotionVector MV_ZERO = {0, 0, 0};
+
+
+typedef struct MotionInfo {
+    MotionVector mvs[2];
+    const struct Picture *ref_pics[2];
+} MotionInfo ;
 
 #endif //TOY_H264_MV_H

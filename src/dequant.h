@@ -6,7 +6,7 @@
 #define TOY_H264_DEQUANT_H
 
 
-#include <stdint.h>
+#include "global.h"
 
 #include "decoder.h"
 

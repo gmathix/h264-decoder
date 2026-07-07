@@ -3,20 +3,40 @@
 //
 
 
-#include <stdio.h>
-#include <stdlib.h>
+#include "slice.h"
+
 
 #include "deblock.h"
 #include "dpb.h"
 #include "intra.h"
 #include "picture.h"
-#include "slice.h"
 
 #include "tests/profiler.h"
-
 #include "util/expgolomb.h"
 #include "util/mbutil.h"
 #include "util/sliceutil.h"
+
+
+
+
+
+Slice *slice_alloc() {
+    Slice *s = calloc(1, sizeof(Slice));
+    return s;
+}
+
+void slice_free(Slice *slice) {
+    free(slice);
+}
+
+void slice_reset(Slice *slice) {
+    slice->num_mbs = 0;
+    slice->p_pic = NULL;
+    slice->sh = NULL;
+    slice->rplm_occured_l0 = false;
+    slice->rplm_occured_l1 = false;
+}
+
 
 
 // see fig 6-14
@@ -349,9 +369,9 @@ void pred_weight_table(uint8_t type, SliceHeader *sh, CodecContext *ctx) {
     PPS *pps = sh->pps;
 
 
-    ctx->luma_log2_weight_denom = read_ue(br);
+    ctx->wpred.luma_log2_weight_denom = read_ue(br);
     if (sps->chroma_format_idc != 0) {
-        ctx->chroma_log2_weight_denom = read_ue(br);
+        ctx->wpred.chroma_log2_weight_denom = read_ue(br);
     }
 
     int luma_weight_l0_flag;
@@ -360,24 +380,24 @@ void pred_weight_table(uint8_t type, SliceHeader *sh, CodecContext *ctx) {
     for (int i = 0; i < sh->num_ref_idx_l0_active_minus1+1; i++) {
         luma_weight_l0_flag = read_u(br, 1);
         if (luma_weight_l0_flag) {
-            ctx->luma_weight_l0[i] = read_se(br);
-            ctx->luma_offset_l0[i] = read_se(br);
+            ctx->wpred.luma_weight[L0][i] = read_se(br);
+            ctx->wpred.luma_offset[L0][i] = read_se(br);
         } else {
-            ctx->luma_weight_l0[i] = 1 << ctx->luma_log2_weight_denom;
-            ctx->luma_offset_l0[i] = 0;
+            ctx->wpred.luma_weight[L0][i] = 1 << ctx->wpred.luma_log2_weight_denom;
+            ctx->wpred.luma_offset[L0][i] = 0;
         }
 
         if (sps->chroma_format_idc != 0) {
             chroma_weight_l0_flag = read_u(br, 1);
             if (chroma_weight_l0_flag) {
                 for (int j = 0; j < 2; j++) {
-                    ctx->chroma_weight_l0[i][j] = read_se(br);
-                    ctx->chroma_offset_l0[i][j] = read_se(br);
+                    ctx->wpred.chroma_weight[L0][i][j] = read_se(br);
+                    ctx->wpred.chroma_offset[L0][i][j] = read_se(br);
                 }
             } else {
                 for (int j = 0; j < 2; j++) {
-                    ctx->chroma_weight_l0[i][j] = 1 << ctx->chroma_log2_weight_denom;
-                    ctx->chroma_offset_l0[i][j] = 0;
+                    ctx->wpred.chroma_weight[L0][i][j] = 1 << ctx->wpred.chroma_log2_weight_denom;
+                    ctx->wpred.chroma_offset[L0][i][j] = 0;
                 }
             }
         }
@@ -391,24 +411,24 @@ void pred_weight_table(uint8_t type, SliceHeader *sh, CodecContext *ctx) {
         for (int i = 0; i < sh->num_ref_idx_l1_active_minus1+1; i++) {
             luma_weight_l1_flag = read_u(br, 1);
             if (luma_weight_l1_flag) {
-                ctx->luma_weight_l1[i] = read_se(br);
-                ctx->luma_offset_l1[i] = read_se(br);
+                ctx->wpred.luma_weight[L1][i] = read_se(br);
+                ctx->wpred.luma_offset[L1][i] = read_se(br);
             } else {
-                ctx->luma_weight_l1[i] = 1 << ctx->luma_log2_weight_denom;
-                ctx->luma_offset_l1[i] = 0;
+                ctx->wpred.luma_weight[L1][i] = 1 << ctx->wpred.luma_log2_weight_denom;
+                ctx->wpred.luma_offset[L1][i] = 0;
             }
 
             if (sps->chroma_format_idc != 0) {
                 chroma_weight_l1_flag = read_u(br, 1);
                 if (chroma_weight_l1_flag) {
                     for (int j = 0; j < 2; j++) {
-                        ctx->chroma_weight_l1[i][j] = read_se(br);
-                        ctx->chroma_offset_l1[i][j] = read_se(br);
+                        ctx->wpred.chroma_weight[L1][i][j] = read_se(br);
+                        ctx->wpred.chroma_offset[L1][i][j] = read_se(br);
                     }
                 } else {
                     for (int j = 0; j < 2; j++) {
-                        ctx->chroma_weight_l1[i][j] = 1 << ctx->chroma_log2_weight_denom;
-                        ctx->chroma_offset_l1[i][j] = 0;
+                        ctx->wpred.chroma_weight[L1][i][j] = 1 << ctx->wpred.chroma_log2_weight_denom;
+                        ctx->wpred.chroma_offset[L1][i][j] = 0;
                     }
                 }
             }

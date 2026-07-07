@@ -5,12 +5,10 @@
 #ifndef TOY_H264_DECODER_H
 #define TOY_H264_DECODER_H
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
 
-#include "common.h"
-#include "mv.h"
+
+#include "global.h"
+
 
 
 typedef struct CodecContext {
@@ -53,18 +51,20 @@ typedef struct CodecContext {
 
 
     /* weighted prediction variables */
-    bool wpred_active;; // implicitMode == 1 || explicitMode == 1
-    int logWD[3], w0[3], w1[3], o0[3], o1[3];
-    unsigned luma_log2_weight_denom;
-    unsigned chroma_log2_weight_denom;
-    int luma_weight_l0[MAX_NUM_REF_PICTURES];
-    int luma_weight_l1[MAX_NUM_REF_PICTURES];
-    int luma_offset_l0[MAX_NUM_REF_PICTURES];
-    int luma_offset_l1[MAX_NUM_REF_PICTURES];
-    int chroma_weight_l0[MAX_NUM_REF_PICTURES][2];
-    int chroma_weight_l1[MAX_NUM_REF_PICTURES][2];
-    int chroma_offset_l0[MAX_NUM_REF_PICTURES][2];
-    int chroma_offset_l1[MAX_NUM_REF_PICTURES][2];
+    struct {
+        bool is_active; // implicitMode == 1 || explicitMode == 1
+        int logWD[3];
+        int weight[2][3];
+        int offset[2][3];
+
+        /* parsing */
+        unsigned luma_log2_weight_denom;
+        unsigned chroma_log2_weight_denom;
+        int luma_weight[2][MAX_NUM_REF_PICTURES];
+        int luma_offset[2][MAX_NUM_REF_PICTURES];
+        int chroma_weight[2][MAX_NUM_REF_PICTURES][2];
+        int chroma_offset[2][MAX_NUM_REF_PICTURES][2];
+    } wpred ;
 
 
 

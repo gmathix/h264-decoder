@@ -7,12 +7,12 @@
 
 
 
-#include "common.h"
+#include "global.h"
 #include "decoder.h"
 
 
 
-int dispatch_nal_unit(NalUnit *nal_unit, struct CodecContext *ctx);
+int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx);
 
 
 

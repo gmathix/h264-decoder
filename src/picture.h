@@ -7,9 +7,9 @@
 
 
 #include "global.h"
-#include "slice.h"
-#include "mb.h"
 
+#include "decoder.h"
+#include "motion_info.h"
 
 typedef struct Picture {
     int nal_ref_idc;
@@ -21,6 +21,8 @@ typedef struct Picture {
     int  pic_num;
     int  poc;
     int  dpb_pic_id; // 0..MAX_DPB_SIZE
+    bool in_list[2];
+    int  lowest_list_index[2];
 
 
     /* after dpb storing */
@@ -34,7 +36,7 @@ typedef struct Picture {
 
 
     /* will only be used for attributes that are common for all slices of one picture */
-    SliceHeader *sh;
+    struct SliceHeader *sh;
 
 
     int        num_mbs;
@@ -50,10 +52,8 @@ typedef struct Picture {
 
     /* metadata used for B slices prediction */
     int *mb_types;
-    MotionVector (*mvs_l0) [16];
-    MotionVector (*mvs_l1) [16];
-    bool (*pred_flag_l0) [4];
-    bool (*pred_flag_l1) [4];
+    MotionInfo   (*motion_info) [16];
+    bool (*pred_flags) [2][4];
 
 
     uint8_t   *luma;
@@ -64,19 +64,6 @@ typedef struct Picture {
 extern const Picture EMPTY_PICTURE;
 
 
-typedef struct Slice {
-    SliceHeader *sh;
-
-    Picture *p_pic;
-    int num_mbs;
-
-    decode_macroblock_func decode_macroblock;
-
-    int picNumL0Pred;
-    int picNumL1Pred;
-    bool rplm_occured_l0;
-    bool rplm_occured_l1;
-} Slice ;
 
 
 
@@ -87,10 +74,8 @@ static ALWAYS_INLINE uint8_t *Picture_luma_ptr(Picture *p, int mbAddr, int mb_wi
 }
 
 
-Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx);
-Slice   *slice_alloc();
-void     slice_free(Slice *slice);
-void     slice_reset(Slice *slice);
+Picture *picture_alloc(struct SliceHeader *sh, CodecContext *ctx);
+
 void     picture_free(Picture *p);
 
 void     picture_reset(Picture *p);

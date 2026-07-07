@@ -3,14 +3,13 @@
 //
 
 #include "transform.h"
-#include "util/formulas.h"
-#include "util/mbutil.h"
-
-#include <string.h>
 
 #include "dequant.h"
 #include "picture.h"
-#include "tests/profiler.h"
+
+#include "util/formulas.h"
+#include "util/mbutil.h"
+
 
 
 const uint8_t field_scan_4x4[4][4] = {

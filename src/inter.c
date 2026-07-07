@@ -3,8 +3,10 @@
 //
 
 #include "inter.h"
-#include "qpel.h"
 
+#include "dpb.h"
+#include "qpel.h"
+#include "util/sliceutil.h"
 
 
 void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1, CodecContext *ctx) {
@@ -17,24 +19,24 @@ void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1,
                         ((pps->weighted_bipred_idc == 1 && IS_B_SLICE(sh->slice_type) && (predFlagL0 || predFlagL1)) ||
                         (pps->weighted_pred_flag == 1 && IS_P_SLICE(sh->slice_type) && predFlagL0));
 
-    ctx->wpred_active = implicitMode || explicitMode;
+    ctx->wpred.is_active = implicitMode || explicitMode;
 
 
     if (implicitMode) {
         for (int i = 0; i < 3; i++) {
-            ctx->logWD[i] = 5;
-            ctx->o0[i] = ctx->o1[i] = 0;
+            ctx->wpred.logWD[i] = 5;
+            ctx->wpred.offset[L0][i] = ctx->wpred.offset[L1][i] = 0;
         }
 
-        Picture *pic0 = ctx->dpb->l0[1+refL0];
-        Picture *pic1 = ctx->dpb->l1[1+refL1];
+        Picture *pic0 = ctx->dpb->lists[L0][1+refL0];
+        Picture *pic1 = ctx->dpb->lists[L1][1+refL1];
 
         int td = _clip3(-128, 127, pic1->poc - pic0->poc);
 
         if (td == 0 ||
             (pic0->dpb_status == LONG_TERM_REF || pic1->dpb_status == LONG_TERM_REF)) {
             for (int i = 0; i < 3; i++) {
-                ctx->w0[i] = ctx->w1[i] = 32;
+                ctx->wpred.weight[L0][i] = ctx->wpred.weight[L1][i] = 32;
             }
         } else {
             int tb = _clip3(-128, 127, currPic->poc - pic0->poc);
@@ -43,29 +45,29 @@ void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1,
 
             if (((distScaleFactor >> 2) < -64) || ((distScaleFactor >> 2) > 128)) {
                 for (int i = 0; i < 3; i++) {
-                    ctx->w0[i] = ctx->w1[i] = 32;
+                    ctx->wpred.weight[L0][i] = ctx->wpred.weight[L1][i] = 32;
                 }
             } else {
                 for (int i = 0; i < 3; i++) {
-                    ctx->w0[i] = 64 - (distScaleFactor >> 2);
-                    ctx->w1[i] = distScaleFactor >> 2;
+                    ctx->wpred.weight[L0][i] = 64 - (distScaleFactor >> 2);
+                    ctx->wpred.weight[L1][i] = distScaleFactor >> 2;
                 }
             }
         }
     }
     else if (explicitMode) {
-        ctx->logWD[0] = ctx->luma_log2_weight_denom;
-        ctx->w0[0]    = ctx->luma_weight_l0[refL0];
-        ctx->w1[0]    = ctx->luma_weight_l1[refL1];
-        ctx->o0[0]    = ctx->luma_offset_l0[refL0];
-        ctx->o1[0]    = ctx->luma_offset_l1[refL1];
+        ctx->wpred.logWD[0] = ctx->wpred.luma_log2_weight_denom;
+        ctx->wpred.weight[L0][0]    = ctx->wpred.luma_weight[L0][refL0];
+        ctx->wpred.weight[L1][0]    = ctx->wpred.luma_weight[L1][refL1];
+        ctx->wpred.offset[L0][0]    = ctx->wpred.luma_offset[L0][refL0];
+        ctx->wpred.offset[L1][0]    = ctx->wpred.luma_offset[L1][refL1];
 
         for (int i = 0; i < 2; i++) {
-            ctx->logWD[1+i] = ctx->chroma_log2_weight_denom;
-            ctx->w0[1+i]    = ctx->chroma_weight_l0[refL0][i];
-            ctx->w1[1+i]    = ctx->chroma_weight_l1[refL1][i];
-            ctx->o0[1+i]    = ctx->chroma_offset_l0[refL0][i];
-            ctx->o1[1+i]    = ctx->chroma_offset_l1[refL1][i];
+            ctx->wpred.logWD[1+i] = ctx->wpred.chroma_log2_weight_denom;
+            ctx->wpred.weight[L0][1+i]    = ctx->wpred.chroma_weight[L0][refL0][i];
+            ctx->wpred.weight[L1][1+i]    = ctx->wpred.chroma_weight[L1][refL1][i];
+            ctx->wpred.offset[L0][1+i]    = ctx->wpred.chroma_offset[L0][refL0][i];
+            ctx->wpred.offset[L1][1+i]    = ctx->wpred.chroma_offset[L1][refL1][i];
         }
     }
 
@@ -76,11 +78,12 @@ void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1,
 /* gets called for every 4x4 sub macroblock every time, even if they belong to a 16x16 inter mb
  * TODO: adaptive inter pred following mb partitioning (avoid calling this 16 times for a 16x16 mb when inter pred could be done in one shot)
  */
-void inter_pred_single(Macroblock *mb, int idx, MotionVector *mv, bool l0, CodecContext *ctx) {
+void inter_pred_single(Macroblock *mb, int idx, MotionVector *mv, int list, CodecContext *ctx) {
 
     Picture *currPic = mb->p_pic;
-    Picture *refPic  = l0 ? ctx->dpb->l0[1+mv->ref_idx] : ctx->dpb->l1[1+mv->ref_idx];
-    bool weighted = ctx->wpred_active;
+    Picture *refPic  = ctx->dpb->lists[list][1+mv->ref_idx];
+    bool weighted = ctx->wpred.is_active;
+
 
     // top-left sample coords relative to picture
     int yBase = mb->mb_y*16 + ((idx>>2) << 2);
@@ -103,9 +106,9 @@ void inter_pred_single(Macroblock *mb, int idx, MotionVector *mv, bool l0, Codec
 
 
     if (weighted) {
-        int logWD = ctx->logWD[0];
-        int w = l0 ? ctx->w0[0] : ctx->w1[0];
-        int o = l0 ? ctx->o0[0] : ctx->o1[0];
+        int logWD = ctx->wpred.logWD[0];
+        int w = ctx->wpred.weight[list][0];
+        int o = ctx->wpred.offset[list][0];
 
         dst = &currPic->luma[yBase*stride + xBase];
         for (int y = 0; y < 4; y++) {
@@ -123,9 +126,10 @@ void inter_pred_single(Macroblock *mb, int idx, MotionVector *mv, bool l0, Codec
 void inter_pred_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVector *mvL1, CodecContext *ctx) {
 
     Picture *currPic = mb->p_pic;
-    Picture *refPic0 = ctx->dpb->l0[1+mvL0->ref_idx];
-    Picture *refPic1 = ctx->dpb->l1[1+mvL1->ref_idx];
-    bool weighted = ctx->wpred_active;
+    Picture *refPic0 = ctx->dpb->lists[L0][1+mvL0->ref_idx];
+    Picture *refPic1 = ctx->dpb->lists[L1][1+mvL1->ref_idx];
+    bool weighted = ctx->wpred.is_active;
+
 
 
     MotionVector *mvList[2] = {mvL0, mvL1};
@@ -160,11 +164,11 @@ void inter_pred_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVector *mv
     }
 
 
-    int logWD = ctx->logWD[0];
-    int w0 = ctx->w0[0];
-    int w1 = ctx->w1[0];
-    int o0 = ctx->o0[0];
-    int o1 = ctx->o1[0];
+    int logWD = ctx->wpred.logWD[0];
+    int w0 = ctx->wpred.weight[L0][0];
+    int w1 = ctx->wpred.weight[L1][0];
+    int o0 = ctx->wpred.offset[L0][0];
+    int o1 = ctx->wpred.offset[L1][0];
 
 
     int stride = currPic->widthY;
@@ -190,10 +194,10 @@ void inter_pred_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVector *mv
 }
 
 
-void inter_pred_chroma_single(Macroblock *mb, int idx, MotionVector *mv, bool l0, CodecContext *ctx) {
+void inter_pred_chroma_single(Macroblock *mb, int idx, MotionVector *mv, int list, CodecContext *ctx) {
     Picture *currPic = mb->p_pic;
-    Picture *refPic  = l0 ? ctx->dpb->l0[1+mv->ref_idx] : ctx->dpb->l1[1+mv->ref_idx];
-    bool weighted = ctx->wpred_active;
+    Picture *refPic  = ctx->dpb->lists[list][1+mv->ref_idx];
+    bool weighted = ctx->wpred.is_active;
 
     const int yBase = mb->mb_y*8 + ((idx>>2) << 1);
     const int xBase = mb->mb_x*8 + ((idx&3)  << 1);
@@ -233,9 +237,9 @@ void inter_pred_chroma_single(Macroblock *mb, int idx, MotionVector *mv, bool l0
         for (int iCbCr = 0; iCbCr < 2; iCbCr++) {
             uint8_t *ptr = iCbCr ? dstCr : dstCb;
 
-            int logWD = ctx->logWD[1+iCbCr];
-            int w = l0 ? ctx->w0[1+iCbCr] : ctx->w1[1+iCbCr];
-            int o = l0 ? ctx->o0[1+iCbCr] : ctx->o1[1+iCbCr];
+            int logWD = ctx->wpred.logWD[1+iCbCr];
+            int w = ctx->wpred.weight[list][1+iCbCr];
+            int o = ctx->wpred.offset[list][1+iCbCr];
 
             for (int y = 0; y < 2; y++) {
                 for (int x = 0; x < 2; x++) {
@@ -254,9 +258,9 @@ void inter_pred_chroma_single(Macroblock *mb, int idx, MotionVector *mv, bool l0
 
 void inter_pred_chroma_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVector *mvL1, CodecContext *ctx) {
     Picture *currPic = mb->p_pic;
-    Picture *refPic0 = ctx->dpb->l0[1+mvL0->ref_idx];
-    Picture *refPic1 = ctx->dpb->l1[1+mvL1->ref_idx];
-    bool weighted = ctx->wpred_active;
+    Picture *refPic0 = ctx->dpb->lists[L0][1+mvL0->ref_idx];
+    Picture *refPic1 = ctx->dpb->lists[L1][1+mvL1->ref_idx];
+    bool weighted = ctx->wpred.is_active;
 
 
     MotionVector *mvList[2] = {mvL0, mvL1};
@@ -320,11 +324,11 @@ void inter_pred_chroma_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVec
             uint8_t *ptr = iCbCr ? dstCr : dstCb;
             uint8_t (*temp)[2][2] = iCbCr ? temp_cr : temp_cb;
 
-            int logWD = ctx->logWD[1+iCbCr];
-            int w0 = ctx->w0[1+iCbCr];
-            int w1 = ctx->w1[1+iCbCr];
-            int o0 = ctx->o0[1+iCbCr];
-            int o1 = ctx->o1[1+iCbCr];
+            int logWD = ctx->wpred.logWD[1+iCbCr];
+            int w0 = ctx->wpred.weight[L0][1+iCbCr];
+            int w1 = ctx->wpred.weight[L1][1+iCbCr];
+            int o0 = ctx->wpred.offset[L0][1+iCbCr];
+            int o1 = ctx->wpred.offset[L1][1+iCbCr];
 
             for (int y = 0; y < 2; y++) {
                 for (int x = 0; x < 2; x++) {

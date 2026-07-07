@@ -53,17 +53,20 @@ typedef struct CodecContext {
 
 
     /* weighted prediction variables */
-    bool wpred_active;; // implicitMode == 1 || explicitMode == 1
-    int logWD[3];
-    int weight[2][3];
-    int offset[2][3];
+    struct {
+        bool is_active; // implicitMode == 1 || explicitMode == 1
+        int logWD[3];
+        int weight[2][3];
+        int offset[2][3];
 
-    unsigned luma_log2_weight_denom;
-    unsigned chroma_log2_weight_denom;
-    int luma_weight[2][MAX_NUM_REF_PICTURES];
-    int luma_offset[2][MAX_NUM_REF_PICTURES];
-    int chroma_weight[2][MAX_NUM_REF_PICTURES][2];
-    int chroma_offset[2][MAX_NUM_REF_PICTURES][2];
+        /* parsing */
+        unsigned luma_log2_weight_denom;
+        unsigned chroma_log2_weight_denom;
+        int luma_weight[2][MAX_NUM_REF_PICTURES];
+        int luma_offset[2][MAX_NUM_REF_PICTURES];
+        int chroma_weight[2][MAX_NUM_REF_PICTURES][2];
+        int chroma_offset[2][MAX_NUM_REF_PICTURES][2];
+    } wpred ;
 
 
 

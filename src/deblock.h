@@ -6,11 +6,10 @@
 #define H264_DECODER_DEBLOCK_H
 
 
+#include "global.h"
 
-#include "mb.h"
 #include "picture.h"
-#include "tests/profiler.h"
-
+#include "util/formulas.h"
 
 
 extern const uint8_t alpha_table[52];

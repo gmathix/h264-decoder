@@ -10,7 +10,6 @@
 #include "mb.h"
 #include "util/mbutil.h"
 
-#include <emmintrin.h>
 
 
 

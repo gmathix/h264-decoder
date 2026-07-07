@@ -4,7 +4,6 @@
 
 #include "dequant.h"
 
-#include <stdlib.h>
 
 
 /* default scaling lists */

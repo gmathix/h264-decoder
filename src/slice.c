@@ -3,20 +3,40 @@
 //
 
 
-#include <stdio.h>
-#include <stdlib.h>
+#include "slice.h"
+
 
 #include "deblock.h"
 #include "dpb.h"
 #include "intra.h"
 #include "picture.h"
-#include "slice.h"
 
 #include "tests/profiler.h"
-
 #include "util/expgolomb.h"
 #include "util/mbutil.h"
 #include "util/sliceutil.h"
+
+
+
+
+
+Slice *slice_alloc() {
+    Slice *s = calloc(1, sizeof(Slice));
+    return s;
+}
+
+void slice_free(Slice *slice) {
+    free(slice);
+}
+
+void slice_reset(Slice *slice) {
+    slice->num_mbs = 0;
+    slice->p_pic = NULL;
+    slice->sh = NULL;
+    slice->rplm_occured_l0 = false;
+    slice->rplm_occured_l1 = false;
+}
+
 
 
 // see fig 6-14

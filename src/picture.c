@@ -2,8 +2,10 @@
 // Created by gmathix on 4/7/26.
 //
 
+#include "motion_info.h"
 #include "picture.h"
-#include <stdlib.h>
+
+#include "slice.h"
 
 
 const Picture EMPTY_PICTURE = {};
@@ -43,22 +45,7 @@ Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx) {
     return p;
 }
 
-Slice *slice_alloc() {
-    Slice *s = calloc(1, sizeof(Slice));
-    return s;
-}
 
-void slice_free(Slice *slice) {
-    free(slice);
-}
-
-void slice_reset(Slice *slice) {
-    slice->num_mbs = 0;
-    slice->p_pic = NULL;
-    slice->sh = NULL;
-    slice->rplm_occured_l0 = false;
-    slice->rplm_occured_l1 = false;
-}
 
 void picture_reset(Picture *p) {
     memset(&p->luma[0], 0, p->heightY * p->widthY);

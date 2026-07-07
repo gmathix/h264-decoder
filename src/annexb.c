@@ -2,11 +2,9 @@
 // Created by gmathix on 3/17/26.
 //
 
+#include "global.h"
 #include "annexb.h"
 
-#include <stdio.h>
-#include <string.h>
-#include <wchar.h>
 
 
 /* count start codes to find number of nal units */

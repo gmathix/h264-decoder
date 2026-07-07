@@ -5,9 +5,7 @@
 #ifndef TOY_H264_ANNEXB_H
 #define TOY_H264_ANNEXB_H
 
-#include <stdlib.h>
 
-#include "common.h"
 #include "util/bitreader.h"
 
 

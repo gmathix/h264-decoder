@@ -2,28 +2,21 @@
 // Created by gmathix on 3/21/26.
 //
 
-#include "cavlc.h"
-#include "global.h"
+
 #include "mb.h"
-#include "util/expgolomb.h"
-#include "util/formulas.h"
-#include "util/mbutil.h"
-#include "util/predutil.h"
 
 
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <unistd.h>
-
-
+#include "cavlc.h"
 #include "inter.h"
 #include "intra.h"
 #include "mvpred.h"
-#include "picture.h"
 #include "transform.h"
+
 #include "tests/profiler.h"
 #include "util/sliceutil.h"
+#include "util/expgolomb.h"
+#include "util/mbutil.h"
+#include "util/predutil.h"
 
 
 /* table 7-11 */

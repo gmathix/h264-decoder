@@ -3,16 +3,12 @@
 //
 
 #include "cavlc.h"
-#include "global.h"
-#include "vlc.h"
-#include "util/expgolomb.h"
-#include "util/mbutil.h"
-
-#include <stdio.h>
-#include <stdlib.h>
 
 #include "picture.h"
+#include "vlc.h"
 
+#include "util/expgolomb.h"
+#include "util/mbutil.h"
 
 /* Table 9-5 */
 const uint16_t coeff_token_lengths[4][62]={

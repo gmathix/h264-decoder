@@ -6,12 +6,14 @@
 #define H264_DECODER_INTER_H
 
 
+#include "global.h"
+
 
 #include "decoder.h"
-#include "dpb.h"
 #include "mb.h"
 #include "motion_info.h"
 #include "picture.h"
+
 
 
 

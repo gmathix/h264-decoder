@@ -5,9 +5,8 @@
 #ifndef TOY_H264_MV_H
 #define TOY_H264_MV_H
 
-#include <stdbool.h>
-#include <stdint.h>
 
+#include "global.h"
 
 
 typedef struct MotionVector {

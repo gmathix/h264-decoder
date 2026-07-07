@@ -3,11 +3,10 @@
 //
 
 #include "dpb.h"
-#include <stdint.h>
-#include <unistd.h>
 
-#include "picture.h"
+#include "tests/profiler.h"
 #include "util/expgolomb.h"
+#include "util/formulas.h"
 #include "util/sliceutil.h"
 
 

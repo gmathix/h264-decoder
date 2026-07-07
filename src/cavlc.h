@@ -5,18 +5,17 @@
 #ifndef TOY_H264_CAVLC_H
 #define TOY_H264_CAVLC_H
 
-#include "mb.h"
-#include "util/bitreader.h"
-#include "slice.h"
 
-#include <stdint.h>
+
+#include "global.h"
+#include "mb.h"
+#include "slice.h"
 
 
 #define MAX_CODE_LENGTH   16
 
 
 typedef enum {
-
 
     LUMA_INTRA_16x16_DC_LEVEL,
     LUMA_INTRA_16x16_AC_LEVEL,
@@ -85,7 +84,10 @@ static char* bt_to_string(int bt) {
 }
 
 
-void  residual_block_cavlc (Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t coeffLevel[], uint8_t (*total_coeffs_table)[16], int startIdx, int endIdx, int maxNumCoeff, bool isLuma, SliceHeader *sh, CodecContext *ctx);
+void  residual_block_cavlc (Macroblock *mb, int blkIdx, int iCbCr, int bt,
+    int16_t coeffLevel[], uint8_t (*total_coeffs_table)[16],
+    int startIdx, int endIdx, int maxNumCoeff, bool isLuma,
+    SliceHeader *sh, CodecContext *ctx);
 
 
 void  coeff_token    (Macroblock *mb, int blkIdx, int iCbCr, int bt, int *startIdx, int *endIdx, bool isLuma,

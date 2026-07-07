@@ -4,10 +4,9 @@
 
 #include "inter.h"
 
-#include <assert.h>
-
+#include "dpb.h"
 #include "qpel.h"
-
+#include "util/sliceutil.h"
 
 
 void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1, CodecContext *ctx) {

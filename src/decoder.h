@@ -5,12 +5,10 @@
 #ifndef TOY_H264_DECODER_H
 #define TOY_H264_DECODER_H
 
-#include <stdbool.h>
-#include <stdint.h>
-#include <stdio.h>
 
-#include "common.h"
-#include "motion_info.h"
+
+#include "global.h"
+
 
 
 typedef struct CodecContext {

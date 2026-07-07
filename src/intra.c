@@ -4,11 +4,8 @@
 
 #include "intra.h"
 
-#include <string.h>
 
 #include "picture.h"
-#include "util/mbutil.h"
-
 
 
 static const intra_pred_4x4_func intra4x4_table[9] = {

@@ -27,7 +27,6 @@ add_executable(h264_decoder_debug main.c
         src/util/bitreader.c
         src/util/logger.h
         src/util/logger.c
-        src/common.h
         src/nal.c
         src/annexb.c
         src/annexb.h
@@ -58,7 +57,7 @@ add_executable(h264_decoder_debug main.c
         src/dequant.h
         src/dpb.c
         src/dpb.h
-        src/mv.h
+        src/motion_info.h
         src/mvpred.h
         src/inter.c
         src/inter.h
@@ -77,7 +76,6 @@ add_executable(h264_decoder main.c
         src/util/bitreader.c
         src/util/logger.h
         src/util/logger.c
-        src/common.h
         src/nal.c
         src/annexb.c
         src/annexb.h
@@ -108,7 +106,7 @@ add_executable(h264_decoder main.c
         src/dequant.h
         src/dpb.c
         src/dpb.h
-        src/mv.h
+        src/motion_info.h
         src/mvpred.h
         src/inter.c
         src/inter.h

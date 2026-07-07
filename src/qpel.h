@@ -6,9 +6,7 @@
 #define H264_DECODER_QPEL_H
 
 
-
-#include <stdint.h>
-
+#include "global.h"
 
 
 typedef void (*qpel_func)(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);

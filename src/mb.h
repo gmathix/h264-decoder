@@ -6,16 +6,11 @@
 #define TOY_H264_MB_H
 
 
-#include <stdint.h>
-#include <stdlib.h>
-#include <string.h>
 
-#include "nal.h"
+#include "global.h"
 #include "slice.h"
-#include "tests/profiler.h"
+
 #include "util/formulas.h"
-#include "util/mbutil.h"
-#include "util/sliceutil.h"
 
 
 typedef struct I_MbInfo {
@@ -324,7 +319,7 @@ static ALWAYS_INLINE void reset_mb(Macroblock *mb, int mbAddr, CodecContext *ctx
 
 
 
-typedef void (*decode_macroblock_func) (Macroblock *mb, struct Slice *slice, CodecContext *ctx);
+typedef void (*decode_macroblock_func) (Macroblock *mb, Slice *slice, CodecContext *ctx);
 typedef void (*residual_func)          (Macroblock *mb, int blkIdx, int iCbCr, int pbt, int16_t coeffLevel[], uint8_t (*total_coeffs_table)[16],
                                             int startIdx, int endIdx, int maxNumCoeff, bool isLuma, SliceHeader *sh, CodecContext *ctx);
 

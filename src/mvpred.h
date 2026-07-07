@@ -6,15 +6,12 @@
 #define TOY_H264_MVPRED_H
 
 
-#include <mmintrin.h>
-
-#include "common.h"
 #include "global.h"
 #include "mb.h"
 #include "motion_info.h"
 #include "picture.h"
 #include "dpb.h"
-
+#include "util/mbutil.h"
 
 
 static ALWAYS_INLINE MotionVector get_median_mv(Macroblock *mb, int refIdx, int idx_for_abd, int idx_for_c, int list, CodecContext *ctx) {

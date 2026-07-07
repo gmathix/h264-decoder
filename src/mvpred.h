@@ -281,7 +281,7 @@ static ALWAYS_INLINE void derive_sub_4x4_mv(Macroblock *mb, int partIdx, int lis
  * so this greatly simplifies the colocated motion vector derivation as the colocated picture has identical
  * geometry.
  */
-static ALWAYS_INLINE MotionVector get_colocated_mv(Macroblock *mb, int partIdx, int subPartIdx, CodecContext *ctx) {
+static ALWAYS_INLINE MotionInfo get_colocated_mv(Macroblock *mb, int partIdx, int subPartIdx, int *list, CodecContext *ctx) {
     Picture *currPic = ctx->curr_pic;
     Picture *refPic  = ctx->dpb->lists[L1][1+0];
 
@@ -296,12 +296,16 @@ static ALWAYS_INLINE MotionVector get_colocated_mv(Macroblock *mb, int partIdx, 
     int partIdxCol = partIdx;
     if (!IS_INTRA(refPic->mb_types[mbAddrCol])) {
         if (refPic->pred_flags[mbAddrCol][L0][partIdxCol]) {
-            return refPic->motion_info[mbAddrCol][blkIdx].mvs[L0];
+            *list = L0;
+            return refPic->motion_info[mbAddrCol][blkIdx];
         } else {
-            return refPic->motion_info[mbAddrCol][blkIdx].mvs[L1];
+            *list = L1;
+            return refPic->motion_info[mbAddrCol][blkIdx];
         }
     } else {
-        return (MotionVector) {-1, 0, 0};
+        *list = L0;
+        MotionVector empty = (MotionVector) {-1, 0, 0};
+        return (MotionInfo) {{empty, empty}, {&EMPTY_PICTURE, &EMPTY_PICTURE}};
     }
 }
 
@@ -363,7 +367,9 @@ static ALWAYS_INLINE void derive_spatial_direct_mv(Macroblock *mb, int partIdx, 
         directZeroPred = true;
     }
 
-    MotionVector mvCol = get_colocated_mv(mb, partIdx, 0, ctx);
+    int list;
+    MotionInfo colocated = get_colocated_mv(mb, partIdx, 0, &list, ctx);
+    MotionVector mvCol = colocated.mvs[list];
 
     bool colZero = (ctx->dpb->lists[L1][1+0]->dpb_status == SHORT_TERM_REF) &&
                    (mvCol.ref_idx == 0) &&
@@ -408,11 +414,11 @@ static ALWAYS_INLINE void derive_temporal_direct_mv(Macroblock *mb, int partIdx,
 
     /// FIXME when direct_8x8_inference_flag is 1, there is actually just one MV per 8x8 partition so the subpart loop would be useless
     for (int subPart = 0; subPart < 4; subPart++) {
-        MotionVector mvCol = get_colocated_mv(mb, partIdx, subPart, ctx);
-        if (debugging) {
-            fprintf(stderr, "colocated ref:%d mv:(%d,%d)\n", mvCol.ref_idx, mvCol.x, mvCol.y);
-        }
-        int8_t refIdxL0 = mvCol.ref_idx < 0 ? 0 : mvCol.ref_idx;
+        int list;
+        MotionInfo colocated = get_colocated_mv(mb, partIdx, subPart, &list, ctx);
+        MotionVector mvCol = colocated.mvs[list];
+
+        int8_t refIdxL0 = mvCol.ref_idx < 0 ? 0 : colocated.ref_pics[list]->lowest_list_index[list];
         int8_t refIdxL1 = 0;
 
         Picture *pic0 = ctx->dpb->lists[L0][1+refIdxL0];

@@ -108,7 +108,7 @@ static int sortToRefList(DPB *dpb, bool descending, int list, int *idx,
         if ((descending && best > INT32_MIN) || (!descending && best < INT32_MAX)) {
             Picture *pic = dpb->slots[bestIdx];
             if (!pic->in_list[list]) {
-                pic->lowest_list_index[list] = 1 + *idx;
+                pic->lowest_list_index[list] = *idx;
                 pic->in_list[list] = true;
             }
 

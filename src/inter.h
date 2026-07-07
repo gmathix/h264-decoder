@@ -10,29 +10,19 @@
 #include "decoder.h"
 #include "dpb.h"
 #include "mb.h"
-#include "mv.h"
+#include "motion_info.h"
 #include "picture.h"
 
 
 
 void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1, CodecContext *ctx);
 
-void inter_pred_single(Macroblock *mb, int idx, MotionVector *mv, bool l0, CodecContext *ctx);
+void inter_pred_single(Macroblock *mb, int idx, MotionVector *mv, int list, CodecContext *ctx);
 void inter_pred_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVector *mvL1, CodecContext *ctx);
-void inter_pred_chroma_single(Macroblock *mb, int idx, MotionVector *mv, bool l0, CodecContext *ctx);
+void inter_pred_chroma_single(Macroblock *mb, int idx, MotionVector *mv, int list, CodecContext *ctx);
 void inter_pred_chroma_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVector *mvL1, CodecContext *ctx);
 
-void weight_pred_single(Macroblock *mb, int idx, bool l0, CodecContext *ctx);
-void weight_pred_bi(Macroblock *mb, int idx, CodecContext *ctx);
 
-
-
-static ALWAYS_INLINE void fetch_ref_mb(Macroblock *mb, int refIdx, CodecContext *ctx) {
-    Picture *ref = ctx->dpb->l0[1+refIdx];
-    for (int i = 0; i < 16; i++) {
-        void *a = &ref->luma[mb->mb_y * (16+i) * ref->widthY + mb->mb_x * 16];
-    }
-}
 
 /* fetches the 9x9 block with the 4x4 prediction block in the center
  * with extra pixels around it for the 6-tap filter

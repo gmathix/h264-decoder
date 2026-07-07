@@ -30,8 +30,9 @@ typedef struct DPB {
     size_t pictures_dumped;
 
     Picture *slots[MAX_DPB_SIZE];
-    Picture *l0[1+MAX_DPB_SIZE+1]; // empty picture slot + pictures + safety extra slot at the end
-    Picture *l1[1+MAX_DPB_SIZE+1];
+    // Picture *l0[1+MAX_DPB_SIZE+1]; // empty picture slot + pictures + safety extra slot at the end
+    // Picture *l1[1+MAX_DPB_SIZE+1];
+    Picture *lists[2][1+MAX_DPB_SIZE+1];
     int effective_ref_idx_l0_active;
     int effective_ref_idx_l1_active;
 
@@ -79,7 +80,7 @@ static bool dontGiveAShit(int field, int ref)  { return true; }
 
 
 /* returns how many pictures were added to the dest list */
-static int sortToRefList(DPB *dpb, bool descending, Picture **dest, int *idx,
+static int sortToRefList(DPB *dpb, bool descending, int list, int *idx,
     PictureField fieldGetter, RefTypeCriteria criteria, ReferenceComparator comparator, Picture *refPic) {
 
     int nbAdded = 0;
@@ -105,7 +106,14 @@ static int sortToRefList(DPB *dpb, bool descending, Picture **dest, int *idx,
             }
         }
         if ((descending && best > INT32_MIN) || (!descending && best < INT32_MAX)) {
-            dest[1+(*idx)++] = dpb->slots[bestIdx];
+            Picture *pic = dpb->slots[bestIdx];
+            if (!pic->in_list[list]) {
+                pic->lowest_list_index[list] = 1 + *idx;
+                pic->in_list[list] = true;
+            }
+
+            dpb->lists[list][1+(*idx)++] = pic;
+
             nbAdded++;
             prevBest = best;
             best = descending ? INT32_MIN : INT32_MAX;
@@ -149,6 +157,10 @@ static DPB *make_dbp(CodecContext *ctx) {
     dpb->maxPocLsb = -1;
 
     dpb->curr_pic_dpb_id = 1;
+    for (int i = 0; i < MAX_DPB_SIZE+2; i++) {
+        dpb->lists[L0][i] = &EMPTY_PICTURE;
+        dpb->lists[L1][i] = &EMPTY_PICTURE;
+    }
 
     /* start at 0 for first picture */
     dpb->prevPocLsb = 0;

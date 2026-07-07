@@ -46,10 +46,10 @@ const uint8_t treshold_table[3][52] = {
 
 static ALWAYS_INLINE bool same_ref_pics(int refL0_0, int refL0_1, int refL1_0, int refL1_1, CodecContext *ctx) {
     // when refLX_X is -1 (no ref) we just get EMPTY_PIC which has dpb_pic_id = 0
-    Picture *picL0_0 = ctx->dpb->l0[1+refL0_0];
-    Picture *picL0_1 = ctx->dpb->l0[1+refL0_1];
-    Picture *picL1_0 = ctx->dpb->l1[1+refL1_0];
-    Picture *picL1_1 = ctx->dpb->l1[1+refL1_1];
+    Picture *picL0_0 = ctx->dpb->lists[L0][1+refL0_0];
+    Picture *picL0_1 = ctx->dpb->lists[L0][1+refL0_1];
+    Picture *picL1_0 = ctx->dpb->lists[L1][1+refL1_0];
+    Picture *picL1_1 = ctx->dpb->lists[L1][1+refL1_1];
     int hash0 = ((picL0_0->dpb_pic_id != 0) * (1 << picL0_0->dpb_pic_id)) |
                 ((picL1_0->dpb_pic_id != 0) * (1 << picL1_0->dpb_pic_id));
     int hash1 = ((picL0_1->dpb_pic_id != 0) * (1 << picL0_1->dpb_pic_id)) |
@@ -58,7 +58,7 @@ static ALWAYS_INLINE bool same_ref_pics(int refL0_0, int refL0_1, int refL1_0, i
 }
 
 static ALWAYS_INLINE bool same_ref_pics_one_block(int refL0, int refL1, CodecContext *ctx) {
-    return ctx->dpb->l0[1+refL0]->dpb_pic_id == ctx->dpb->l1[1+refL1]->dpb_pic_id;
+    return ctx->dpb->lists[L0][1+refL0]->dpb_pic_id == ctx->dpb->lists[L1][1+refL1]->dpb_pic_id;
 }
 
 static ALWAYS_INLINE bool mv_diff_g4(MotionVector mv1, MotionVector mv2) {
@@ -93,10 +93,10 @@ void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int b
         int idx_8x8   = blkIdx8x8   + (i/2)*blkAdd8x8;
         int idx_n_8x8 = blkIdx8x8N  + (i/2)*blkAdd8x8;
 
-        MotionVector mvL0_0 = ctx->curr_pic->mvs_l0[mbAddr][idx];
-        MotionVector mvL0_1 = ctx->curr_pic->mvs_l0[mbAddrN][idx_n];
-        MotionVector mvL1_0 = ctx->curr_pic->mvs_l1[mbAddr][idx];
-        MotionVector mvL1_1 = ctx->curr_pic->mvs_l1[mbAddrN][idx_n];
+        MotionVector mvL0_0 = ctx->curr_pic->motion_info[mbAddr][idx].mvs[0];
+        MotionVector mvL0_1 = ctx->curr_pic->motion_info[mbAddrN][idx_n].mvs[0];
+        MotionVector mvL1_0 = ctx->curr_pic->motion_info[mbAddr][idx].mvs[1];
+        MotionVector mvL1_1 = ctx->curr_pic->motion_info[mbAddrN][idx_n].mvs[1];
 
         /*
          * bS = 4
@@ -124,10 +124,10 @@ void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int b
         /* bS = 1
          * <=> too much writing, 8.7.2.1
          */
-    	int flag0_0 = ctx->curr_pic->pred_flag_l0[mbAddr][idx_8x8];
-    	int flag1_0 = ctx->curr_pic->pred_flag_l1[mbAddr][idx_8x8];
-    	int flag0_1 = ctx->curr_pic->pred_flag_l0[mbAddrN][idx_n_8x8];
-    	int flag1_1 = ctx->curr_pic->pred_flag_l1[mbAddrN][idx_n_8x8];
+    	int flag0_0 = ctx->curr_pic->pred_flags[mbAddr][0][idx_8x8];
+    	int flag1_0 = ctx->curr_pic->pred_flags[mbAddr][1][idx_8x8];
+    	int flag0_1 = ctx->curr_pic->pred_flags[mbAddrN][0][idx_n_8x8];
+    	int flag1_1 = ctx->curr_pic->pred_flags[mbAddrN][1][idx_n_8x8];
         int nbMV0   = flag0_0 + flag1_0;
         int nbMV1   = flag0_1 + flag1_1;
         MotionVector singleMV0 = flag0_0 ? mvL0_0 : mvL1_0;

@@ -21,6 +21,8 @@ typedef struct Picture {
     int  pic_num;
     int  poc;
     int  dpb_pic_id; // 0..MAX_DPB_SIZE
+    bool in_list[2];
+    int  lowest_list_index[2];
 
 
     /* after dpb storing */
@@ -50,10 +52,8 @@ typedef struct Picture {
 
     /* metadata used for B slices prediction */
     int *mb_types;
-    MotionVector (*mvs_l0) [16];
-    MotionVector (*mvs_l1) [16];
-    bool (*pred_flag_l0) [4];
-    bool (*pred_flag_l1) [4];
+    MotionInfo   (*motion_info) [16];
+    bool (*pred_flags) [2][4];
 
 
     uint8_t   *luma;

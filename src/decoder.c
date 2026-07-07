@@ -19,9 +19,9 @@
 
 int debugging = 0;
 int frame_debug = -1;
-int frame_num_debug = -1;
-int poc_debug = -1;
-int mb_debug = -1;
+int frame_num_debug = 5;
+int poc_debug = 14;
+int mb_debug = 3657;
 int nb_frames_before_stop = -1;
 
 

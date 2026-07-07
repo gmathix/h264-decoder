@@ -12,6 +12,9 @@
 
 #define MAX_NUM_REF_PICTURES        32
 
+#define L0  0
+#define L1  1
+
 enum NalUnitType : uint8_t {
     NAL_UNSPECIFIED = 0,
     NAL_CODED_SLICE_OF_NON_IDR_PICTURE = 1,

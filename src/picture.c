@@ -28,10 +28,8 @@ Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx) {
     p->cr          = calloc(p->widthY/2 * (p->heightY/2), 1);
 
     p->mb_types     = calloc(p->num_mbs, sizeof( int ));
-    p->mvs_l0       = calloc(p->num_mbs, sizeof( MotionVector [16] ));
-    p->mvs_l1       = calloc(p->num_mbs, sizeof( MotionVector [16] ));
-    p->pred_flag_l0 = calloc(p->num_mbs, sizeof( bool [4] ));
-    p->pred_flag_l1 = calloc(p->num_mbs, sizeof( bool [4] ));
+    p->pred_flags   = calloc(p->num_mbs, sizeof( bool [2][4] ));
+    p->motion_info  = calloc(p->num_mbs, sizeof( MotionInfo[16] ));
 
 
     if (!ctx->mb_metadata_initialized || p->num_mbs != ctx->num_mbs) {
@@ -75,10 +73,8 @@ void picture_free(Picture *p) {
     free(p->sh);
 
     free(p->mb_types);
-    free(p->mvs_l0);
-    free(p->mvs_l1);
-    free(p->pred_flag_l0);
-    free(p->pred_flag_l1);
+    free(p->pred_flags);
+    free(p->motion_info);
 
     free(p);
 }

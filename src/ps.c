@@ -234,7 +234,7 @@ int decode_pps(size_t global_bit_offset, CodecContext *ctx) {
     pps->cabac_flag = read_u(br, 1);
     if (pps->cabac_flag == 1) {
         printf("CABAC not supported for now, exiting.\n");
-        exit(6969);
+        exit(69);
     }
 
     pps->bottom_field_pic_order_in_frame_present_flag = read_u(br, 1);

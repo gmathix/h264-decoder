@@ -130,10 +130,8 @@ typedef struct Macroblock {
         struct {
             PB_MbInfo mb_info;
             PB_MbInfo sub_mb_info[4];
-            uint8_t   ref_idx_l0[4];
-            uint8_t   ref_idx_l1[4];
-            int16_t   mvd_l0[4][4][2];
-            int16_t   mvd_l1[4][4][2];
+            uint8_t   ref_idx[2][4];
+            int16_t   mvd[2][4][4][2];
         } pb ;
     } u ;
 } Macroblock ;

@@ -15,7 +15,7 @@ Baseline profile, Main and High profile without CABAC :
 - CAVLC entropy coding
 - I/P/B slices
 - Weighted prediction
-- 8x8 transforms and prediction
+- 8x8 transforms 
 - Custom scaling lists
 - Deblocking filter
 - Memory management control operations (MMCOs)

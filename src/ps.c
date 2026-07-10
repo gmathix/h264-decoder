@@ -288,6 +288,7 @@ int decode_pps(size_t global_bit_offset, CodecContext *ctx) {
             precompute_4x4_scales(ctx);
             precompute_8x8_scales(ctx);
         }
+        pps->second_chroma_qp_index_offset = read_se(br);
     }
 
 

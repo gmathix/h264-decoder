@@ -69,7 +69,8 @@
 #define IS_PCM(a)          ((a) & MB_TYPE_INTRA_PCM)
 #define IS_INTRA(a)        ((a) & 7)
 #define IS_INTER(a)        ((a) & (MB_TYPE_16x16 | MB_TYPE_16x8 | \
-                                   MB_TYPE_8x16  | MB_TYPE_8x8))
+                                   MB_TYPE_8x16  | MB_TYPE_8x8 | \
+                                   MB_TYPE_SKIP | MB_TYPE_DIRECT))
 #define IS_SKIP(a)         ((a) & MB_TYPE_SKIP)
 #define IS_INTRA_PCM(a)    ((a) & MB_TYPE_INTRA_PCM)
 #define IS_INTERLACED(a)   ((a) & MB_TYPE_INTERLACED)

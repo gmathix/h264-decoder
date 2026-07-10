@@ -198,8 +198,8 @@ void transform_chroma(Macroblock *mb, CodecContext *ctx) {
 
                         int16_t (*scale) [4] = ctx->levelScale4x4[scaleIndex][qp];
 
-                        if (qp >= 24)   scaling_residual_4x4_lshift(qp/6-4, scale, c, d, true, ctx);
-                        else            scaling_residual_4x4_rshift_min(qp/6-4, scale, c, d, true, ctx);
+                        if (qp >= 24)   scaling_residual_4x4_lshift(qp/6-4, scale, c, d, false, ctx);
+                        else            scaling_residual_4x4_rshift_min(qp/6-4, scale, c, d, false, ctx);
                         d[0][0] = c[0][0];
 
                         int blkY = (i4x4>>1) << 2;

@@ -66,8 +66,8 @@ void transform_luma_4x4(Macroblock *mb, int qp, int blkIdx, CodecContext *ctx) {
       inverse_4x4_coeff_scaling_scan(mb->residuals.luma_4x4_coeffs[blkIdx], c);
 
       int d[4][4];
-      if (qp >= 24)   scaling_residual_4x4_lshift(qp/6-4, ctx->levelScaleTable[qp], c, d, true, ctx);
-      else            scaling_residual_4x4_rshift_min(qp/6-4, ctx->levelScaleTable[qp], c, d, true, ctx);
+      if (qp >= 24)   scaling_residual_4x4_lshift(qp/6-4, ctx->levelScale4x4[qp], c, d, true, ctx);
+      else            scaling_residual_4x4_rshift_min(qp/6-4, ctx->levelScale4x4[qp], c, d, true, ctx);
 
 
       idct_4x4(
@@ -77,8 +77,23 @@ void transform_luma_4x4(Macroblock *mb, int qp, int blkIdx, CodecContext *ctx) {
 }
 
 
-void transform_luma_8x8(Macroblock *mb, CodecContext *ctx) {
-      /* High profile only */
+void transform_luma_8x8(Macroblock *mb, int qp, int i8x8, CodecContext *ctx) {
+      int stride = mb->p_pic->widthY;
+
+      int blkY = (i8x8>>1)<<3;
+      int blkX = (i8x8&1)<<3;
+
+      int c[8][8];
+      inverse_8x8_coeff_scaling_scan(mb->residuals.luma_8x8_coeffs[i8x8], c);
+
+      int d[8][8];
+      if (qp >= 36)   scaling_residual_8x8_lshift(qp/6-6, ctx->levelScale8x8[qp], c, d, true, ctx);
+      else            scaling_residual_8x8_rshift_min(qp/6-6, ctx->levelScale8x8[qp], c, d, true, ctx);
+
+      idct_8x8(
+            d,
+            &mb->p_pic->luma[(mb->mb_y*16 + blkY)*stride + mb->mb_x*16 + blkX],
+            stride, ctx->ps->sps->bit_depth_luma);
 }
 
 
@@ -105,7 +120,7 @@ void transform_luma_16x16(Macroblock *mb, int qp, CodecContext *ctx) {
       int32_t (*shiftfunc)(int32_t, int16_t) = qp >= 36 ? lshift : rshift_min;
       for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
-                  dcY[i][j] = shiftfunc(c[i][j] * ctx->levelScaleTable[qp][0][0], qp/6-6);
+                  dcY[i][j] = shiftfunc(c[i][j] * ctx->levelScale4x4[qp][0][0], qp/6-6);
             }
       }
 
@@ -116,8 +131,8 @@ void transform_luma_16x16(Macroblock *mb, int qp, CodecContext *ctx) {
       for (int i = 0; i < 16; i++) {
             inverse_4x4_coeff_scaling_scan_dc(mb->residuals.luma_16x16_AC[i], dcY[i>>2][i&3], c);
 
-            if (qp >= 24)   scaling_residual_4x4_lshift(qp/6-4, ctx->levelScaleTable[qp], c, d, true, ctx);
-            else            scaling_residual_4x4_rshift_min(qp/6-4, ctx->levelScaleTable[qp], c, d, true, ctx);
+            if (qp >= 24)   scaling_residual_4x4_lshift(qp/6-4, ctx->levelScale4x4[qp], c, d, true, ctx);
+            else            scaling_residual_4x4_rshift_min(qp/6-4, ctx->levelScale4x4[qp], c, d, true, ctx);
             d[0][0] = c[0][0];
 
             int blkY = (i>>2) << 2;
@@ -162,7 +177,7 @@ void transform_chroma(Macroblock *mb, CodecContext *ctx) {
                   if (ctx->ps->sps->chroma_format_idc == 1) {
                         for (int i = 0; i < 2; i++)
                               for (int j = 0; j < 2; j++)
-                                    dcC[i][j] = ((f[i][j] * ctx->levelScaleTable[qp][0][0]) << (qp/6)) >> 5;
+                                    dcC[i][j] = ((f[i][j] * ctx->levelScale4x4[qp][0][0]) << (qp/6)) >> 5;
                   }
 
 
@@ -172,8 +187,8 @@ void transform_chroma(Macroblock *mb, CodecContext *ctx) {
                         int32_t c[4][4];
                         inverse_4x4_coeff_scaling_scan_dc(mb->residuals.chroma_AC[iCbCr][i4x4], dcC[i4x4>>1][i4x4&1], c);
 
-                        if (qp >= 24)   scaling_residual_4x4_lshift(qp/6-4, ctx->levelScaleTable[qp], c, d, true, ctx);
-                        else            scaling_residual_4x4_rshift_min(qp/6-4, ctx->levelScaleTable[qp], c, d, true, ctx);
+                        if (qp >= 24)   scaling_residual_4x4_lshift(qp/6-4, ctx->levelScale4x4[qp], c, d, true, ctx);
+                        else            scaling_residual_4x4_rshift_min(qp/6-4, ctx->levelScale4x4[qp], c, d, true, ctx);
                         d[0][0] = c[0][0];
 
                         int blkY = (i4x4>>1) << 2;

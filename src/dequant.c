@@ -29,7 +29,7 @@ const uint8_t default_4x4_inter[16] = {
     27, 30, 30, 34,
 };
 
-const uint8_t flag_8x8_16[64] = {
+const uint8_t flat_8x8_16[64] = {
     16, 16, 16, 16, 16, 16, 16, 16,
     16, 16, 16, 16, 16, 16, 16, 16,
     16, 16, 16, 16, 16, 16, 16, 16,
@@ -73,12 +73,41 @@ const int16_t norm_adjust_4x4[6][3] = {
     {18, 23, 29},
 };
 
+const int16_t norm_adjust_8x8[6][6] = {
+    {20, 18, 32, 19, 25, 24},
+    {22, 19, 35, 21, 28, 26},
+    {26, 23, 42, 24, 33, 31},
+    {28, 25, 45, 26, 35, 33},
+    {32, 28, 51, 30, 40, 38},
+    {36, 32, 58, 34, 46, 43},
+};
 
-void precompute_level_scale_table(CodecContext *ctx, const uint8_t *weight_scale_matrix) {
+
+void compute_4x4_scale(CodecContext *ctx, const uint8_t *weight_scale_matrix) {
     for (int qp = 0; qp <= 51; qp++) {
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 4; j++) {
-                ctx->levelScaleTable[qp][i][j] = norm_adjust_4x4[qp%6][(i&1) + (j&1)] * weight_scale_matrix[(i<<2) + j];
+                ctx->levelScale4x4[qp][i][j] = norm_adjust_4x4[qp%6][(i&1) + (j&1)] * weight_scale_matrix[(i<<2) + j];
+            }
+        }
+    }
+}
+
+
+void compute_8x8_scale(CodecContext *ctx, const uint8_t *weight_scale_matrix) {
+    for (int qp = 0; qp <= 51; qp++) {
+        for (int i = 0; i < 8; i++) {
+            for (int j = 0; j < 8; j++) {
+                int idx;
+                if      (i%4 == 0 && j%4 == 0) idx = 0;
+                else if (i%2 == 1 && j%2 == 1) idx = 1;
+                else if (i%4 == 2 && j%4 == 2) idx = 2;
+                else if (i%4 == 0 && j%2 == 1) idx = 3;
+                else if (i%2 == 1 && j%4 == 0) idx = 3;
+                else if (i%4 == 0 && j%4 == 2) idx = 4;
+                else if (i%4 == 2 && j%4 == 0) idx = 4;
+                else                           idx = 5;
+                ctx->levelScale8x8[qp][i][j] = norm_adjust_8x8[qp%6][idx] * weight_scale_matrix[(i<<3) + j];
             }
         }
     }

@@ -71,7 +71,7 @@ const PB_MbInfo p_sub_mb_type_info[4] = {
 
 /* table 7-14 */
 const PB_MbInfo b_mb_type_info[23] = {
-    /*  0 */{ MB_TYPE_DIRECT2 | MB_TYPE_L0L1,                                              1,  8,  8},
+    /*  0 */{ MB_TYPE_DIRECT | MB_TYPE_L0L1,                                              1,  8,  8},
     /*  1 */{ MB_TYPE_16x16   | MB_TYPE_P0L0,                                              1, 16, 16},
     /*  2 */{ MB_TYPE_16x16   | MB_TYPE_P0L1,                                              1, 16, 16},
     /*  3 */{ MB_TYPE_16x16   | MB_TYPE_P0L0 | MB_TYPE_P0L1,                               1, 16, 16},
@@ -293,7 +293,6 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
     // }
 
 
-    ctx->mb_metadata[mb->mbAddr].mb_type = mb->mb_type;
     ctx->curr_pic->mb_types[mb->mbAddr] = mb->mb_type;
     int type = mb->mb_type;
 
@@ -316,13 +315,17 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
 
     mb->residuals.cbp_chroma = cbp_chroma;
     mb->residuals.cbp_luma = cbp_luma;
-    ctx->mb_metadata[mb->mbAddr].cbp_luma = cbp_luma;
-    ctx->mb_metadata[mb->mbAddr].cbp_chroma = cbp_chroma;
 
 
     memset(ctx->luma_total_coeffs[mb->mbAddr], 0, 16);
     memset(ctx->cb_total_coeffs[mb->mbAddr], 0, 16);
     memset(ctx->cr_total_coeffs[mb->mbAddr], 0, 16);
+
+    MacroblockMetadata *meta = &ctx->mb_metadata[mb->mbAddr];
+    meta->mb_type    = mb->mb_type;
+    meta->cbp_luma   = cbp_luma;
+    meta->cbp_chroma = cbp_chroma;
+    meta->t_8x8_flag = 0;
 
 
 
@@ -348,14 +351,29 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
             mb->p_pic->cr[posC + (i/mb->mb_height_c)*widthC + i%mb->mb_width_c] = read_u(br, 8);
         }
     } else {
-        int transform_size_8x8_flag = 0;
-        int noSubMbPartSizeLessThan8x8Flag = 1;
+
+        bool noSubMbPartSizeLessThan8x8 = true;
 
         if (!intra_mb && mb->u.pb.mb_info.part_count == 4) {
             read_sub_mb_pred(mb, sh, ctx);
+            for (int part = 0; part < 4; part++) {
+                if (!IS_SUB_DIRECT(mb->u.pb.sub_mb_info[part].type)) {
+                    if (mb->u.pb.sub_mb_info[part].part_count > 1) {
+                        noSubMbPartSizeLessThan8x8 = false;
+                    }
+                } else if (!sps->direct_8x8_inference_flag) {
+                    noSubMbPartSizeLessThan8x8 = false;
+                }
+            }
         } else {
-            if (pps->transform_8x8_mode_flag && type == MB_TYPE_INTRA4x4) {
+            if (pps->transform_8x8_mode_flag && IS_INTRA4x4(type)) {
                 mb->t_8x8_flag = read_u(br, 1);
+                meta->t_8x8_flag = mb->t_8x8_flag;
+                if (mb->t_8x8_flag) {
+                    mb->mb_type = MB_TYPE_INTRA8x8;
+                    meta->mb_type = mb->mb_type;
+                    ctx->curr_pic->mb_types[mb->mbAddr]  = mb->mb_type;
+                }
             }
             read_mb_pred(mb, sh, ctx);
         }
@@ -368,14 +386,15 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
             cbp_chroma = cbp / 16;
             mb->residuals.cbp_chroma = cbp_chroma;
             mb->residuals.cbp_luma = cbp_luma;
-            ctx->mb_metadata[mb->mbAddr].cbp_luma = cbp_luma;
-            ctx->mb_metadata[mb->mbAddr].cbp_chroma = cbp_chroma;
+            meta->cbp_luma = cbp_luma;
+            meta->cbp_chroma = cbp_chroma;
 
-            if (cbp_luma > 0 && transform_size_8x8_flag &&
-                !IS_INTRA4x4(type) && noSubMbPartSizeLessThan8x8Flag &&
-                (type != (MB_TYPE_DIRECT2 | MB_TYPE_L0L1) || sps->direct_8x8_inference_flag)) {
+            if (cbp_luma > 0 && pps->transform_8x8_mode_flag &&
+                !IS_INTRA4x4(type) && noSubMbPartSizeLessThan8x8 &&
+                (!IS_DIRECT(type) || sps->direct_8x8_inference_flag)) {
 
-                transform_size_8x8_flag = read_u(br, 1);
+                mb->t_8x8_flag = read_u(br, 1);
+                meta->t_8x8_flag = mb->t_8x8_flag;
             }
         }
 
@@ -392,8 +411,8 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
             mb->QPC = QPcTable[qPi];
 
 
-            ctx->mb_metadata[mb->mbAddr].QPY = mb->QPY;
-            ctx->mb_metadata[mb->mbAddr].QPC = mb->QPC;
+            meta->QPY = mb->QPY;
+            meta->QPC = mb->QPC;
 
 
 
@@ -402,7 +421,7 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
                 : &residual_block_cavlc;
 
 
-            read_residual(mb, type, transform_size_8x8_flag, 0, 15, cbp_luma, cbp_chroma,
+            read_residual(mb, type, mb->t_8x8_flag, 0, 15, cbp_luma, cbp_chroma,
                         residual_block, sh, ctx);
         } else {
             mb->QPY = mb->mbAddr == 0
@@ -412,8 +431,8 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
             int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
             mb->QPC = QPcTable[qPi];
 
-            ctx->mb_metadata[mb->mbAddr].QPY = mb->QPY;
-            ctx->mb_metadata[mb->mbAddr].QPC = mb->QPC;
+            meta->QPY = mb->QPY;
+            meta->QPC = mb->QPC;
         }
     }
 
@@ -425,6 +444,8 @@ void read_macroblock(Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecCo
 /* 7.3.5.1 */
 void read_mb_pred(Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
     BitReader *br = ctx->br;
+    Picture *currPic = ctx->curr_pic;
+
     int mbAddr = mb->mbAddr;
 
     if (IS_INTRA4x4(mb->mb_type) ||
@@ -446,27 +467,23 @@ void read_mb_pred(Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
                     ? ctx->mb_metadata[mbAddr + n.b.mb_off].mb_type
                     : mb->mb_type;
 
-                if (!n.a.av || !n.b.av ||
+                dcPredModePredictedFlag = (!n.a.av || !n.b.av ||
                     (n.a.av && IS_INTER(mb_a_type) && ctx->ps->pps->constrained_intra_pred_flag) ||
-                    (n.b.av && IS_INTER(mb_b_type) && ctx->ps->pps->constrained_intra_pred_flag)) {
-                    dcPredModePredictedFlag = 1;
-                } else {
-                    dcPredModePredictedFlag = 0;
-                }
+                    (n.b.av && IS_INTER(mb_b_type) && ctx->ps->pps->constrained_intra_pred_flag));
 
                 if (dcPredModePredictedFlag || !IS_INTRANxN(mb_a_type)) {
                     intraModeA = DC_PRED;
                 } else {
                     intraModeA = IS_INTRA4x4(mb_a_type)
                         ? ctx->intra4x4_pred_modes[mbAddr + n.a.mb_off][n.a.idx]
-                        : ctx->intra8x8_pred_modes[mbAddr + n.a.mb_off][n.a.idx];
+                        : ctx->intra8x8_pred_modes[mbAddr + n.a.mb_off][map_4x4[n.a.idx] / 4];
                 }
                 if (dcPredModePredictedFlag || !IS_INTRANxN(mb_b_type)) {
                     intraModeB = DC_PRED;
                 } else {
                     intraModeB = IS_INTRA4x4(mb_b_type)
                         ? ctx->intra4x4_pred_modes[mbAddr + n.b.mb_off][n.b.idx]
-                        : ctx->intra8x8_pred_modes[mbAddr + n.b.mb_off][n.b.idx];
+                        : ctx->intra8x8_pred_modes[mbAddr + n.b.mb_off][map_4x4[n.b.idx] / 4];
                 }
 
                 int predIntraMode = _min(intraModeA, intraModeB);
@@ -482,11 +499,44 @@ void read_mb_pred(Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
                 }
             }
         }
-        if (IS_INTRA8x8(mb->mb_type)) {
-            for (int luma8x8BlkIdx = 0; luma8x8BlkIdx < 4; luma8x8BlkIdx++) {
+        else if (IS_INTRA8x8(mb->mb_type)) {
+            for (int i8x8 = 0; i8x8 < 4; i8x8++) {
+                Neighbors n = derive_neighbors_2x2(mb, i8x8, ctx);
+
+                int aType = currPic->mb_types[mb->mbAddr + n.a.mb_off];
+                int bType = currPic->mb_types[mb->mbAddr + n.b.mb_off];
+
+                bool dcModePredicted = (!n.a.av || !n.b.av ||
+                    (n.a.av && IS_INTER(currPic->mb_types[mb->mbAddr + n.a.mb_off]) && sh->pps->constrained_intra_pred_flag) ||
+                    (n.b.av && IS_INTER(currPic->mb_types[mb->mbAddr + n.b.mb_off]) && sh->pps->constrained_intra_pred_flag));
+
+                int intraModeA, intraModeB;
+
+                if (dcModePredicted || !IS_INTRANxN(aType)) {
+                    intraModeA = DC_PRED;
+                } else {
+                    intraModeA = IS_INTRA8x8(aType)
+                        ? ctx->intra8x8_pred_modes[mb->mbAddr + n.a.mb_off][n.a.idx]
+                        : ctx->intra4x4_pred_modes[mb->mbAddr + n.a.mb_off][map_4x4[n.a.idx * 4 + 1]];
+                }
+                if (dcModePredicted || !IS_INTRANxN(bType)) {
+                    intraModeB = DC_PRED;
+                } else {
+                    intraModeB = IS_INTRA8x8(bType)
+                        ? ctx->intra8x8_pred_modes[mb->mbAddr + n.b.mb_off][n.b.idx]
+                        : ctx->intra4x4_pred_modes[mb->mbAddr + n.b.mb_off][map_4x4[n.b.idx * 4 + 2]];
+                }
+
+                int predMode = _min(intraModeA, intraModeB);
+
                 uint8_t prev_intra8x8_pred_mode_flag = read_u(br, 1);
                 if (!prev_intra8x8_pred_mode_flag) {
                     uint8_t rem_intra8x8_pred_mode = read_u(br, 3);
+                    ctx->intra8x8_pred_modes[mb->mbAddr][i8x8] = rem_intra8x8_pred_mode < predMode
+                        ? rem_intra8x8_pred_mode
+                        : rem_intra8x8_pred_mode + 1;
+                } else {
+                    ctx->intra8x8_pred_modes[mb->mbAddr][i8x8] = predMode;
                 }
             }
         }
@@ -683,7 +733,7 @@ void read_residual_luma(Macroblock *mb, int type, int t_8x8_flag, int cbp_luma,
 
                 if (!sh->pps->cabac_flag && t_8x8_flag) {
                     for (int i = 0; i < 16; i++) {
-                        mb->residuals.luma_8x8_coeffs[i8x8][4*i + i4x4] = mb->residuals.luma_4x4_coeffs[i8x8*4 + i4x4][i];
+                        mb->residuals.luma_8x8_coeffs[i8x8][4*i + i4x4] = mb->residuals.luma_4x4_coeffs[blkIdx][i];
                     }
                 }
             }
@@ -709,10 +759,24 @@ void residual_block_cabac(Macroblock *mb, int blkIdx, int iCbCr, int pbt, int16_
 
 
 void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
+    if (mb->mbAddr == mb_debug && ctx->prf->total_frames == frame_debug) {
+        debugging = true;
+    } else {
+        debugging = false;
+    }
+
+    if (debugging) {
+        fprintf(stderr, "DEBUGGING MB %d type:%s qpy:%d qpc:%d\n",
+            mb->mbAddr, mb_type_to_string(mb->mb_type), mb->QPY, mb->QPC);
+
+    }
+
+
     if (IS_INTRA4x4(mb->mb_type)) {
         for (int i = 0; i < 16; i++) {
             int blkIdx = map_4x4[i];
-            intra_pred_4x4(mb, blkIdx, ctx->intra4x4_pred_modes[mb->mbAddr][blkIdx], ctx);
+            int pred_mode = ctx->intra4x4_pred_modes[mb->mbAddr][blkIdx];
+            intra_pred_4x4(mb, blkIdx, pred_mode, ctx);
             transform_luma_4x4(mb, mb->QPY, blkIdx, ctx);
         }
 
@@ -725,9 +789,30 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
         intra_chroma_pred(mb, ctx);
         transform_chroma(mb, ctx);
-    } else if (IS_INTRA8x8(mb->mb_type)) {
 
+    } else if (IS_INTRA8x8(mb->mb_type)) {
+        for (int i8x8 = 0; i8x8 < 4; i8x8++) {
+            int pred_mode = ctx->intra8x8_pred_modes[mb->mbAddr][i8x8];
+            intra_pred_8x8(mb, i8x8, pred_mode, ctx);
+            if (mb->residuals.cbp_luma & (1 << i8x8)) {
+                transform_luma_8x8(mb, mb->QPY, i8x8, ctx);
+            }
+        }
+
+        if (debugging) {
+            for (int y = 0; y < 16; y++) {
+                for (int x = 0; x < 16; x++) {
+                    printf("%3d ", mb->p_pic->luma[(mb->mb_y*16 + y)*mb->p_pic->widthY + (mb->mb_x*16) + x]);
+                }
+                printf("\n");
+            }
+            printf("\n");
+        }
+
+        intra_chroma_pred(mb, ctx);
+        transform_chroma(mb, ctx);
     }
+
 
 
     for (int i = 0; i < 16; i++) {
@@ -791,8 +876,14 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
 
         if (!IS_SKIP(mb->mb_type)) {
-            for (int i = 0; i < 16; i++) {
-                transform_luma_4x4(mb, mb->QPY, map_4x4[i], ctx);
+            if (mb->t_8x8_flag) {
+                for (int i = 0; i < 4; i++) {
+                    transform_luma_8x8(mb, mb->QPY, i, ctx);
+                }
+            } else {
+                 for (int i = 0; i < 16; i++) {
+                     transform_luma_4x4(mb, mb->QPY, map_4x4[i], ctx);
+                 }
             }
             transform_chroma(mb, ctx);
         }
@@ -880,8 +971,14 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
 
 
         if (!IS_SKIP(mb->mb_type)) {
-            for (int i = 0; i < 16; i++) {
-                transform_luma_4x4(mb, mb->QPY, map_4x4[i], ctx);
+            if (mb->t_8x8_flag) {
+                for (int i = 0; i < 4; i++) {
+                    transform_luma_8x8(mb, mb->QPY, i, ctx);
+                }
+            } else {
+                for (int i = 0; i < 16; i++) {
+                    transform_luma_4x4(mb, mb->QPY, map_4x4[i], ctx);
+                }
             }
             transform_chroma(mb, ctx);
         }

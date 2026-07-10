@@ -17,7 +17,7 @@
 extern const uint8_t blk_scan_8x8[8][8];
 
 void transform_luma_4x4(Macroblock *mb, int qp, int blkIdx, CodecContext *ctx);
-void transform_luma_8x8(Macroblock *mb, CodecContext *ctx);
+void transform_luma_8x8(Macroblock *mb, int qp, int i8x8, CodecContext *ctx);
 void transform_luma_16x16(Macroblock *mb, int qp, CodecContext *ctx);
 void transform_chroma(Macroblock *mb, CodecContext *ctx);
 
@@ -32,7 +32,22 @@ static ALWAYS_INLINE void scaling_residual_4x4_lshift(int shift, int16_t (*scale
 }
 static ALWAYS_INLINE void scaling_residual_4x4_rshift_min(int shift, int16_t (*scale)[4], int32_t c[4][4], int32_t d[4][4], bool is_luma, CodecContext *ctx) {
     for (int i = 0; i < 4; i++) {
-        for (int j =0 ; j < 4; j++) {
+        for (int j = 0 ; j < 4; j++) {
+            d[i][j] = rshift_min(c[i][j] * scale[i][j], shift);
+        }
+    }
+}
+
+static ALWAYS_INLINE void scaling_residual_8x8_lshift(int shift, int16_t (*scale)[8], int32_t c[8][8], int32_t d[8][8], bool is_luma, CodecContext *ctx) {
+    for (int i = 0; i < 8; i++) {
+        for (int j =0 ; j < 8; j++) {
+            d[i][j] = lshift(c[i][j] * scale[i][j], shift);
+        }
+    }
+}
+static ALWAYS_INLINE void scaling_residual_8x8_rshift_min(int shift, int16_t (*scale)[8], int32_t c[8][8], int32_t d[8][8], bool is_luma, CodecContext *ctx) {
+    for (int i = 0; i < 8; i++) {
+        for (int j = 0 ; j < 8; j++) {
             d[i][j] = rshift_min(c[i][j] * scale[i][j], shift);
         }
     }
@@ -70,12 +85,83 @@ static ALWAYS_INLINE void idct_4x4(int32_t d[4][4], uint8_t *dst, int stride, in
         h[3][j] = t0 - t3;
     }
 
-    for (int i = 0; i < 4; i++) {
-        for (int j = 0; j < 4; j++) {
-            *dst = _clip3(0, (1<<bitDepth)-1, *dst + ((h[i][j] + (1 << 5)) >> 6));
-            dst++;
+    for (int y = 0; y < 4; y++) {
+        for (int x = 0; x < 4; x++) {
+            dst[x] = _clip3(0, (1<<bitDepth)-1, dst[x] + ((h[y][x] + (1 << 5)) >> 6));
         }
-        dst += stride-4;
+        dst += stride;
+    }
+}
+
+static ALWAYS_INLINE void idct_8x8(int32_t d[8][8], uint8_t *dst, int stride, int bitDepth) {
+
+    int t0,t1,t2,t3,t4,t5,t6,t7;
+    int f0,f1,f2,f3,f4,f5,f6,f7;
+    int g[8][8];
+    int m[8][8];
+    for (int i = 0; i < 8; i++) {
+        t0 = d[i][0] + d[i][4];
+        t1 = -d[i][3] + d[i][5] - d[i][7] - (d[i][7] >> 1);
+        t2 = d[i][0] - d[i][4];
+        t3 = d[i][1] + d[i][7] - d[i][3] - (d[i][3] >> 1);
+        t4 = (d[i][2] >> 1) - d[i][6];
+        t5 = -d[i][1] + d[i][7] + d[i][5] + (d[i][5] >> 1);
+        t6 = d[i][2] + (d[i][6] >> 1);
+        t7 = d[i][3] + d[i][5] + d[i][1] + (d[i][1] >> 1);
+
+        f0 = t0 + t6;
+        f1 = t1 + (t7 >> 2);
+        f2 = t2 + t4;
+        f3 = t3 + (t5 >> 2);
+        f4 = t2 - t4;
+        f5 = (t3 >> 2) - t5;
+        f6 = t0 - t6;
+        f7 = t7 - (t1 >> 2);
+
+        g[i][0] = f0 + f7;
+        g[i][1] = f2 + f5;
+        g[i][2] = f4 + f3;
+        g[i][3] = f6 + f1;
+        g[i][4] = f6 - f1;
+        g[i][5] = f4 - f3;
+        g[i][6] = f2 - f5;
+        g[i][7] = f0 - f7;
+    }
+
+    for (int j = 0; j < 8; j++) {
+        t0 = g[0][j] + g[4][j];
+        t1 = -g[3][j] + g[5][j] - g[7][j] - (g[7][j] >> 1);
+        t2 = g[0][j] - g[4][j];
+        t3 = g[1][j] + g[7][j] - g[3][j] - (g[3][j] >> 1);
+        t4 = (g[2][j] >> 1) - g[6][j];
+        t5 = -g[1][j] + g[7][j] + g[5][j] + (g[5][j] >> 1);
+        t6 = g[2][j] + (g[6][j] >> 1);
+        t7 = g[3][j] + g[5][j] + g[1][j] + (g[1][j] >> 1);
+
+        f0 = t0 + t6;
+        f1 = t1 + (t7 >> 2);
+        f2 = t2 + t4;
+        f3 = t3 + (t5 >> 2);
+        f4 = t2 - t4;
+        f5 = (t3 >> 2) - t5;
+        f6 = t0 - t6;
+        f7 = t7 - (t1 >> 2);
+
+        m[0][j] = f0 + f7;
+        m[1][j] = f2 + f5;
+        m[2][j] = f4 + f3;
+        m[3][j] = f6 + f1;
+        m[4][j] = f6 - f1;
+        m[5][j] = f4 - f3;
+        m[6][j] = f2 - f5;
+        m[7][j] = f0 - f7;
+    }
+
+    for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < 8; x++) {
+            dst[x] = _clip3(0, (1<<bitDepth)-1, dst[x] + ((m[y][x] + (1 << 5)) >> 6));
+        }
+        dst += stride;
     }
 }
 

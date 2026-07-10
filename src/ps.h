@@ -10,7 +10,7 @@
 
 
 #include "decoder.h"
-
+#include "util/bitreader.h"
 
 
 #define MAX_SPS_COUNT     32
@@ -114,6 +114,7 @@ typedef struct ParamSets {
 int  get_profile (ParamSets *ps);
 int  decode_sps  (size_t global_bit_offset, CodecContext *ctx);
 int  decode_pps  (size_t global_bit_offset, CodecContext *ctx);
+int  parse_scaling_list(int *scaling_list, int size, bool useDefault, BitReader *br);
 
 int decode_vui (size_t global_bit_offset, CodecContext *ctx);
 

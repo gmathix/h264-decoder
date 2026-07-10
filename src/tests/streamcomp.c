@@ -9,7 +9,7 @@
 #include <stdlib.h>
 
 
-#define ONLY_LUMA     1
+#define ONLY_LUMA     0
 #define ONLY_CHROMA   0
 #define START_FRAME   0
 #define INPUT_IS_GRAY 0

@@ -53,11 +53,6 @@ int decode_sps(size_t global_bit_offset, CodecContext *ctx) {
     sps->sps_id = sps_id;
     sps->profile_idc = profile_idc;
 
-    if (sps->profile_idc != PROFILE_BASELINE) {
-        printf("NOT BASELINE\n");
-    } else {
-        printf("BASELINE\n");
-    }
 
 
     /* not going to handle these for now. focusing on Baseline + Main profiles
@@ -85,8 +80,17 @@ int decode_sps(size_t global_bit_offset, CodecContext *ctx) {
 
         uint32_t scaling_matrix_present = read_u(br, 1);
         if (scaling_matrix_present) {
-            printf("scaling matrices not supported yet\n");
-            return -1;
+            for (int i =0 ; i < 10; i++) {
+                fprintf(stderr, "ASDF ASDFKLJAS DF;LASJ FL;KASJD F\n"); // visible warning
+            }
+            for (int i = 0; i < 8; i++) {
+                bool present = read_u(br, 1);
+                if (present) {
+                    if (i < 6) {
+
+                    }
+                }
+            }
         }
     } else {
         sps->chroma_format_idc = 1;
@@ -256,9 +260,13 @@ int decode_pps(size_t global_bit_offset, CodecContext *ctx) {
 
 
     if (more_rbsp_data(br)) {
-        printf("MORE\n");
         pps->transform_8x8_mode_flag = read_u(br, 1);
-        // TODO parse next
+        bool pic_scaling_matrix_present = read_u(br, 1);
+        if (pic_scaling_matrix_present) {
+            for (int i =0 ; i < 10; i++) {
+                fprintf(stderr, "ASDF ASDFKLJAS DF;LASJ FL;KASJD F\n"); // visible warning
+            }
+        }
     }
 
 
@@ -353,3 +361,18 @@ int decode_vui (size_t global_bit_offset, CodecContext *ctx) {
     }
 }
 
+
+
+int parse_scaling_list(int *scaling_list, int size, bool useDefault, BitReader *br) {
+    int lastScale = 8;
+    int nextScale = 8;
+    for (int i = 0; i < size; i++) {
+        if (nextScale != 0) {
+            int delta_scale = read_se(br);
+            nextScale = (lastScale + delta_scale + 256) % 256;
+            useDefault = i == 0 && nextScale == 0;
+        }
+        scaling_list[i] = nextScale == 0 ? lastScale : nextScale;
+        lastScale = scaling_list[i];
+    }
+}

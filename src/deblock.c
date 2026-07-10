@@ -124,10 +124,10 @@ void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int b
          * <=> the corresponding 4x4 or 8x8 transform blocks (depending on transform_8x8_flag) have non-zero coeff levels
          */
         curr_bS += ((curr_bS == 0) &&
-        	(((meta.t_8x8_flag  && (meta.cbp_luma   & (1 << idx_8x8))) ||
-            (meta_n.t_8x8_flag  && (meta_n.cbp_luma & (1 << idx_n_8x8))) ||
-            (!meta.t_8x8_flag   && (ctx->luma_total_coeffs[mbAddr][idx] > 0)) ||
-            (!meta_n.t_8x8_flag && (ctx->luma_total_coeffs[mbAddrN][idx_n] > 0))))) * 2;
+        	((meta.t_8x8_flag    && (meta.cbp_luma   & (1 << idx_8x8))) ||
+             (meta_n.t_8x8_flag  && (meta_n.cbp_luma & (1 << idx_n_8x8))) ||
+             (!meta.t_8x8_flag   && (ctx->luma_total_coeffs[mbAddr][idx] > 0)) ||
+             (!meta_n.t_8x8_flag && (ctx->luma_total_coeffs[mbAddrN][idx_n] > 0)))) * 2;
 
         /* bS = 1
          * <=> too much writing, 8.7.2.1
@@ -592,7 +592,7 @@ void deblock_macroblock(Picture *pic, int mbAddr, CodecContext *ctx) {
 
 
     const bool fieldMbInFrame      = 0;
-    const bool filterInternalEdges = !sh->disable_deblocking_filter_idc;
+    const bool filterInternalEdges = sh->disable_deblocking_filter_idc != 1;
     const bool filterLeftMbEdge    = mb->has_mb_a && filterInternalEdges;
     const bool filterTopMbEdge     = mb->has_mb_b && filterInternalEdges;
 
@@ -611,6 +611,8 @@ void deblock_macroblock(Picture *pic, int mbAddr, CodecContext *ctx) {
 
     uint8_t bS_list[4];
 
+    bool mb8x8 = ctx->mb_metadata[mb->mbAddr].t_8x8_flag;
+
     if (filterLeftMbEdge) {
         // x = 0
         derive_edge_bS_list(mbAddr, mbAddr + mb->mb_a_off,
@@ -624,7 +626,7 @@ void deblock_macroblock(Picture *pic, int mbAddr, CodecContext *ctx) {
     if (filterInternalEdges) {
 
         // x = 4
-        if (!mb->t_8x8_flag) {
+        if (!mb8x8) {
             derive_edge_bS_list(mbAddr, mbAddr,
                 1, 0, 0, 0,
                 false, true, bS_list, ctx);
@@ -643,7 +645,7 @@ void deblock_macroblock(Picture *pic, int mbAddr, CodecContext *ctx) {
 
 
         // x = 12
-        if (!mb->t_8x8_flag) {
+        if (!mb8x8) {
             derive_edge_bS_list(mbAddr, mbAddr,
                 3, 2, 1, 1,
                 false, true, bS_list, ctx);
@@ -666,7 +668,7 @@ void deblock_macroblock(Picture *pic, int mbAddr, CodecContext *ctx) {
     if (filterInternalEdges) {
 
         // y = 4
-        if (!mb->t_8x8_flag) {
+        if (!mb8x8) {
             derive_edge_bS_list(mbAddr, mbAddr,
                 4, 0, 0, 0,
                 false, false, bS_list, ctx);
@@ -685,7 +687,7 @@ void deblock_macroblock(Picture *pic, int mbAddr, CodecContext *ctx) {
 
 
         // y = 12
-        if (!mb->t_8x8_flag) {
+        if (!mb8x8) {
             derive_edge_bS_list(mbAddr, mbAddr,
                 12, 8, 2, 2,
                 false, false, bS_list, ctx);

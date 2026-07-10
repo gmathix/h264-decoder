@@ -33,7 +33,7 @@
 #define MB_TYPE_8x16        (1 <<  6)
 #define MB_TYPE_8x8         (1 <<  7)
 #define MB_TYPE_INTERLACED  (1 <<  8)
-#define MB_TYPE_DIRECT2     (1 <<  9)
+#define MB_TYPE_DIRECT      (1 <<  9)
 #define MB_TYPE_REF0        (1 << 10)
 #define MB_TYPE_CBP         (1 << 11)
 #define MB_TYPE_QUANT       (1 << 12)
@@ -69,11 +69,12 @@
 #define IS_PCM(a)          ((a) & MB_TYPE_INTRA_PCM)
 #define IS_INTRA(a)        ((a) & 7)
 #define IS_INTER(a)        ((a) & (MB_TYPE_16x16 | MB_TYPE_16x8 | \
-                                   MB_TYPE_8x16  | MB_TYPE_8x8))
+                                   MB_TYPE_8x16  | MB_TYPE_8x8 | \
+                                   MB_TYPE_SKIP | MB_TYPE_DIRECT))
 #define IS_SKIP(a)         ((a) & MB_TYPE_SKIP)
 #define IS_INTRA_PCM(a)    ((a) & MB_TYPE_INTRA_PCM)
 #define IS_INTERLACED(a)   ((a) & MB_TYPE_INTERLACED)
-#define IS_DIRECT(a)       ((a) & MB_TYPE_DIRECT2)
+#define IS_DIRECT(a)       ((a) & MB_TYPE_DIRECT)
 #define IS_GMC(a)          ((a) & MB_TYPE_GMC)
 #define IS_16x16(a)        ((a) & MB_TYPE_16x16)
 #define IS_16x8(a)         ((a) & MB_TYPE_16x8)

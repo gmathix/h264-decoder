@@ -9,6 +9,7 @@
 
 #include "ps.h"
 
+#include "dequant.h"
 #include "util/expgolomb.h"
 
 
@@ -53,11 +54,6 @@ int decode_sps(size_t global_bit_offset, CodecContext *ctx) {
     sps->sps_id = sps_id;
     sps->profile_idc = profile_idc;
 
-    if (sps->profile_idc != PROFILE_BASELINE) {
-        printf("NOT BASELINE\n");
-    } else {
-        printf("BASELINE\n");
-    }
 
 
     /* not going to handle these for now. focusing on Baseline + Main profiles
@@ -84,10 +80,27 @@ int decode_sps(size_t global_bit_offset, CodecContext *ctx) {
         uint32_t transform_bypass = read_u(br, 1);
 
         uint32_t scaling_matrix_present = read_u(br, 1);
+        ctx->seqScalingListPresent = scaling_matrix_present;
         if (scaling_matrix_present) {
-            printf("scaling matrices not supported yet\n");
-            return -1;
+            for (int i = 0; i < 8; i++) {
+                bool present = read_u(br, 1);
+                if (present) {
+                    if (i < 6) {
+                        parse_scaling_list(ctx->scalingList4x4[i], 16, &ctx->useDefaultList4x4[i], br);
+                    } else {
+                        parse_scaling_list(ctx->scalingList8x8[i-6], 64, &ctx->useDefaultList8x8[i-6], br);
+                    }
+                } else {
+                    scaling_list_fallback(i, i < 6, false, ctx);
+                }
+            }
+        } else {
+            infer_flat_matrices(ctx);
         }
+
+        precompute_4x4_scales(ctx);
+        precompute_8x8_scales(ctx);
+
     } else {
         sps->chroma_format_idc = 1;
         sps->bit_depth_luma = 8;
@@ -256,9 +269,26 @@ int decode_pps(size_t global_bit_offset, CodecContext *ctx) {
 
 
     if (more_rbsp_data(br)) {
-        printf("MORE\n");
         pps->transform_8x8_mode_flag = read_u(br, 1);
-        // TODO parse next
+        bool pic_scaling_matrix_present = read_u(br, 1);
+        if (pic_scaling_matrix_present) {
+            for (int i = 0; i < 6 + 2*pps->transform_8x8_mode_flag; i++) {
+                bool present = read_u(br, 1);
+                if (present) {
+                    if (i < 6) {
+                        parse_scaling_list(ctx->scalingList4x4[i], 16, &ctx->useDefaultList4x4[i], br);
+                    } else {
+                        parse_scaling_list(ctx->scalingList8x8[i-6], 64, &ctx->useDefaultList8x8[i-6], br);
+                    }
+                } else {
+                    scaling_list_fallback(i, i < 6, true, ctx);
+                }
+            }
+
+            precompute_4x4_scales(ctx);
+            precompute_8x8_scales(ctx);
+        }
+        pps->second_chroma_qp_index_offset = read_se(br);
     }
 
 
@@ -352,4 +382,6 @@ int decode_vui (size_t global_bit_offset, CodecContext *ctx) {
         uint32_t max_dec_frame_buffering = read_ue(br);
     }
 }
+
+
 

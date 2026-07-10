@@ -63,13 +63,12 @@ typedef struct {
     int cbp_chroma;
 
     union {
-        /* Intra 4x4 / 8x8 */
         struct {
-            int16_t luma_4x4_coeffs[16][16];
-            int16_t luma_8x8_coeffs[4][64]; // just to avoid shit in residual_luma
+            int16_t luma_4x4_coeffs[16][16]; /* Intra 4x4 */
+            int16_t luma_8x8_coeffs[4][64];  /* Intra 8x8 */
+            // we need both because 8x8 mode will read into the 4x4 coeffs first, then remap
         };
-        /* Intra 16x16 */
-        struct {
+        struct { /* Intra 16x16 */
             int16_t luma_16x16_DC[16];
             int16_t luma_16x16_AC[16][15];
         };
@@ -249,8 +248,8 @@ static ALWAYS_INLINE Neighbors derive_neighbors_2x2(Macroblock *mb, int blkIdx, 
     n.a.av = n.a.mb_off == 0 || mb->has_mb_a;
     n.b.av = n.b.mb_off == 0 || mb->has_mb_b;
     n.d.av = n.a.av && n.b.av;
-    n.c.av = (n.c.mb_off == 0 || mb->has_mb_c || (n.b.av && blkIdx!=3))
-    && n.c.idx != -1;
+    n.c.av = (n.c.mb_off == 0 || mb->has_mb_c || (n.b.av && blkIdx!=1))
+        && n.c.idx != -1;
 
     return n;
 }

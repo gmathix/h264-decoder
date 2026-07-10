@@ -18,10 +18,10 @@
 
 
 int debugging = 0;
-int frame_debug = -1;
+int frame_debug = 5;
 int frame_num_debug = -1;
 int poc_debug = -1;
-int mb_debug = -1;
+int mb_debug = 4977;
 int nb_frames_before_stop = -1;
 
 
@@ -49,10 +49,11 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
     ctx->dpb = make_dbp(ctx);
 
 
-    precompute_level_scale_table(ctx, &flat_4x4_16[0]);
-
     ctx->currMb = calloc(1, sizeof(Macroblock));
     ctx->prevMb = calloc(1, sizeof(Macroblock));
+
+    ctx->levelScale4x4       = calloc(6, sizeof( int16_t[52][4][4] ));
+    ctx->levelScale8x8       = calloc(2, sizeof( int16_t[52][8][8] ));
 
 
 
@@ -107,6 +108,7 @@ void decoder_free_metadata(CodecContext *ctx) {
     free(ctx->luma_total_coeffs);
     free(ctx->cb_total_coeffs);
     free(ctx->cr_total_coeffs);
+
 }
 
 /* caller's job to make sure metadata gets free beforehand */
@@ -134,6 +136,9 @@ void decoder_free(CodecContext *ctx) {
     free(ctx->ps->sps);
     free(ctx->ps->pps);
     free(ctx->ps);
+
+    free(ctx->levelScale4x4);
+    free(ctx->levelScale8x8);
 
     free(ctx->current_slice);
 

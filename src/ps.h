@@ -10,7 +10,7 @@
 
 
 #include "decoder.h"
-
+#include "util/bitreader.h"
 
 
 #define MAX_SPS_COUNT     32
@@ -77,6 +77,7 @@ typedef struct PPS {
     uint32_t sps_id;
 
     int32_t  chroma_qp_index_offset;
+    int32_t  second_chroma_qp_index_offset;
     int32_t  pic_init_qp_minus26;
     int32_t  pic_init_qs_minus26;
 

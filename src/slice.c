@@ -55,8 +55,6 @@ void decode_slice(NalUnit *nal_unit, CodecContext *ctx) {
 
         deblock_picture(ctx->curr_pic, ctx);
         store_picture(ctx->dpb, ctx->curr_pic);
-
-        // picture_free(ctx->current_pic);
     }
 
 

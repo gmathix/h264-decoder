@@ -7,14 +7,16 @@ A toy H.264 decoder written in C.
 ### Skip the shower, ship the decoder. Priorities.
 
 ## Current Status
-Achieving the Intra8x8 side quest
+Taking a few days of break before fighting the final boss (CABAC)
 
 ## Features and Scope
-Baseline profile, Main profile without CABAC :
+Baseline profile, Main and High profile without CABAC :
 - Single threaded
 - CAVLC entropy coding
 - I/P/B slices
 - Weighted prediction
+- 8x8 transforms and prediction
+- Custom scaling lists
 - Deblocking filter
 - Memory management control operations (MMCOs)
 - Reference picture list modifications
@@ -22,7 +24,6 @@ Baseline profile, Main profile without CABAC :
 
 Does not support yet : 
 - CABAC entropy coding
-- High profile (intra8x8 modes, custom quantization scaling matrices)
 
 Does and will not support :
 - MBAFF/PAFF
@@ -42,7 +43,7 @@ Compiler optimizations help a lot : without -O3, it :
 
 But, correctness and robustness first, performance second.
 
-I'd like to understand how the GCC managed to achieve that 5 -> 26 jump, but I'd have to learn assembly and that's a different learning path which I will eventually take when this project is finished. 
+I'd like to understand how the GCC managed to achieve that 5 -> 22 jump, but I'd have to learn assembly and that's a different learning path which I will eventually take when this project is finished. 
 
 
 ## Usage

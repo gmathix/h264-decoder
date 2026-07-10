@@ -9,25 +9,35 @@
 #include "global.h"
 
 #include "decoder.h"
+#include "util/bitreader.h"
 
 
 /* default scaling lists */
 
-extern const uint8_t flat_4x4_16[16];
-extern const uint8_t default_4x4_intra[16];
-extern const uint8_t default_4x4_inter[16];
+extern const int flat_4x4_16[16];
+extern const int default_4x4_intra[16];
+extern const int default_4x4_inter[16];
 
-extern const uint8_t flat_8x8_16[64];
-extern const uint8_t default_8x8_intra[64];
-extern const uint8_t default_8x8_inter[64];
+extern const int flat_8x8_16[64];
+extern const int default_8x8_intra[64];
+extern const int default_8x8_inter[64];
+
+extern const int norm_adjust_4x4[6][3];
+extern const int norm_adjust_8x8[6][6];
+
+
+extern const uint8_t scaling_list_indices[2][2][3];
 
 
 
-extern const int16_t norm_adjust_4x4[6][3];
 
 
-void compute_4x4_scale(CodecContext *ctx, const uint8_t *weight_scale_matrix);
-void compute_8x8_scale(CodecContext *ctx, const uint8_t *weight_scale_matrix);
+void parse_scaling_list(int *scaling_list, int size, bool *useDefault, BitReader *br);
+void infer_flat_matrices(CodecContext *ctx);
+void scaling_list_fallback(int index, bool is4x4, bool isPPS, CodecContext *ctx);
+
+void precompute_4x4_scales(CodecContext *ctx);
+void precompute_8x8_scales(CodecContext *ctx);
 
 
 

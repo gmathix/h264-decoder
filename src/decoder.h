@@ -31,10 +31,14 @@ typedef struct CodecContext {
     struct Profiler  *prf;
 
 
-    int16_t levelScale4x4[52][4][4];
-    int16_t levelScale8x8[52][8][8];
-    int16_t  **weightScale4x4;
-    int16_t  **weightScale8x8;
+    int *seq_scaling_lists[8];
+    int scalingList4x4[6][16];
+    int scalingList8x8[2][64];
+    bool seqScalingListPresent;
+    bool useDefaultList4x4[6];
+    bool useDefaultList8x8[2];
+    int16_t (*levelScale4x4) [52][4][4];
+    int16_t (*levelScale8x8) [52][8][8];
 
 
 

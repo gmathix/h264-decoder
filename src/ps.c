@@ -55,6 +55,7 @@ int decode_sps(size_t global_bit_offset, CodecContext *ctx) {
     sps->profile_idc = profile_idc;
 
 
+    infer_flat_matrices(ctx);
 
     /* not going to handle these for now. focusing on Baseline + Main profiles
      * probably won't even ever work on these */
@@ -94,18 +95,16 @@ int decode_sps(size_t global_bit_offset, CodecContext *ctx) {
                     scaling_list_fallback(i, i < 6, false, ctx);
                 }
             }
-        } else {
-            infer_flat_matrices(ctx);
         }
-
-        precompute_4x4_scales(ctx);
-        precompute_8x8_scales(ctx);
 
     } else {
         sps->chroma_format_idc = 1;
         sps->bit_depth_luma = 8;
         sps->bit_depth_chroma = 8;
     }
+
+    precompute_4x4_scales(ctx);
+    precompute_8x8_scales(ctx);
 
 
     sps->log2_max_frame_num_minus4 =read_ue(br);
@@ -285,11 +284,12 @@ int decode_pps(size_t global_bit_offset, CodecContext *ctx) {
                 }
             }
 
-            precompute_4x4_scales(ctx);
-            precompute_8x8_scales(ctx);
         }
         pps->second_chroma_qp_index_offset = read_se(br);
     }
+
+    precompute_4x4_scales(ctx);
+    precompute_8x8_scales(ctx);
 
 
     /* derive */

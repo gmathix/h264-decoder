@@ -300,6 +300,12 @@ void decode_slice_data(SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
                     meta->t_8x8_flag = 0;
                     ctx->curr_pic->mb_types[mb->mbAddr] = mb->mb_type;
 
+                    // for P_Skip only
+                    // B_Skip will get this replaced later
+                    mb->u.pb.mb_info.part_count = 1;
+                    mb->u.pb.mb_info.mb_part_height = 16;
+                    mb->u.pb.mb_info.mb_part_width = 16;
+
 
 
                     ctx->current_slice->decode_macroblock(mb, ctx->current_slice, ctx);

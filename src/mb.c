@@ -71,28 +71,28 @@ const PB_MbInfo p_sub_mb_type_info[4] = {
 
 /* table 7-14 */
 const PB_MbInfo b_mb_type_info[23] = {
-    /*  0 */{ MB_TYPE_DIRECT | MB_TYPE_L0L1,                                              1,  8,  8},
+    /*  0 */{ MB_TYPE_DIRECT  | MB_TYPE_L0L1,                                              1,  8,  8},
     /*  1 */{ MB_TYPE_16x16   | MB_TYPE_P0L0,                                              1, 16, 16},
     /*  2 */{ MB_TYPE_16x16   | MB_TYPE_P0L1,                                              1, 16, 16},
     /*  3 */{ MB_TYPE_16x16   | MB_TYPE_P0L0 | MB_TYPE_P0L1,                               1, 16, 16},
-    /*  4 */{ MB_TYPE_16x8    | MB_TYPE_P0L0 | MB_TYPE_P1L0,                               2, 16, 16},
-    /*  5 */{ MB_TYPE_8x16    | MB_TYPE_P0L0 | MB_TYPE_P1L0,                               2, 16,  8},
-    /*  6 */{ MB_TYPE_16x8    | MB_TYPE_P0L1 | MB_TYPE_P1L1,                               2,  8, 16},
-    /*  7 */{ MB_TYPE_8x16    | MB_TYPE_P0L1 | MB_TYPE_P1L1,                               2, 16,  8},
-    /*  8 */{ MB_TYPE_16x8    | MB_TYPE_P0L0 | MB_TYPE_P1L1,                               2,  8, 16},
-    /*  9 */{ MB_TYPE_8x16    | MB_TYPE_P0L0 | MB_TYPE_P1L1,                               2, 16,  8},
-    /* 10 */{ MB_TYPE_16x8    | MB_TYPE_P0L1 | MB_TYPE_P1L0,                               2,  8, 16},
-    /* 11 */{ MB_TYPE_8x16    | MB_TYPE_P0L1 | MB_TYPE_P1L0,                               2, 16,  8},
-    /* 12 */{ MB_TYPE_16x8    | MB_TYPE_P0L0 | MB_TYPE_P1L0 | MB_TYPE_P1L1,                2,  8, 16},
-    /* 13 */{ MB_TYPE_8x16    | MB_TYPE_P0L0 | MB_TYPE_P1L0 | MB_TYPE_P1L1,                2, 16,  8},
-    /* 14 */{ MB_TYPE_16x8    | MB_TYPE_P0L1 | MB_TYPE_P1L0 | MB_TYPE_P1L1,                2,  8, 16},
-    /* 15 */{ MB_TYPE_8x16    | MB_TYPE_P0L1 | MB_TYPE_P1L0 | MB_TYPE_P1L1,                2, 16,  8},
-    /* 16 */{ MB_TYPE_16x8    | MB_TYPE_P0L0 | MB_TYPE_P0L1 | MB_TYPE_P1L0,                2,  8, 16},
-    /* 17 */{ MB_TYPE_8x16    | MB_TYPE_P0L0 | MB_TYPE_P0L1 | MB_TYPE_P1L0,                2, 16,  8},
-    /* 18 */{ MB_TYPE_16x8    | MB_TYPE_P0L0 | MB_TYPE_P0L1 | MB_TYPE_P1L1,                2,  8, 16},
-    /* 19 */{ MB_TYPE_8x16    | MB_TYPE_P0L0 | MB_TYPE_P0L1 | MB_TYPE_P1L1,                2, 16,  8},
-    /* 20 */{ MB_TYPE_16x8    | MB_TYPE_P0L0 | MB_TYPE_P0L1 | MB_TYPE_P1L0 | MB_TYPE_P1L1, 2,  8, 16},
-    /* 21 */{ MB_TYPE_8x16    | MB_TYPE_P0L0 | MB_TYPE_P0L1 | MB_TYPE_P1L0 | MB_TYPE_P1L1, 2, 16,  8},
+    /*  4 */{ MB_TYPE_16x8    | MB_TYPE_P0L0 | MB_TYPE_P1L0,                               2, 16,  8},
+    /*  5 */{ MB_TYPE_8x16    | MB_TYPE_P0L0 | MB_TYPE_P1L0,                               2,  8, 16},
+    /*  6 */{ MB_TYPE_16x8    | MB_TYPE_P0L1 | MB_TYPE_P1L1,                               2, 16,  8},
+    /*  7 */{ MB_TYPE_8x16    | MB_TYPE_P0L1 | MB_TYPE_P1L1,                               2,  8, 16},
+    /*  8 */{ MB_TYPE_16x8    | MB_TYPE_P0L0 | MB_TYPE_P1L1,                               2, 16,  8},
+    /*  9 */{ MB_TYPE_8x16    | MB_TYPE_P0L0 | MB_TYPE_P1L1,                               2,  8, 16},
+    /* 10 */{ MB_TYPE_16x8    | MB_TYPE_P0L1 | MB_TYPE_P1L0,                               2, 16,  8},
+    /* 11 */{ MB_TYPE_8x16    | MB_TYPE_P0L1 | MB_TYPE_P1L0,                               2,  8, 16},
+    /* 12 */{ MB_TYPE_16x8    | MB_TYPE_P0L0 | MB_TYPE_P1L0 | MB_TYPE_P1L1,                2, 16,  8},
+    /* 13 */{ MB_TYPE_8x16    | MB_TYPE_P0L0 | MB_TYPE_P1L0 | MB_TYPE_P1L1,                2,  8, 16},
+    /* 14 */{ MB_TYPE_16x8    | MB_TYPE_P0L1 | MB_TYPE_P1L0 | MB_TYPE_P1L1,                2, 16,  8},
+    /* 15 */{ MB_TYPE_8x16    | MB_TYPE_P0L1 | MB_TYPE_P1L0 | MB_TYPE_P1L1,                2,  8, 16},
+    /* 16 */{ MB_TYPE_16x8    | MB_TYPE_P0L0 | MB_TYPE_P0L1 | MB_TYPE_P1L0,                2, 16,  8},
+    /* 17 */{ MB_TYPE_8x16    | MB_TYPE_P0L0 | MB_TYPE_P0L1 | MB_TYPE_P1L0,                2,  8, 16},
+    /* 18 */{ MB_TYPE_16x8    | MB_TYPE_P0L0 | MB_TYPE_P0L1 | MB_TYPE_P1L1,                2, 16,  8},
+    /* 19 */{ MB_TYPE_8x16    | MB_TYPE_P0L0 | MB_TYPE_P0L1 | MB_TYPE_P1L1,                2,  8, 16},
+    /* 20 */{ MB_TYPE_16x8    | MB_TYPE_P0L0 | MB_TYPE_P0L1 | MB_TYPE_P1L0 | MB_TYPE_P1L1, 2, 16,  8},
+    /* 21 */{ MB_TYPE_8x16    | MB_TYPE_P0L0 | MB_TYPE_P0L1 | MB_TYPE_P1L0 | MB_TYPE_P1L1, 2,  8, 16},
     /* 22 */{ MB_TYPE_8x8     | MB_TYPE_P0L0 | MB_TYPE_P0L1 | MB_TYPE_P1L0 | MB_TYPE_P1L1, 4,  8,  8},
 };
 
@@ -862,15 +862,39 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
         }
 
 
+        Picture *pic = mb->p_pic;
 
-        for (int part = 0; part < 4; part++) {
-            for (int subPart = 0; subPart < 4; subPart++) {
-                int idx = map_4x4[part * 4 + subPart];
-                MotionVector *mv = &ctx->curr_pic->motion_info[mb->mbAddr][idx].mvs[L0];
-                derive_pred_weights(mv->ref_idx, 0, true, false, ctx);
+        int w = mb->u.pb.mb_info.mb_part_width;
+        int h = mb->u.pb.mb_info.mb_part_height;
 
-                inter_pred_single(mb, idx, mv, L0, ctx);
-                inter_pred_chroma_single(mb, idx, mv, L0, ctx);
+        if (w == 16 || h == 16) {
+            uint8_t *scratch_buf = ctx->mc_scratch_buffers[(w * h) / 4 - 1];
+            uint8_t *scratch_buf_chroma = ctx->mc_scratch_buffers[(w * h) / 8 - 1];
+
+            for (int part = 0; part < mb->u.pb.mb_info.part_count; part++) {
+                int pos4x4 = part * ((w == 8) * 2 + (h == 8) * 8);
+                MotionVector mv = pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
+                derive_pred_weights(mv.ref_idx, 0, true, false, ctx);
+
+                inter_pred_single(mb, pos4x4, mv, L0, w, h, scratch_buf, ctx);
+                inter_pred_chroma_single(mb, pos4x4, mv, L0, w / 2, h / 2, scratch_buf_chroma, ctx);
+            }
+        } else {
+            for (int part = 0; part < 4; part++) {
+                int subW = mb->u.pb.sub_mb_info[part].mb_part_width;
+                int subH = mb->u.pb.sub_mb_info[part].mb_part_height;
+                uint8_t *scratch_buf = ctx->mc_scratch_buffers[(subW * subH) / 4 - 1];
+                uint8_t *scratch_buf_chroma = ctx->mc_scratch_buffers[(subW * subH) / 16 - 1];
+
+                for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
+                    int blkIdx = part * 4 + (subPart % 2 == 1) * (1 * (subW == 4)) + (subPart >= 2) * (2 * (subH == 4));
+                    int pos4x4 = map_4x4[blkIdx];
+                    MotionVector mv = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
+                    derive_pred_weights(mv.ref_idx, 0, true, false, ctx);
+
+                    inter_pred_single(mb, pos4x4, mv, L0, subW, subH, scratch_buf, ctx);
+                    inter_pred_chroma_single(mb, pos4x4, mv, L0, subW / 2, subH / 2, scratch_buf_chroma, ctx);
+                }
             }
         }
 
@@ -893,7 +917,7 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
 void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
 
-    if (mb->mbAddr == mb_debug && ctx->curr_pic->poc == poc_debug && ctx->curr_pic->frame_num == frame_num_debug) {
+    if (mb->mbAddr == mb_debug && ctx->curr_pic->poc == poc_debug) {
         debugging = true;
     } else {
         debugging = false;
@@ -905,7 +929,7 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
 
     }
 
-    // printf("%d\n", mb->mbAddr);
+
 
 
     for (int i = 0; i < 16; i++) {
@@ -914,6 +938,8 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
     }
     memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L0][0], false, 4);
     memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L1][0], false, 4);
+
+
 
     if (IS_INTRA(mb->mb_type)) {
         decode_i_macroblock(mb, slice, ctx);
@@ -938,36 +964,95 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
         }
 
 
-        /* luma inter pred */
-        for (int part = 0; part < 4; part++) {
-            bool l0 = ctx->curr_pic->pred_flags[mb->mbAddr][L0][part];
-            bool l1 = ctx->curr_pic->pred_flags[mb->mbAddr][L1][part];
+        Picture *pic = mb->p_pic;
+
+        if (IS_DIRECT(mb->mb_type) || IS_SKIP(mb->mb_type)) {
+            mb->u.pb.mb_info = b_mb_type_info[0];
+            bool direct8x8 = slice->sh->sps->direct_8x8_inference_flag;
+            PB_MbInfo directInfo = {SUB_MB_TYPE_DIRECT, 4 - direct8x8*3, 4 + direct8x8*4, 4 + direct8x8*4};
+            for (int i = 0; i < 4; i++ ) {
+                mb->u.pb.sub_mb_info[i] = directInfo;
+            }
+        }
+
+        int w = mb->u.pb.mb_info.mb_part_width;
+        int h = mb->u.pb.mb_info.mb_part_height;
 
 
-            for (int subPart = 0; subPart < 4; subPart++) {
-                int idx = map_4x4[part * 4 + subPart];
+
+        if (w == 16 || h == 16) {
+            uint8_t *scratch_buf = ctx->mc_scratch_buffers[(w * h) / 4 - 1];
+            uint8_t *scratch_buf_chroma = ctx->mc_scratch_buffers[(w * h) / 8 - 1];
+
+            uint8_t *temp_bi_buf = ctx->mc_temp_bi_buffers[(w * h) / 4 - 1];
+            uint8_t *temp_bi_buf_chroma = ctx->mc_temp_bi_buffers[(w * h) / 8 - 1];
+
+            for (int part = 0; part < mb->u.pb.mb_info.part_count; part++) {
+                int pos4x4 = part * ((w == 8) * 2 + (h == 8) * 8);
+                int pos2x2 = map_4x4[pos4x4] / 4;
+                bool l0 = ctx->curr_pic->pred_flags[mb->mbAddr][L0][pos2x2];
+                bool l1 = ctx->curr_pic->pred_flags[mb->mbAddr][L1][pos2x2];
 
                 if (l0 + l1 == 1) {
-                    int list = l0 == 1 ? L0 : L1;
-                    MotionVector *mv = &ctx->curr_pic->motion_info[mb->mbAddr][idx].mvs[list];
-                    if (debugging) fprintf(stderr, "part %d sub %d --- %s mv:(%d,%d)\n", part, subPart, l0 ? "L0" : "L1", mv->x, mv->y);
+                    int list = l0 ? L0 : L1;
 
-                    derive_pred_weights(mv->ref_idx, mv->ref_idx, l0, l1, ctx);
+                    MotionVector mv = pic->motion_info[mb->mbAddr][pos4x4].mvs[list];
+                    derive_pred_weights(mv.ref_idx, mv.ref_idx, l0, l1, ctx);
 
-                    inter_pred_single(mb, idx, mv, list, ctx);
-                    inter_pred_chroma_single(mb, idx,  mv, list, ctx);
+                    inter_pred_single(mb, pos4x4, mv, list, w, h, scratch_buf, ctx);
+                    inter_pred_chroma_single(mb, pos4x4, mv, list, w / 2, h / 2, scratch_buf_chroma, ctx);
                 } else if (l0 + l1 == 2) {
-                    MotionVector *mvL0 = &ctx->curr_pic->motion_info[mb->mbAddr][idx].mvs[L0];
-                    MotionVector *mvL1 = &ctx->curr_pic->motion_info[mb->mbAddr][idx].mvs[L1];
-                    if (debugging) fprintf(stderr, "part %d sub %d --- L0 L1 mv0:(%d,%d) mv1:(%d,%d)\n", part, subPart,  mvL0->x, mvL0->y, mvL1->x, mvL1->y);
+                    MotionVector mvL0 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
+                    MotionVector mvL1 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L1];
 
-                    derive_pred_weights(mvL0->ref_idx, mvL1->ref_idx, true, true, ctx);
+                    derive_pred_weights(mvL0.ref_idx, mvL1.ref_idx, true, true, ctx);
 
-                    inter_pred_bi(mb, idx, mvL0, mvL1, ctx);
-                    inter_pred_chroma_bi(mb, idx, mvL0, mvL1, ctx);
+                    inter_pred_bi(mb, pos4x4, mvL0, mvL1, w, h, scratch_buf, temp_bi_buf, ctx);
+                    inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, w / 2, h / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
+                }
+            }
+        } else {
+            for (int part = 0; part < 4; part++) {
+                int subW = mb->u.pb.sub_mb_info[part].mb_part_width;
+                int subH = mb->u.pb.sub_mb_info[part].mb_part_height;
+
+                uint8_t *scratch_buf = ctx->mc_scratch_buffers[(subW * subH) / 4 - 1];
+                uint8_t *scratch_buf_chroma = ctx->mc_scratch_buffers[(subW * subH) / 8 - 1];
+
+                uint8_t *temp_bi_buf = ctx->mc_temp_bi_buffers[(subW * subH) / 4 - 1];
+                uint8_t *temp_bi_buf_chroma = ctx->mc_temp_bi_buffers[(subW * subH) / 8 - 1];
+
+                bool l0 = ctx->curr_pic->pred_flags[mb->mbAddr][L0][part];
+                bool l1 = ctx->curr_pic->pred_flags[mb->mbAddr][L1][part];
+
+                if (l0 + l1 == 1) {
+                    int list = l0 ? L0 : L1;
+                    for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
+                        int blkIdx = part * 4 + (subPart % 2 == 1) * (1 * (subW == 4)) + (subPart >= 2) * (2 * (subH == 4));
+                        int pos4x4 = map_4x4[blkIdx];
+                        MotionVector mv = ctx->curr_pic->motion_info[mb->mbAddr][map_4x4[blkIdx]].mvs[list];
+                        derive_pred_weights(mv.ref_idx, mv.ref_idx, l0, l1, ctx);
+
+                        inter_pred_single(mb, pos4x4, mv, list, subW, subH, scratch_buf, ctx);
+                        inter_pred_chroma_single(mb, pos4x4, mv, list, subW / 2, subH / 2, scratch_buf_chroma, ctx);
+                    }
+                } else if (l0 + l1 == 2) {
+                    for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
+                        int blkIdx = part * 4 + (subPart % 2 == 1) * (1 * (subW == 4)) + (subPart >= 2) * (2 * (subH == 4));
+                        int pos4x4 = map_4x4[blkIdx];
+                        MotionVector mvL0 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
+                        MotionVector mvL1 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L1];
+                        derive_pred_weights(mvL0.ref_idx, mvL1.ref_idx, true, true, ctx);
+
+                        inter_pred_bi(mb, pos4x4, mvL0, mvL1, subW, subH, scratch_buf, temp_bi_buf, ctx);
+                        inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, subW / 2, subH / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
+                    }
                 }
             }
         }
+
+
+
 
 
         if (!IS_SKIP(mb->mb_type)) {

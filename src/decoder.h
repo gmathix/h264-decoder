@@ -76,8 +76,28 @@ typedef struct CodecContext {
 
 
 
-    /* helper buffers  */
-    uint8_t ref_samples[9][9]; // used in inter_pred to store all the needed luma prediction samples for a 4x4 luma block
+    /* helper inter pred buffers  */
+
+    /* reference sample buffers for every MB partition dimension
+     * needs 5 extra pixel length for qpel */
+    uint8_t buf_16x16 [(16+5) * (16+5)];
+    uint8_t buf_16x8  [(16+5) * (8+5)];
+    uint8_t buf_8x8   [(8+5)  * (8+5)];
+    uint8_t buf_8x4   [(8+5)  * (4+5)];
+    uint8_t buf_4x4   [(4+5)  * (4+5)];
+    uint8_t buf_4x2   [(4+5)  * (2+5)];
+    uint8_t buf_2x2   [(2+5)  * (2+5)];
+    uint8_t *mc_scratch_buffers[64]; // mc_scratch_buffers[(W * H) / 4 - 1] = &buf_WxH (same as buf_HxW)
+
+    /* temp buffers for bipred sample accumulation */
+    uint8_t temp_bi_buf_16x16 [2 * 256];
+    uint8_t temp_bi_buf_16x8  [2 * 128];
+    uint8_t temp_bi_buf_8x8   [2 *  64];
+    uint8_t temp_bi_buf_8x4   [2 *  32];
+    uint8_t temp_bi_buf_4x4   [2 *  16];
+    uint8_t temp_bi_buf_4x2   [2 *   8];
+    uint8_t temp_bi_buf_2x2   [2 *   2];
+    uint8_t *mc_temp_bi_buffers[64]; // same idea as mc_scratch_buffers
 
 
     struct Macroblock *prevMb;

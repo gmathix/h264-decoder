@@ -9,28 +9,27 @@
 #include "global.h"
 
 
-typedef void (*qpel_func)(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-
+typedef void (*qpel_func)(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
 
 extern const qpel_func qpel_funcs[16];
 
-
-void qpel_00(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_01(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_02(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_03(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_10(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_11(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_12(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_13(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_20(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_21(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_22(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_23(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_30(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_31(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_32(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
-void qpel_33(uint8_t ref[9][9], uint8_t *dst, int stride, int bit_depth);
+// naming : qpel_yx with y = vertical fractional offset and x = horizontal fractional offset
+void qpel_00(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_01(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_02(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_03(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_10(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_11(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_12(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_13(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_20(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_21(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_22(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_23(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_30(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_31(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_32(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
+void qpel_33(const uint8_t *ref, uint8_t *dst, int stride, int width, int height);
 
 
 

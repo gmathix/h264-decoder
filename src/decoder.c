@@ -18,10 +18,10 @@
 
 
 int debugging = 0;
-int frame_debug = 5;
+int frame_debug = -1;
 int frame_num_debug = -1;
 int poc_debug = -1;
-int mb_debug = 4977;
+int mb_debug = -1;
 int nb_frames_before_stop = -1;
 
 
@@ -64,12 +64,30 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
     ctx->dump_monochrome = dump_monochrome;
     if (!ctx->out_file) {
         perror("fopen");
-        exit(123454321);
+        exit(121);
     }
     setvbuf(ctx->out_file, NULL, _IOFBF, (size_t) 8 * 1920*1080*1.5); // 8 frame buffer for HD
 
     ctx->log_path = log_path;
     ctx->log_file = fopen(ctx->log_path, "w");
+
+
+
+    ctx->mc_scratch_buffers[(16 * 16) / 4 - 1] = ctx->buf_16x16;
+    ctx->mc_scratch_buffers[(16 *  8) / 4 - 1] = ctx->buf_16x8;
+    ctx->mc_scratch_buffers[( 8 *  8) / 4 - 1] = ctx->buf_8x8;
+    ctx->mc_scratch_buffers[( 8 *  4) / 4 - 1] = ctx->buf_8x4;
+    ctx->mc_scratch_buffers[( 4 *  4) / 4 - 1] = ctx->buf_4x4;
+    ctx->mc_scratch_buffers[( 4 *  2) / 4 - 1] = ctx->buf_4x2;
+    ctx->mc_scratch_buffers[ (2 *  2) / 4 - 1] = ctx->buf_2x2;
+
+    ctx->mc_temp_bi_buffers[(16 * 16) / 4 - 1] = ctx->temp_bi_buf_16x16;
+    ctx->mc_temp_bi_buffers[(16 *  8) / 4 - 1] = ctx->temp_bi_buf_16x8;
+    ctx->mc_temp_bi_buffers[( 8 *  8) / 4 - 1] = ctx->temp_bi_buf_8x8;
+    ctx->mc_temp_bi_buffers[( 8 *  4) / 4 - 1] = ctx->temp_bi_buf_8x4;
+    ctx->mc_temp_bi_buffers[( 4 *  4) / 4 - 1] = ctx->temp_bi_buf_4x4;
+    ctx->mc_temp_bi_buffers[( 4 *  2) / 4 - 1] = ctx->temp_bi_buf_4x2;
+    ctx->mc_temp_bi_buffers[( 2 *  2) / 4 - 1] = ctx->temp_bi_buf_2x2;
 
     ctx->initialized = true;
 

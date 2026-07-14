@@ -19,11 +19,15 @@
 
 void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1, CodecContext *ctx);
 
-void inter_pred_single(Macroblock *mb, int idx, MotionVector *mv, int list, CodecContext *ctx);
-void inter_pred_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVector *mvL1, CodecContext *ctx);
-void inter_pred_chroma_single(Macroblock *mb, int idx, MotionVector *mv, int list, CodecContext *ctx);
-void inter_pred_chroma_bi(Macroblock *mb, int idx, MotionVector *mvL0, MotionVector *mvL1, CodecContext *ctx);
 
+void inter_pred_single(Macroblock *mb, int pos4x4, MotionVector mv, int list,
+    int width, int height, uint8_t *scratch_buf, CodecContext *ctx);
+void inter_pred_bi(Macroblock *mb, int pos4x4, MotionVector mvL0, MotionVector mvL1,
+    int width, int height, uint8_t *scratch_buf, uint8_t *temp_bi_buf, CodecContext *ctx);
+void inter_pred_chroma_single(Macroblock *mb, int pos2x2, MotionVector mv, int list,
+    int width, int height, uint8_t *scratch_buf, CodecContext *ctx);
+void inter_pred_chroma_bi(Macroblock *mb, int pos2x2, MotionVector mvL0, MotionVector mvL1,
+    int width, int height, uint8_t *scratch_buf,  uint8_t *temp_bi_buf, CodecContext *ctx);
 
 
 /* fetches the 9x9 block with the 4x4 prediction block in the center
@@ -38,6 +42,21 @@ static ALWAYS_INLINE void fetch_9x9_block(Picture *refPic, int y, int x, uint8_t
             yc = _clip3(0, height - 1, y-2+i);
             xc = _clip3(0, width - 1, x-2+j);
             ref_samples[i][j] = refPic->luma[yc*width + xc];
+        }
+    }
+}
+
+static ALWAYS_INLINE void fetch_ref_block(const uint8_t * restrict ref, uint8_t * restrict scratch_buf,
+    int picW, int picH, int y, int x, int width, int height) {
+
+    width += 5;  // 5 extra samples for qpel
+    height += 5;
+    int yc, xc;
+    for (int i = 0; i < height; i++) {
+        for (int j = 0; j < width; j++) {
+            yc = _clip3(0, picH - 1, y-2+i);
+            xc = _clip3(0, picW - 1, x-2+j);
+            scratch_buf[i*width + j] = ref[yc*picW + xc];
         }
     }
 }

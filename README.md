@@ -45,6 +45,13 @@ But, correctness and robustness first, performance second.
 
 I'd like to understand how the GCC managed to achieve that 5 -> 22 jump, but I'd have to learn assembly and that's a different learning path which I will eventually take when this project is finished. 
 
+## Correctness
+
+Decoder output was tested against reference output (JM) using 30 different encoded videos for each profile.  
+PSNR was measured with FFmpeg:
+- Baseline Profile: bit-exact (PSNR +inf)
+- Main Profile (CAVLC): bit-exact
+- High Profile (CAVLC): bit-exact
 
 ## Usage
 As simple as, for example : 

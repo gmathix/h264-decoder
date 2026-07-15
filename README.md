@@ -47,8 +47,8 @@ I'd like to understand how the GCC managed to achieve that 5 -> 22 jump, but I'd
 
 ## Correctness
 
-Decoder output was tested against reference output (JM) using 30 different encoded videos for each profile.  
-PSNR was measured with FFmpeg:
+Decoder output was tested against reference output (JM) using 30 different videos for each profile, each encoded either with x264, NVIDIA NVENC or Vulkan.
+Then, PSNR was measured with FFmpeg:
 - Baseline Profile: bit-exact (PSNR +inf)
 - Main Profile (CAVLC): bit-exact
 - High Profile (CAVLC): bit-exact

@@ -10,11 +10,32 @@
 #include "dequant.h"
 #include "dpb.h"
 #include "mb.h"
-#include "nal.h"
-#include "picture.h"
 #include "ps.h"
 #include "tests/profiler.h"
 #include "util/bitreader.h"
+
+
+#include "cavlc.h"
+#include "cabac.h"
+#include "deblock.h"
+#include "intra.h"
+#include "picture.h"
+
+#include "tests/profiler.h"
+#include "util/expgolomb.h"
+#include "util/mbutil.h"
+#include "util/predutil.h"
+#include "util/sliceutil.h"
+
+
+
+#define CABAC 0
+#include "slice.c"
+
+#undef CABAC
+
+#define CABAC 1
+#include "slice.c"
 
 
 int debugging = 0;
@@ -95,12 +116,83 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
 }
 
 
+
+
+// yes this now does not to belong to nal.c anymore because a NALcoholic deleted that file
+int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx) {
+
+    bitreader_init(ctx->br, nal_unit->data, nal_unit->size);
+
+    switch (nal_unit->type) {
+        case NAL_SEI: break;
+        case NAL_SPS: decode_sps(ctx->global_bit_offset, ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
+        case NAL_PPS: decode_pps(ctx->global_bit_offset, ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
+
+
+        case NAL_CODED_SLICE_OF_NON_IDR_PICTURE:
+        case NAL_CODED_SLICE_OF_IDR_PICTURE:
+        case NAL_CODED_SLICE_DATA_PARTITION_A:
+        case NAL_CODED_SLICE_DATA_PARTITION_B:
+        case NAL_CODED_SLICE_DATA_PARTITION_C:
+        case NAL_CODED_SLICE_OF_AUX_CODED_PICTURE:
+        case NAL_CODED_SLICE_EXTENSION: {
+
+            profiler_start_frame(ctx->prf);
+
+            SliceHeader *sh = read_slice_header(nal_unit, ctx);
+
+            if (sh->pps->cabac_flag) {
+                decode_slice_cabac(sh, nal_unit, ctx);
+            } else {
+                decode_slice_cavlc(sh, nal_unit, ctx);
+            }
+
+            Slice *slice = ctx->current_slice;
+            if (slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs ||
+                slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs+1) { // end of picture
+
+                deblock_picture(ctx->curr_pic, ctx);
+                store_picture(ctx->dpb, ctx->curr_pic);
+                }
+
+            profiler_end_frame(ctx->prf);
+
+            printf("done slice %lu %s(frame_num %d)\n\n",
+                ctx->prf->total_frames-1, slice->p_pic->sh->idr_pic_flag ? "(IDR) " : "", sh->frame_num);
+
+
+            ctx->global_bit_offset += bitreader_bits_consumed(ctx->br);
+            break;
+        }
+
+        case NAL_UNSPECIFIED:
+        case NAL_RS16:
+        case NAL_RS17:
+        case NAL_RS18:
+        case NAL_RS21:
+        case NAL_RS22:
+        case NAL_RS23:
+        case NAL_UNSPEC24:
+        case NAL_UNSPEC25:
+        case NAL_UNSPEC26:
+        case NAL_UNSPEC27:
+        case NAL_UNSPEC28:
+        case NAL_UNSPEC29:
+        case NAL_UNSPEC30:
+        case NAL_UNSPEC31:        return 0;
+
+        default: return -1;
+    }
+}
+
+
 void decoder_run(CodecContext *ctx) {
     if (!ctx->initialized) return;
 
     BitReader nal_br = make_br(ctx->data, ctx->size);
 
-    while (bitreader_bits_remaining(&nal_br) > 8) {
+    https://www.youtube.com/watch?v=RrESvSRNpeo
+    {
         NalUnit *nal = next_nal_unit(&nal_br);
 
         dispatch_nal_unit(nal, ctx);
@@ -110,8 +202,9 @@ void decoder_run(CodecContext *ctx) {
         free(nal);
 
 
-        if (ctx->prf->total_frames == nb_frames_before_stop) {
-            break;
+        if (bitreader_bits_remaining(&nal_br) > 8 &&
+            ctx->prf->total_frames <= nb_frames_before_stop) {
+            goto https;
         }
     }
 

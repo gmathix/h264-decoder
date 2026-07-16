@@ -316,25 +316,8 @@ static ALWAYS_INLINE void reset_mb(Macroblock *mb, int mbAddr, CodecContext *ctx
 
 
 
-
-
-typedef void (*decode_macroblock_func) (Macroblock *mb, Slice *slice, CodecContext *ctx);
 typedef void (*residual_func)          (Macroblock *mb, int blkIdx, int iCbCr, int pbt, int16_t coeffLevel[], uint8_t (*total_coeffs_table)[16],
-                                            int startIdx, int endIdx, int maxNumCoeff, bool isLuma, SliceHeader *sh, CodecContext *ctx);
-
-
-
-void  read_macroblock        (Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
-void  read_mb_pred           (Macroblock *mb, SliceHeader *sh, CodecContext *ctx);
-void  read_sub_mb_pred       (Macroblock *mb, SliceHeader *sh, CodecContext *ctx);
-void  read_residual          (Macroblock *mb, int type, int t_8x8_flag, int startIdx, int endIdx, int cbp_luma, int cbp_chroma,
-                                 residual_func residual_block, SliceHeader *sh, CodecContext *ctx);
-void  read_residual_luma     (Macroblock *mb, int type, int t_8x8_flag, int cbp_luma,
-                                int startIdx, int endIdx,
-                                residual_func residual_block, SliceHeader *sh, CodecContext *ctx);
-
-/* not cabac until i'm nuts */
-void  residual_block_cabac   (Macroblock *mb, int blkIdx, int iCbCr, int pbt, int16_t coeffLevel[], uint8_t (*total_coeffs_table)[16], int startIdx, int endIdx, int maxNumCoeff, bool isLuma, SliceHeader *sh, CodecContext *ctx);
+                                            int startIdx, int endIdx, int maxNumCoeff, bool isLuma, struct SliceHeader *sh, CodecContext *ctx);
 
 
 void decode_i_macroblock(Macroblock *mb, struct Slice *slice, CodecContext *ctx);

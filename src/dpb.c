@@ -3,6 +3,7 @@
 //
 
 #include "dpb.h"
+#include "slice.h"
 
 #include "tests/profiler.h"
 #include "util/expgolomb.h"

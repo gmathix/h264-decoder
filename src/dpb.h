@@ -9,7 +9,7 @@
 #include "global.h"
 
 #include "picture.h"
-#include "slice.h"
+
 #include "util/bitreader.h"
 
 
@@ -185,12 +185,12 @@ static inline int ltPicNum(DPB *dpb, Picture **lX, int idx, int maxLtIdx) {
 
 
 void derive_poc(DPB *dpb, Picture *pic);
-void decode_pic_nums(DPB *dpb, SliceHeader *sh);
+void decode_pic_nums(DPB *dpb, struct SliceHeader *sh);
 int  bump(DPB *dpb);
 int  output_oldest_pic(DPB *dpb); // returns of output picture
 void store_picture(DPB *dpb, Picture *pic);
 
-void init_ref_pic_lists(DPB *dpb, SliceHeader *sh);
+void init_ref_pic_lists(DPB *dpb, struct SliceHeader *sh);
 
 
 /* MMCOs */
@@ -202,10 +202,10 @@ void mark_all_unused(DPB *dpb);
 void mark_curr_pic_lt(DPB *dpb, int lt_frame_idx);
 
 
-void ref_pic_list_modification(uint8_t type, Slice *slice, int maxFrameNum, int *maxLtIdx, CodecContext *ctx);
-void ref_pic_list_modif_st(Slice *slice, bool is_l0, int *refIdxLX, int modif_idc, int abs_diff, int maxFrameNum, CodecContext *ctx);
-void ref_pic_list_modif_lt(Slice *slice, bool is_l0, int *refIdxLX, int modif_idc, int lt_pic_num, int *maxLtIdx, CodecContext *ctx);
-void dec_ref_pic_marking(DPB *dpb, Slice *slice,  BitReader *br);
+void ref_pic_list_modification(uint8_t type, struct Slice *slice, int maxFrameNum, int *maxLtIdx, CodecContext *ctx);
+void ref_pic_list_modif_st(struct Slice *slice, bool is_l0, int *refIdxLX, int modif_idc, int abs_diff, int maxFrameNum, CodecContext *ctx);
+void ref_pic_list_modif_lt(struct Slice *slice, bool is_l0, int *refIdxLX, int modif_idc, int lt_pic_num, int *maxLtIdx, CodecContext *ctx);
+void dec_ref_pic_marking(DPB *dpb, struct Slice *slice,  BitReader *br);
 void process_mmcos(Picture *pic, CodecContext *ctx);
 
 void dpb_empty_slots(DPB *dpb);

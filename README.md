@@ -1,6 +1,6 @@
-# h264-decoder
+# undo264
 
-A toy H.264 decoder written in C.
+A H.264 decoder written in C
 
 ## *** WIP ***
 ## Project Philosophy 

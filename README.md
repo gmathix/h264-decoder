@@ -7,7 +7,7 @@ A H.264 decoder written in C
 ### Skip the shower, ship the decoder. Priorities.
 
 ## Current Status
-Taking a few days of break before fighting the final boss (CABAC)
+Fighting the final boss
 
 ## Features and Scope
 Baseline profile, Main and High profile without CABAC :

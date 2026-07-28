@@ -700,6 +700,7 @@ void CAFUNC(read_macroblock,
     meta->cbp_luma   = cbp_luma;
     meta->cbp_chroma = cbp_chroma;
     meta->t_8x8_flag = 0;
+    mb->t_8x8_flag = 0;
 
 
 
@@ -741,7 +742,16 @@ void CAFUNC(read_macroblock,
             }
         } else {
             if (pps->transform_8x8_mode_flag && IS_INTRA4x4(type)) {
-                mb->t_8x8_flag = read_u(br, 1);
+                #if CABAC
+                    #if CABAC_LOG
+                        fprintf(ctx->log_file, "\nreading transform_8x8_flag\n");
+                    #endif
+                    int inc = (mb->has_mb_a && ctx->mb_metadata[mb->mbAddr - 1].t_8x8_flag) +
+                              (mb->has_mb_b && ctx->mb_metadata[mb->mbAddr + mb->mb_b_off].t_8x8_flag);
+                    mb->t_8x8_flag = cabac_get_bit(ctx, 399 + inc);
+                #else
+                    mb->t_8x8_flag = read_u(br, 1);
+                #endif
                 meta->t_8x8_flag = mb->t_8x8_flag;
                 if (mb->t_8x8_flag) {
                     mb->mb_type = MB_TYPE_INTRA8x8;
@@ -766,7 +776,16 @@ void CAFUNC(read_macroblock,
                 !IS_INTRA4x4(type) && noSubMbPartSizeLessThan8x8 &&
                 (!IS_DIRECT(type) || sps->direct_8x8_inference_flag)) {
 
-                mb->t_8x8_flag = read_u(br, 1);
+                #if CABAC
+                    #if CABAC_LOG
+                        fprintf(ctx->log_file, "\nreading transform_8x8_flag\n");
+                    #endif
+                    int inc = (mb->has_mb_a && ctx->mb_metadata[mb->mbAddr - 1].t_8x8_flag) +
+                              (mb->has_mb_b && ctx->mb_metadata[mb->mbAddr + mb->mb_b_off].t_8x8_flag);
+                    mb->t_8x8_flag = cabac_get_bit(ctx, 399 + inc);
+                #else
+                    mb->t_8x8_flag = read_u(br, 1);
+                #endif
                 meta->t_8x8_flag = mb->t_8x8_flag;
             }
         }

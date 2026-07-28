@@ -93,8 +93,7 @@ int cabac_get_bit(CodecContext *ctx, int ctxIdx) {
 
     while (cactx->codIRange < 256) {
         cactx->codIRange <<= 1;
-        cactx->codIOffset <<= 1;
-        cactx->codIOffset |= read_u(ctx->br, 1);
+        cactx->codIOffset = (cactx->codIOffset << 1) | read_u(ctx->br, 1);
     }
 
     #if CABAC_LOG
@@ -169,6 +168,9 @@ int read_coded_block_flag(Macroblock *mb, int blkIdx, int iCbCr, BlockType block
     Neighbors n = derive_neighbors_4x4(mb, blkIdx, ctx);
     bool blockA_av = false, blockB_av = false;
 
+    int blockTypeA = blockType;
+    int blockTypeB = blockType;
+
     MacroblockMetadata metaA = n.a.av ? ctx->mb_metadata[mb->mbAddr + n.a.mb_off] : ctx->mb_metadata[mb->mbAddr];
     MacroblockMetadata metaB = n.b.av ? ctx->mb_metadata[mb->mbAddr + n.b.mb_off] : ctx->mb_metadata[mb->mbAddr];
     if (blockType == LUMA_INTRA_16x16_DC_LEVEL || blockType == CB_INTRA_16x16_DC_LEVEL || blockType == CR_INTRA_16x16_DC_LEVEL) {
@@ -177,6 +179,8 @@ int read_coded_block_flag(Macroblock *mb, int blkIdx, int iCbCr, BlockType block
     } else if (blockType == LUMA_INTRA_16x16_AC_LEVEL || blockType == LUMA_LEVEL_4x4 || blockType == LUMA_LEVEL_8x8) {
         blockA_av = n.a.av && !IS_SKIP(metaA.mb_type) && !IS_PCM(metaA.mb_type) && (metaA.cbp_luma >> (map_4x4[n.a.idx] >> 2) & 1) != 0;
         blockB_av = n.b.av && !IS_SKIP(metaB.mb_type) && !IS_PCM(metaB.mb_type) && (metaB.cbp_luma >> (map_4x4[n.b.idx] >> 2) & 1) != 0;
+        if (blockA_av && ctx->mb_metadata[mb->mbAddr + n.a.mb_off].t_8x8_flag) blockTypeA = LUMA_LEVEL_8x8;
+        if (blockB_av && ctx->mb_metadata[mb->mbAddr + n.b.mb_off].t_8x8_flag) blockTypeB = LUMA_LEVEL_8x8;
     } else if (blockType == CHROMA_DC_LEVEL) {
         blockA_av = n.a.av && !IS_SKIP(metaA.mb_type) && !IS_PCM(metaA.mb_type) && metaA.cbp_chroma != 0;
         blockB_av = n.b.av && !IS_SKIP(metaB.mb_type) && !IS_PCM(metaB.mb_type) && metaB.cbp_chroma != 0;
@@ -195,7 +199,7 @@ int read_coded_block_flag(Macroblock *mb, int blkIdx, int iCbCr, BlockType block
                 (IS_PCM(ctx->mb_metadata[mb->mbAddr + n.a.mb_off].mb_type))) {
         condTermA = true;
     } else {
-        condTermA = ctx->mb_metadata[mb->mbAddr + n.a.mb_off].coded_block_flag[blockType][n.a.idx] >> iCbCr & 1;
+        condTermA = ctx->mb_metadata[mb->mbAddr + n.a.mb_off].coded_block_flag[blockTypeA][n.a.idx] >> iCbCr & 1;
     }
     if ((!n.b.av && IS_INTER(mb->mb_type)) ||
         (n.b.av && !blockB_av && !IS_PCM(ctx->mb_metadata[mb->mbAddr + n.b.mb_off].mb_type))) {
@@ -204,11 +208,14 @@ int read_coded_block_flag(Macroblock *mb, int blkIdx, int iCbCr, BlockType block
                 (IS_PCM(ctx->mb_metadata[mb->mbAddr + n.b.mb_off].mb_type))) {
         condTermB = true;
     } else {
-        condTermB = ctx->mb_metadata[mb->mbAddr + n.b.mb_off].coded_block_flag[blockType][n.b.idx] >> iCbCr & 1;
+        condTermB = ctx->mb_metadata[mb->mbAddr + n.b.mb_off].coded_block_flag[blockTypeB][n.b.idx] >> iCbCr & 1;
     }
 
     int ctxIdx = ctxIdxOffset[blockType] + ctxIdxCatOffset[blockType] + condTermA + 2*condTermB;
 
+    if (ctx->prf->total_frames == 5 && mb->mbAddr == 4981) {
+        printf("%d %d %d %d\n", p_state_idx[ctxIdx], p_state_idx[ctxIdx+1], p_state_idx[ctxIdx+2], p_state_idx[ctxIdx+3]);
+    }
 
     return cabac_get_bit(ctx, ctxIdx);
 }
@@ -242,7 +249,7 @@ int read_significant_coeff_flag(Macroblock *mb, int coeffIdx, BlockType blockTyp
 }
 
 int read_last_significant_coeff_flag(Macroblock *mb, int coeffIdx, BlockType blockType, CodecContext *ctx) {
-    static const int16_t ctxIdxOffset[14] = {166, 166, 166, 166, 166, 451, 572, 572, 572, 690, 616, 616, 616, 748};
+    static const int16_t ctxIdxOffset[14] = {166, 166, 166, 166, 166, 417, 572, 572, 572, 690, 616, 616, 616, 748};
     static const int8_t ctxIdxCatOffset[14] = {0, 15, 29, 44, 47, 0, 0, 15, 29, 0, 0, 15, 29, 0};
     static const alignas(64) int8_t ctxIdxInc[2][64] = {
         {

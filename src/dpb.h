@@ -12,11 +12,6 @@
 
 #include "util/bitreader.h"
 
-
-#define MAX_DPB_SIZE     16
-
-
-
 enum DpbStatus {
     UNUSED_REF        = 0,
     SHORT_TERM_REF    = 1,
@@ -49,7 +44,6 @@ typedef struct DPB {
     int curr_pic_dpb_id; // assign a unique id to each picture currently present in the DPB slots
                          // value 0 is reserved to EMPTY_PIC
 } DPB ;
-
 
 
 
@@ -181,7 +175,6 @@ static inline int ltPicNum(DPB *dpb, Picture **lX, int idx, int maxLtIdx) {
         return lX[idx]->long_term_frame_idx;
     return 2 * (maxLtIdx + 1);
 }
-
 
 
 void derive_poc(DPB *dpb, Picture *pic);

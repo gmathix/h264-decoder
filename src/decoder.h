@@ -29,6 +29,9 @@ typedef struct CodecContext {
     struct Slice        *current_slice;
     struct DPB          *dpb;
     struct Profiler     *prf;
+    struct PicturePool  *pool;
+
+    bool pic_pool_initialized;
 
 
     int *seq_scaling_lists[8];

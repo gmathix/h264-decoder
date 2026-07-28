@@ -36,7 +36,7 @@
 
 
 #define MAX_NUM_REF_PICTURES        32
-
+#define MAX_DPB_SIZE     16
 #define L0  0
 #define L1  1
 

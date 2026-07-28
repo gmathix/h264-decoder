@@ -69,6 +69,8 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
 
     ctx->current_slice = slice_alloc();
     ctx->dpb = make_dbp(ctx);
+    ctx->pool = calloc(1, sizeof(PicturePool));
+    ctx->pic_pool_initialized = false;
 
 
     ctx->currMb = calloc(1, sizeof(Macroblock));
@@ -126,7 +128,14 @@ int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx) {
 
     switch (nal_unit->type) {
         case NAL_SEI: break;
-        case NAL_SPS: decode_sps(ctx->global_bit_offset, ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
+        case NAL_SPS:
+            decode_sps(ctx->global_bit_offset, ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br);
+            int num_mbs = ctx->ps->sps->pic_height_in_map_units * ctx->ps->sps->pic_width_in_mbs;
+            if (!ctx->pic_pool_initialized || num_mbs != ctx->num_mbs) {
+                pic_pool_init(ctx->pool, ctx);
+                ctx->pic_pool_initialized = true;
+            }
+            break;
         case NAL_PPS: decode_pps(ctx->global_bit_offset, ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
 
 
@@ -152,7 +161,7 @@ int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx) {
             if (slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs ||
                 slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs+1) { // end of picture
 
-                // deblock_picture(ctx->curr_pic, ctx);
+                deblock_picture(ctx->curr_pic, ctx);
                 store_picture(ctx->dpb, ctx->curr_pic);
             }
             // exit(1);
@@ -161,6 +170,8 @@ int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx) {
 
             printf("done slice %lu %s(frame_num %d)\n\n",
                 ctx->prf->total_frames-1, slice->p_pic->sh->idr_pic_flag ? "(IDR) " : "", sh->frame_num);
+
+
 
 
             ctx->global_bit_offset += bitreader_bits_consumed(ctx->br);
@@ -236,6 +247,7 @@ void decoder_alloc_metadata(CodecContext *ctx) {
 
 void decoder_free(CodecContext *ctx) {
     decoder_free_metadata(ctx);
+    pic_pool_free(ctx->pool, ctx);
 
     munmap((void*)ctx->data, ctx->size);
     free(ctx->br);

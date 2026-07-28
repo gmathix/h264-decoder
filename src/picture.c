@@ -11,19 +11,18 @@
 const Picture EMPTY_PICTURE = {};
 
 
-Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx) {
+Picture *picture_alloc(SPS *sps, CodecContext *ctx) {
     Picture *p  = calloc(1, sizeof(Picture));
 
-    p->frame_num   = sh->frame_num;
-	p->widthY      = sh->sps->pic_width_samples_l;
-	p->heightY     = sh->sps->pic_height_samples_l;
+	p->widthY      = sps->pic_width_samples_l;
+	p->heightY     = sps->pic_height_samples_l;
 	p->widthC      = p->widthY / 2;
 	p->heightC     = p->heightY / 2;
-	p->widthCropY  = p->widthY - sh->sps->crop_right_offset - sh->sps->crop_left_offset;
-	p->heightCropY = p->heightY - sh->sps->crop_bottom_offset - sh->sps->crop_top_offset;
+	p->widthCropY  = p->widthY - sps->crop_right_offset - sps->crop_left_offset;
+	p->heightCropY = p->heightY - sps->crop_bottom_offset - sps->crop_top_offset;
 	p->widthCropC  = p->widthCropY / 2;
 	p->heightCropC = p->heightCropY / 2;
-    p->num_mbs     = (int32_t)sh->sps->pic_width_in_mbs * (int32_t)sh->sps->pic_height_in_map_units;
+    p->num_mbs     = (int32_t)sps->pic_width_in_mbs * (int32_t)sps->pic_height_in_map_units;
 
     p->luma        = calloc(p->widthY * p->heightY, 1);
     p->cb          = calloc(p->widthY/2 * (p->heightY/2), 1);
@@ -33,24 +32,27 @@ Picture *picture_alloc(SliceHeader *sh, CodecContext *ctx) {
     p->pred_flags   = calloc(p->num_mbs, sizeof( bool [2][4] ));
     p->motion_info  = calloc(p->num_mbs, sizeof( MotionInfo[16] ));
 
-
-    if (!ctx->mb_metadata_initialized || p->num_mbs != ctx->num_mbs) {
-        if (ctx->mb_metadata_initialized) { /* will have to reallocate the buffers, shouldn't happen mid-stream */
-            decoder_free_metadata(ctx);
-        }
-        decoder_alloc_metadata(ctx);
-    }
-
-
     return p;
 }
 
 
 
 void picture_reset(Picture *p) {
-    memset(&p->luma[0], 0, p->heightY * p->widthY);
-    memset(&p->cb[0],   0, p->heightY/2 * p->widthY/2);
-    memset(&p->cr[0],   0, p->heightY/2 * p->widthY/2);
+    p->frame_num = 0;
+    p->frame_num_offset = 0;
+    p->frame_num_wrap = 0;
+    p->pic_num = 0;
+    p->poc = 0;
+    p->dpb_pic_id = 0;
+    memset(p->in_list, false, 2);
+    memset(p->lowest_list_index, 0, 2);
+
+    p->dpb_status = UNUSED_REF;
+    p->long_term_frame_idx = 0;
+    p->is_output = false;
+    p->top_field_order_cnt = 0;
+    p->bottom_field_order_cnt = 0;
+
 }
 
 void picture_free(Picture *p) {
@@ -83,5 +85,58 @@ void dump_picture(Picture *p, CodecContext *ctx) {
         for (int i = top/2; i < p->heightC - bottom/2; i++) {
             fwrite(&p->cr[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
         }
+    }
+}
+
+void pic_pool_init(PicturePool *pool, CodecContext *ctx) {
+    SPS *sps = ctx->ps->sps;
+    int num_mbs = sps->pic_width_in_mbs * sps->pic_height_in_map_units;
+
+    pool->size = MAX_DPB_SIZE + 1;
+    pool->nb_available = pool->size;
+
+    if (!ctx->mb_metadata_initialized || num_mbs != ctx->num_mbs) {
+        if (ctx->mb_metadata_initialized) { /* will have to reallocate the buffers, shouldn't happen mid-stream */
+            decoder_free_metadata(ctx);
+        }
+        decoder_alloc_metadata(ctx);
+    }
+
+    for (int i = 0; i < pool->size; i++) {
+        if (pool->slots[i]) picture_free(pool->slots[i]);
+        pool->slots[i] = picture_alloc(sps, ctx);
+    }
+    memset(pool->available, true, pool->size);
+    pool->nb_available = pool->size;
+}
+
+void pic_pool_free(PicturePool *pool, CodecContext *ctx) {
+    for (int i = 0; i < pool->size; i++) {
+        if (pool->slots[i]) picture_free(pool->slots[i]);
+    }
+}
+
+Picture *pic_pool_get(PicturePool *pool) {
+    for (int i = 0; i < pool->size; i++) {
+        if (pool->available[i]) {
+            pool->available[i] = false;
+            pool->nb_available--;
+            return pool->slots[i];
+        }
+    }
+    return NULL; // bug
+}
+
+void pic_pool_getback(Picture *pic, PicturePool *pool) {
+    int idx = -1;
+    for (int i = 0; i < pool->size; i++) {
+        if (pool->slots[i] == pic) {
+            idx = i;
+            break;
+        }
+    }
+    if (idx != -1) {
+        pool->available[idx] = true;
+        pool->nb_available++;
     }
 }

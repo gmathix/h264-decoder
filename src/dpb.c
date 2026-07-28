@@ -11,7 +11,7 @@
 #include "util/sliceutil.h"
 
 
-int picture_to_find = 7;
+int picture_to_find = -1;
 
 
 static void print_ref_lists(DPB *dpb, Picture *pic) {
@@ -151,7 +151,7 @@ int output_oldest_pic(DPB *dpb) {
 
         dump_picture(old_pic, dpb->ctx);
         old_pic->is_output = true;
-        picture_free(old_pic);
+        pic_pool_getback(old_pic, dpb->ctx->pool);
         dpb->slots[min_idx] = NULL;
         dpb->fullness--;
         dpb->pictures_dumped++;
@@ -594,7 +594,7 @@ void process_mmcos(Picture *pic, CodecContext *ctx) {
 void dpb_empty_slots(DPB *dpb) {
     for (int i = 0; i < dpb->size+2; i++) {
         if (dpb->slots[i] != NULL) {
-            picture_free(dpb->slots[i]);
+            pic_pool_getback(dpb->slots[i], dpb->ctx->pool);
             free(dpb->slots[i]);
         }
         dpb->lists[L0][1+i] = NULL;
@@ -631,7 +631,7 @@ void dpb_flush(DPB *dpb) {
 void dpb_free(DPB *dpb) {
     for (int i = 0; i < dpb->size; i++) {
         if (dpb->slots[i] != NULL) {
-            picture_free(dpb->slots[i]);
+            pic_pool_getback(dpb->slots[i], dpb->ctx->pool);
         }
     }
     free(dpb);

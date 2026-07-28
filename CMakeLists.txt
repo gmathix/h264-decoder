@@ -6,7 +6,7 @@ set(CMAKE_C_COMPILER gcc)
 
 
 # debugging
-##
+#
 #add_compile_options(-fsanitize=address)
 #add_link_options(-fsanitize=address)
 #
@@ -27,14 +27,12 @@ add_executable(h264_decoder_debug main.c
         src/util/bitreader.c
         src/util/logger.h
         src/util/logger.c
-        src/nal.c
         src/annexb.c
         src/annexb.h
         src/ps.c
         src/util/expgolomb.c
         src/util/expgolomb.h
         src/decoder.c
-        src/slice.c
         src/slice.h
         src/util/formulas.h
         src/mb.c
@@ -65,6 +63,8 @@ add_executable(h264_decoder_debug main.c
         src/qpel.c
         src/deblock.c
         src/deblock.h
+        src/cabac.c
+        src/cabac.h
 )
 target_link_libraries(h264_decoder_debug m)
 target_compile_options(h264_decoder_debug PRIVATE -O0)
@@ -76,14 +76,12 @@ add_executable(h264_decoder main.c
         src/util/bitreader.c
         src/util/logger.h
         src/util/logger.c
-        src/nal.c
         src/annexb.c
         src/annexb.h
         src/ps.c
         src/util/expgolomb.c
         src/util/expgolomb.h
         src/decoder.c
-        src/slice.c
         src/slice.h
         src/util/formulas.h
         src/mb.c
@@ -114,6 +112,8 @@ add_executable(h264_decoder main.c
         src/qpel.c
         src/deblock.c
         src/deblock.h
+        src/cabac.c
+        src/cabac.h
 )
 target_link_libraries(h264_decoder m)
 target_compile_options(h264_decoder PRIVATE -O3 -march=native)

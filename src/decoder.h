@@ -22,13 +22,13 @@ typedef struct CodecContext {
     int maxFrameNum;
     int maxLongTermFrameIdx;
 
-
-    struct BitReader *br;
-    struct ParamSets *ps;
-    struct Picture   *curr_pic;
-    struct Slice     *current_slice;
-    struct DPB       *dpb;
-    struct Profiler  *prf;
+    struct CabacContext *cactx;
+    struct BitReader    *br;
+    struct ParamSets    *ps;
+    struct Picture      *curr_pic;
+    struct Slice        *current_slice;
+    struct DPB          *dpb;
+    struct Profiler     *prf;
 
 
     int *seq_scaling_lists[8];
@@ -48,8 +48,6 @@ typedef struct CodecContext {
     int  num_mbs;
 
     struct MacroblockMetadata *mb_metadata;
-    uint8_t (*intra8x8_pred_modes) [ 4];
-    uint8_t (*intra4x4_pred_modes) [16];
     uint8_t (*luma_total_coeffs)   [16];
     uint8_t (*cb_total_coeffs)     [16];
     uint8_t (*cr_total_coeffs)     [16];

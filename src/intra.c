@@ -820,7 +820,8 @@ void intra_pred_16x16(Macroblock *mb, CodecContext *ctx) {
         top[0]        = left[0];
     }
 
-    intra16x16_table[mb->pred_mode](
+    int pred_mode = ctx->mb_metadata[mb->mbAddr].intra_16x16_pred_mode;
+    intra16x16_table[pred_mode](
         &luma[mb_y*16*stride + mb_x*16], stride,
         a_av, b_av,
         top, left);
@@ -861,8 +862,8 @@ void intra_chroma_pred(Macroblock *mb, CodecContext *ctx) {
         top_cr[0]        = left_cr[0];
     }
 
-
-    intra8x8_chroma_table[mb->intra_chroma_pred_mode](
+    int pred_mode = ctx->mb_metadata[mb->mbAddr].intra_chroma_pred_mode;
+    intra8x8_chroma_table[pred_mode](
         &cb[mb_y*8*stride + mb_x*8], &cr[mb_y*8*stride + mb_x*8], stride,
         n.a.av, n.b.av,
         top_cb, left_cb,

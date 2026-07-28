@@ -56,7 +56,7 @@ int32_t read_se(BitReader *br) {
     int32_t ue = (int32_t) read_ue(br);
 
     int sign = (ue%2 == 0) ? -1 : 1;
-    return sign * (ue+1) / 2;
+    return (-1 + 2*(ue & 1)) * (ue+1) / 2;
 }
 
 uint32_t read_te(BitReader *br, int max) {

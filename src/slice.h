@@ -21,7 +21,7 @@ typedef struct SliceHeader {
     /* position of the MMCO syntax structure in the slice NAL */
     size_t mmco_position_bits; // byte_pos*8 + bit_pos
 
-
+    uint32_t cabac_init_idc;
     uint32_t disable_deblocking_filter_idc;
     uint32_t first_mb;
     uint32_t frame_num;
@@ -299,7 +299,7 @@ static SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
     }
 
     if (pps->cabac_flag && !i_slice && !si_slice) {
-        /* cabac_init_idc() */
+        sh->cabac_init_idc = read_ue(br);
     }
 
     sh->slice_qp_delta = read_se(br);

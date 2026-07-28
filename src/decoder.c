@@ -29,12 +29,10 @@
 
 
 
-#define CABAC 0
-#include "slice.c"
-
-#undef CABAC
-
 #define CABAC 1
+#include "slice.c"
+#undef CABAC
+#define CABAC 0
 #include "slice.c"
 
 
@@ -58,6 +56,9 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
     ctx->data = data;
     ctx->size = size;
 
+    CabacContext *cactx = make_cactx();
+    ctx->cactx = cactx;
+
     BitReader *br = malloc(sizeof(BitReader));
     ctx->br = br;
     ctx->global_bit_offset = 0;
@@ -73,8 +74,8 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
     ctx->currMb = calloc(1, sizeof(Macroblock));
     ctx->prevMb = calloc(1, sizeof(Macroblock));
 
-    ctx->levelScale4x4       = calloc(6, sizeof( int16_t[52][4][4] ));
-    ctx->levelScale8x8       = calloc(2, sizeof( int16_t[52][8][8] ));
+    ctx->levelScale4x4 = calloc(6, sizeof( int16_t[52][4][4] ));
+    ctx->levelScale8x8 = calloc(2, sizeof( int16_t[52][8][8] ));
 
 
 
@@ -151,9 +152,10 @@ int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx) {
             if (slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs ||
                 slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs+1) { // end of picture
 
-                deblock_picture(ctx->curr_pic, ctx);
+                // deblock_picture(ctx->curr_pic, ctx);
                 store_picture(ctx->dpb, ctx->curr_pic);
-                }
+            }
+            // exit(1);
 
             profiler_end_frame(ctx->prf);
 
@@ -202,8 +204,7 @@ void decoder_run(CodecContext *ctx) {
         free(nal);
 
 
-        if (bitreader_bits_remaining(&nal_br) > 8 &&
-            ctx->prf->total_frames <= nb_frames_before_stop) {
+        if (bitreader_bits_remaining(&nal_br) > 8 && ctx->prf->total_frames <= nb_frames_before_stop) {
             goto https;
         }
     }
@@ -214,8 +215,6 @@ void decoder_run(CodecContext *ctx) {
 
 void decoder_free_metadata(CodecContext *ctx) {
     free(ctx->mb_metadata);
-    free(ctx->intra8x8_pred_modes);
-    free(ctx->intra4x4_pred_modes);
     free(ctx->luma_total_coeffs);
     free(ctx->cb_total_coeffs);
     free(ctx->cr_total_coeffs);
@@ -228,8 +227,6 @@ void decoder_alloc_metadata(CodecContext *ctx) {
     ctx->num_mbs = (int32_t)ctx->ps->sps->pic_width_in_mbs * (int32_t)ctx->ps->sps->pic_height_in_map_units;
 
     ctx->mb_metadata = calloc(ctx->num_mbs, sizeof( MacroblockMetadata));
-    ctx->intra8x8_pred_modes = calloc(ctx->num_mbs, sizeof( uint8_t        [ 4] ));
-    ctx->intra4x4_pred_modes = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
     ctx->luma_total_coeffs   = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
     ctx->cb_total_coeffs     = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
     ctx->cr_total_coeffs     = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));

@@ -84,11 +84,16 @@ typedef struct {
  */
 typedef struct MacroblockMetadata {
     int32_t mb_type;
+    int8_t  coded_block_flag[14][16];
     uint8_t QPY;
     uint8_t QPC;
     uint8_t t_8x8_flag;
     uint8_t cbp_luma;
     uint8_t cbp_chroma;
+    uint8_t intra_chroma_pred_mode;
+    uint8_t intra_NxN_pred_mode[16]; // 8x8 will just use first 4 values
+    uint8_t intra_16x16_pred_mode;
+
 } MacroblockMetadata ;
 
 
@@ -98,8 +103,6 @@ typedef struct Macroblock {
     uint32_t slice_type;
     int table_idx;
     int mb_type;
-    int pred_mode;
-
     int mbAddr;
     int mb_y, mb_x;
     int mb_width_c;
@@ -110,7 +113,6 @@ typedef struct Macroblock {
     int has_mb_a, has_mb_b, has_mb_c, has_mb_d;
     int mb_a_off, mb_b_off, mb_c_off, mb_d_off;
 
-    uint32_t intra_chroma_pred_mode;
     int32_t mb_qp_delta, QPY, QPC;
     int     t_8x8_flag;
 
@@ -305,6 +307,7 @@ static ALWAYS_INLINE void reset_mb(Macroblock *mb, int mbAddr, CodecContext *ctx
     memset(&ctx->cr_total_coeffs[mbAddr], 0, 16);
     memset(&ctx->cb_total_coeffs[mbAddr], 0, 16);
 
+
     memset(&mb->u, 0, sizeof(mb->u));
     memset(&mb->residuals, 0, sizeof(mb->residuals));
 
@@ -313,11 +316,6 @@ static ALWAYS_INLINE void reset_mb(Macroblock *mb, int mbAddr, CodecContext *ctx
     mb->mb_x   = mbAddr % ctx->ps->sps->pic_width_in_mbs;
     mb->p_pic  = ctx->curr_pic;
 }
-
-
-
-typedef void (*residual_func)          (Macroblock *mb, int blkIdx, int iCbCr, int pbt, int16_t coeffLevel[], uint8_t (*total_coeffs_table)[16],
-                                            int startIdx, int endIdx, int maxNumCoeff, bool isLuma, struct SliceHeader *sh, CodecContext *ctx);
 
 
 void decode_i_macroblock(Macroblock *mb, struct Slice *slice, CodecContext *ctx);

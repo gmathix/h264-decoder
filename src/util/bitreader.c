@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-
+#include "../decoder.h"
 
 
 void bitreader_init(struct BitReader *br, const uint8_t *data, size_t size) {

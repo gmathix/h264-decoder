@@ -29,12 +29,10 @@
 
 
 
-#define CABAC 0
-#include "slice.c"
-
-#undef CABAC
-
 #define CABAC 1
+#include "slice.c"
+#undef CABAC
+#define CABAC 0
 #include "slice.c"
 
 
@@ -58,6 +56,9 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
     ctx->data = data;
     ctx->size = size;
 
+    CabacContext *cactx = make_cactx();
+    ctx->cactx = cactx;
+
     BitReader *br = malloc(sizeof(BitReader));
     ctx->br = br;
     ctx->global_bit_offset = 0;
@@ -68,13 +69,15 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
 
     ctx->current_slice = slice_alloc();
     ctx->dpb = make_dbp(ctx);
+    ctx->pool = calloc(1, sizeof(PicturePool));
+    ctx->pic_pool_initialized = false;
 
 
     ctx->currMb = calloc(1, sizeof(Macroblock));
     ctx->prevMb = calloc(1, sizeof(Macroblock));
 
-    ctx->levelScale4x4       = calloc(6, sizeof( int16_t[52][4][4] ));
-    ctx->levelScale8x8       = calloc(2, sizeof( int16_t[52][8][8] ));
+    ctx->levelScale4x4 = calloc(6, sizeof( int16_t[52][4][4] ));
+    ctx->levelScale8x8 = calloc(2, sizeof( int16_t[52][8][8] ));
 
 
 
@@ -125,7 +128,14 @@ int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx) {
 
     switch (nal_unit->type) {
         case NAL_SEI: break;
-        case NAL_SPS: decode_sps(ctx->global_bit_offset, ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
+        case NAL_SPS:
+            decode_sps(ctx->global_bit_offset, ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br);
+            int num_mbs = ctx->ps->sps->pic_height_in_map_units * ctx->ps->sps->pic_width_in_mbs;
+            if (!ctx->pic_pool_initialized || num_mbs != ctx->num_mbs) {
+                pic_pool_init(ctx->pool, ctx);
+                ctx->pic_pool_initialized = true;
+            }
+            break;
         case NAL_PPS: decode_pps(ctx->global_bit_offset, ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
 
 
@@ -153,12 +163,15 @@ int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx) {
 
                 deblock_picture(ctx->curr_pic, ctx);
                 store_picture(ctx->dpb, ctx->curr_pic);
-                }
+            }
+            // exit(1);
 
             profiler_end_frame(ctx->prf);
 
             printf("done slice %lu %s(frame_num %d)\n\n",
                 ctx->prf->total_frames-1, slice->p_pic->sh->idr_pic_flag ? "(IDR) " : "", sh->frame_num);
+
+
 
 
             ctx->global_bit_offset += bitreader_bits_consumed(ctx->br);
@@ -202,8 +215,7 @@ void decoder_run(CodecContext *ctx) {
         free(nal);
 
 
-        if (bitreader_bits_remaining(&nal_br) > 8 &&
-            ctx->prf->total_frames <= nb_frames_before_stop) {
+        if (bitreader_bits_remaining(&nal_br) > 8 && ctx->prf->total_frames <= nb_frames_before_stop) {
             goto https;
         }
     }
@@ -214,8 +226,6 @@ void decoder_run(CodecContext *ctx) {
 
 void decoder_free_metadata(CodecContext *ctx) {
     free(ctx->mb_metadata);
-    free(ctx->intra8x8_pred_modes);
-    free(ctx->intra4x4_pred_modes);
     free(ctx->luma_total_coeffs);
     free(ctx->cb_total_coeffs);
     free(ctx->cr_total_coeffs);
@@ -228,8 +238,6 @@ void decoder_alloc_metadata(CodecContext *ctx) {
     ctx->num_mbs = (int32_t)ctx->ps->sps->pic_width_in_mbs * (int32_t)ctx->ps->sps->pic_height_in_map_units;
 
     ctx->mb_metadata = calloc(ctx->num_mbs, sizeof( MacroblockMetadata));
-    ctx->intra8x8_pred_modes = calloc(ctx->num_mbs, sizeof( uint8_t        [ 4] ));
-    ctx->intra4x4_pred_modes = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
     ctx->luma_total_coeffs   = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
     ctx->cb_total_coeffs     = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
     ctx->cr_total_coeffs     = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
@@ -239,6 +247,7 @@ void decoder_alloc_metadata(CodecContext *ctx) {
 
 void decoder_free(CodecContext *ctx) {
     decoder_free_metadata(ctx);
+    pic_pool_free(ctx->pool, ctx);
 
     munmap((void*)ctx->data, ctx->size);
     free(ctx->br);

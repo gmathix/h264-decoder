@@ -290,7 +290,7 @@ void init_vlc_tables() {
 }
 
 /* 7.3.5.3.2 */
-void residual_block_cavlc(Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t coeffLevel[], uint8_t (*total_coeffs_table)[16],
+void residual_block_cavlc(Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t *coeffLevel, uint8_t (*total_coeffs_table)[16],
     int startIdx, int endIdx, int maxNumCoeff, bool isLuma, SliceHeader *sh, CodecContext *ctx) {
 
     BitReader *br = ctx->br;
@@ -324,12 +324,12 @@ void residual_block_cavlc(Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t
 }
 
 
-void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, int bt, int *startIdx, int *endIdx, bool isLuma,
+void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, BlockType blockType, int *startIdx, int *endIdx, bool isLuma,
                     int *totalCoeff, int *trailingOnes, int *nC, uint8_t (*total_coeffs_table)[16], SliceHeader *sh, CodecContext *ctx) {
 
     BitReader *br = ctx->br;
 
-    if (bt == CHROMA_DC_LEVEL) *nC = sh->sps->chroma_format_idc * -1;
+    if (blockType == CHROMA_DC_LEVEL) *nC = sh->sps->chroma_format_idc * -1;
 
     int nA = 0, nB = 0;
     Neighbors n = isLuma
@@ -352,7 +352,7 @@ void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, int bt, int *startIdx, i
     }
 
 
-    if (bt != CHROMA_DC_LEVEL) {
+    if (blockType != CHROMA_DC_LEVEL) {
         if (n.a.av && n.b.av)  *nC = (nA+nB+1)>>1;
         else *nC = n.a.av*nA + n.b.av * nB;
     }
@@ -367,7 +367,7 @@ void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, int bt, int *startIdx, i
 
 
     /* luma 16x16 DC doesn't store totalCoeff */
-    if (bt != LUMA_INTRA_16x16_DC_LEVEL) {
+    if (blockType != LUMA_INTRA_16x16_DC_LEVEL) {
         total_coeffs_table[mb->mbAddr][blkIdx] = *totalCoeff;
     }
 }

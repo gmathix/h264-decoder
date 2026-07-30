@@ -2,17 +2,17 @@
 
 A H.264 decoder written in C
 
-## *** WIP ***
 ## Project Philosophy 
 ### Skip the shower, ship the decoder. Priorities.
 
 ## Current Status
-Fighting the final boss
+Fixing reference frames bugs
 
 ## Features and Scope
-Baseline profile, Main and High profile without CABAC :
+Baseline profile, Main and High profile:
 - Single threaded
-- CAVLC entropy coding
+- CAVLC (Context-Adaptive Variable Length Coding)
+- CABAC (Context-Adaptive Binary-Arithmetic Coding)
 - I/P/B slices
 - Weighted prediction
 - 8x8 transforms 
@@ -21,9 +21,6 @@ Baseline profile, Main and High profile without CABAC :
 - Memory management control operations (MMCOs)
 - Reference picture list modifications
 - YUV 4:2:0 output
-
-Does not support yet : 
-- CABAC entropy coding
 
 Does and will not support :
 - MBAFF/PAFF
@@ -36,14 +33,14 @@ Does and will not support :
 
 ## Performance
 Not great for now.  
-It can reach ~22fps on a single thread on my Intel I5-10300H, on 1080p streams, without dumping the frames. When writing to the output YUV file, it's slowly lurking around at ~16fps.  
+It can reach ~20fps on a single thread on my Intel I5-10300H, on 1080p streams, without dumping the frames. When writing to the output YUV file, it's slowly lurking around at ~17fps.  
 Compiler optimizations help a lot : without -O3, it : 
   - runs at ~5fps (feel free to laugh at me)    
   - looks like color planes are corrupted (feel free to laugh at me harder)  
 
 But, correctness and robustness first, performance second.
 
-I'd like to understand how the GCC managed to achieve that 5 -> 22 jump, but I'd have to learn assembly and that's a different learning path which I will eventually take when this project is finished. 
+I'd like to understand how the GCC managed to achieve that 5 -> 20 jump, but I'd have to learn assembly and that's a different learning path which I will eventually take when this project is finished. 
 
 ## Correctness
 

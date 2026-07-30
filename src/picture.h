@@ -10,6 +10,7 @@
 
 #include "decoder.h"
 #include "motion_info.h"
+#include "ps.h"
 
 typedef struct Picture {
     int nal_ref_idc;
@@ -65,21 +66,25 @@ extern const Picture EMPTY_PICTURE;
 
 
 
+typedef struct PicturePool {
+	Picture *slots[MAX_DPB_SIZE + 1];
+	bool     available[MAX_DPB_SIZE + 1];
+	int      nb_available;
+	int      size;
+} PicturePool ;
 
 
-static ALWAYS_INLINE uint8_t *Picture_luma_ptr(Picture *p, int mbAddr, int mb_width, int blk_x, int blk_y) {
-    int mb_x = (mbAddr % mb_width) * 16;
-    int mb_y = (mbAddr / mb_width) * 16;
-    return &p->luma[(mb_y + blk_y) * p->widthY + mb_x + blk_x];
-}
 
 
-Picture *picture_alloc(struct SliceHeader *sh, CodecContext *ctx);
 
+Picture *picture_alloc(SPS *sps, CodecContext *ctx);
 void     picture_free(Picture *p);
-
 void     picture_reset(Picture *p);
 void     dump_picture(Picture *p, CodecContext *ctx);
 
+void pic_pool_init(PicturePool *pool, CodecContext *ctx);
+void pic_pool_free(PicturePool *pool, CodecContext *ctx);
+Picture *pic_pool_get(PicturePool *pool);
+void pic_pool_getback(Picture *pic, PicturePool *pool);
 
 #endif //TOY_H264_Picture_H

@@ -236,13 +236,6 @@ void init_neighbor_tables(CodecContext *ctx) {
 
 
 
-/* 7.3.5.3.3 */
-void residual_block_cabac(Macroblock *mb, int blkIdx, int iCbCr, int pbt, int16_t coeffLevel[], uint8_t (*total_coeffs_table)[16],
-    int startIdx, int endIdx, int maxNumCoeff, bool isLuma, SliceHeader *sh, CodecContext *ctx) {
-
-}
-
-
 
 void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
     if (mb->mbAddr == mb_debug && ctx->prf->total_frames == frame_debug) {
@@ -261,7 +254,7 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
     if (IS_INTRA4x4(mb->mb_type)) {
         for (int i = 0; i < 16; i++) {
             int blkIdx = map_4x4[i];
-            int pred_mode = ctx->intra4x4_pred_modes[mb->mbAddr][blkIdx];
+            int pred_mode = ctx->mb_metadata[mb->mbAddr].intra_NxN_pred_mode[blkIdx];
             intra_pred_4x4(mb, blkIdx, pred_mode, ctx);
             transform_luma_4x4(mb, mb->QPY, blkIdx, ctx);
         }
@@ -278,7 +271,7 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
     } else if (IS_INTRA8x8(mb->mb_type)) {
         for (int i8x8 = 0; i8x8 < 4; i8x8++) {
-            int pred_mode = ctx->intra8x8_pred_modes[mb->mbAddr][i8x8];
+            int pred_mode = ctx->mb_metadata[mb->mbAddr].intra_NxN_pred_mode[i8x8];
             intra_pred_8x8(mb, i8x8, pred_mode, ctx);
             if (mb->residuals.cbp_luma & (1 << i8x8)) {
                 transform_luma_8x8(mb, mb->QPY, i8x8, ctx);

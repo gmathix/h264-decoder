@@ -21,11 +21,11 @@
 #define ALL_LOG     0
 
 #define CAVLC_LOG   (ALL_LOG    |   0)
-#define CABAC_LOG   (ALL_LOG    |   0) // be careful with this one, won't run at more than 1fps
+#define CABAC_LOG   (ALL_LOG    |   0) // be careful with this one, won't run at more than 2fps
 #define NAL_LOG     (ALL_LOG    |   0)
 
 
-#define ALWAYS_INLINE /*inline __attribute__((always_inline))*/
+#define ALWAYS_INLINE inline __attribute__((always_inline))
 #define OPTIMIZE_O0   __attribute__((optimize("O0")))
 #define OPTIMIZE_O1   __attribute__((optimize("O1")))
 #define OPTIMIZE_O2   __attribute__((optimize("O2")))
@@ -135,6 +135,7 @@ typedef enum {
     CR_LEVEL_4x4,
     CR_LEVEL_8x8,
 } BlockType ;
+
 
 static char* blockType_to_string(int bt) {
     switch (bt) {

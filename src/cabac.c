@@ -54,6 +54,11 @@ void cabac_init(CodecContext *ctx) {
     int num_mbs = ctx->ps->sps->pic_width_in_mbs * ctx->ps->sps->pic_height_in_map_units;
     for (int i = 0; i < num_mbs; i++) {
         memset(ctx->mb_metadata[i].coded_block_flag, 0, 14 * 16);
+        memset(ctx->mb_metadata[i].mvd, 0, 2 * 16 * 2 * sizeof(int16_t));
+        for (int blk = 0; blk < 16; blk++) {
+            ctx->curr_pic->motion_info[i][blk].mvs[L0].ref_idx = 0;
+            ctx->curr_pic->motion_info[i][blk].mvs[L1].ref_idx = 0;
+        }
     }
 }
 
@@ -64,6 +69,7 @@ void cabac_init(CodecContext *ctx) {
 int cabac_get_bit(CodecContext *ctx, int ctxIdx) {
     CabacContext *cactx = ctx->cactx;
 
+
     int qCodIRangeIdx = (cactx->codIRange >> 6) & 3;
     int8_t pStateIdx = p_state_idx[ctxIdx];
     int8_t valMPS = val_mps[ctxIdx];
@@ -73,6 +79,10 @@ int cabac_get_bit(CodecContext *ctx, int ctxIdx) {
     int prevoff = cactx->codIOffset;
     int p = pStateIdx;
     int val = valMPS;
+
+    #if CABAC_LOG
+        fprintf(ctx->log_file, "ctxIdx:%d range:%d offset:%d state:%d mps:%d ", ctxIdx, prevrange, prevoff, p, val);
+    #endif
 
     cactx->codIRange -= codIRangeLPS;
 
@@ -85,9 +95,15 @@ int cabac_get_bit(CodecContext *ctx, int ctxIdx) {
         if (pStateIdx == 0) {
             val_mps[ctxIdx] = 1 - valMPS;
         }
+        #if CABAC_LOG
+            fprintf(ctx->log_file, "trans:%d ",trans_idx_lps[pStateIdx]);
+        #endif
         p_state_idx[ctxIdx] = trans_idx_lps[pStateIdx];
     } else {
         bin = valMPS;
+        #if CABAC_LOG
+                fprintf(ctx->log_file, "trans:%d ",trans_idx_mps[pStateIdx]);
+        #endif
         p_state_idx[ctxIdx] = trans_idx_mps[pStateIdx];
     }
 
@@ -97,8 +113,10 @@ int cabac_get_bit(CodecContext *ctx, int ctxIdx) {
     }
 
     #if CABAC_LOG
-        fprintf(ctx->log_file, "range:%d offset:%d state:%d mps:%d    bit:%d\n", prevrange, prevoff, p, val, bin);
+        fprintf(ctx->log_file, "   bit:%d\n", bin);
     #endif
+
+
 
     return bin;
 }
@@ -125,7 +143,7 @@ int cabac_get_bit_term(CodecContext *ctx, int ctxIdx) {
 
 
     #if CABAC_LOG
-        fprintf(ctx->log_file, "range:%d offset:%d   bit:%d\n", prevrange, prevoff, bin);
+        // fprintf(ctx->log_file, "range:%d offset:%d   bit:%d\n", prevrange, prevoff, bin);
     #endif
 
 
@@ -213,10 +231,6 @@ int read_coded_block_flag(Macroblock *mb, int blkIdx, int iCbCr, BlockType block
 
     int ctxIdx = ctxIdxOffset[blockType] + ctxIdxCatOffset[blockType] + condTermA + 2*condTermB;
 
-    if (ctx->prf->total_frames == 5 && mb->mbAddr == 4981) {
-        printf("%d %d %d %d\n", p_state_idx[ctxIdx], p_state_idx[ctxIdx+1], p_state_idx[ctxIdx+2], p_state_idx[ctxIdx+3]);
-    }
-
     return cabac_get_bit(ctx, ctxIdx);
 }
 
@@ -295,23 +309,22 @@ int read_coeff_abs_level(Macroblock *mb, int coeffIdx, int numDecodAbsEq1, int n
         val = 14;
 
         int k = 0;
-        int l;
-        int symbol = 0;
-        int binary_symbol = 0;
+        int bin;
+        int symbol = 0, bin_symbol = 0;
 
         do {
-            l = cabac_get_bit_bypass(ctx);
-            if (l == 1) {
+            bin = cabac_get_bit_bypass(ctx);
+            if (bin == 1) {
                 symbol += 1 << k;
                 k++;
             }
-        } while (l != 0);
+        } while (bin != 0);
         while (k--) {
             if (cabac_get_bit_bypass(ctx) == 1) {
-                binary_symbol |= 1 << k;
+                bin_symbol |= 1 << k;
             }
         }
-        val += symbol + binary_symbol;
+        val += symbol + bin_symbol;
 
         return val + 1;
     } else {

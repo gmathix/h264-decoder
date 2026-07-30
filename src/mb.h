@@ -84,12 +84,15 @@ typedef struct {
  */
 typedef struct MacroblockMetadata {
     int32_t mb_type;
+    int32_t sub_mb_type[4];
     int8_t  coded_block_flag[14][16];
+    int8_t  mb_skip_flag;
     uint8_t QPY;
     uint8_t QPC;
     uint8_t t_8x8_flag;
     uint8_t cbp_luma;
     uint8_t cbp_chroma;
+    int16_t mvd[2][16][2];
     uint8_t intra_chroma_pred_mode;
     uint8_t intra_NxN_pred_mode[16]; // 8x8 will just use first 4 values
     uint8_t intra_16x16_pred_mode;

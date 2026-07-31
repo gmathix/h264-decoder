@@ -193,26 +193,30 @@ void store_picture(DPB *dpb, Picture *pic) {
         }
     } else {
         if (!pic->sh->adaptive_ref_pic_marking_mode_flag) {
-            int numShortTerm = 0;
-            int numLongTerm = 0;
-            for (int i = 0; i < dpb->size; i++) {
-                if (dpb->slots[i] != NULL && dpb->slots[i]->dpb_status == SHORT_TERM_REF) {
-                    numShortTerm++;
-                } else if (dpb->slots[i] != NULL && dpb->slots[i]->dpb_status == LONG_TERM_REF) {
-                    numLongTerm++;
-                }
-            }
-            if (numShortTerm + numLongTerm == _max(pic->sh->sps->max_num_ref_frames, 1)) {
-                int minFrameNumWrap = INT32_MAX;
-                int minIdx = 0;
+
+            // sliding window marking, only when storing a reference picture
+            if (pic->nal_ref_idc != 0) {
+                int numShortTerm = 0;
+                int numLongTerm = 0;
                 for (int i = 0; i < dpb->size; i++) {
-                    Picture *pic = dpb->slots[i];
-                    if (pic != NULL && pic->dpb_status == SHORT_TERM_REF && pic->frame_num_wrap < minFrameNumWrap) {
-                        minFrameNumWrap = pic->frame_num_wrap;
-                        minIdx = i;
+                    if (dpb->slots[i] != NULL && dpb->slots[i]->dpb_status == SHORT_TERM_REF) {
+                        numShortTerm++;
+                    } else if (dpb->slots[i] != NULL && dpb->slots[i]->dpb_status == LONG_TERM_REF) {
+                        numLongTerm++;
                     }
                 }
-                dpb->slots[minIdx]->dpb_status = UNUSED_REF;
+                if (numShortTerm + numLongTerm == _max(pic->sh->sps->max_num_ref_frames, 1)) {
+                    int minFrameNumWrap = INT32_MAX;
+                    int minIdx = 0;
+                    for (int i = 0; i < dpb->size; i++) {
+                        Picture *pic = dpb->slots[i];
+                        if (pic != NULL && pic->dpb_status == SHORT_TERM_REF && pic->frame_num_wrap < minFrameNumWrap) {
+                            minFrameNumWrap = pic->frame_num_wrap;
+                            minIdx = i;
+                        }
+                    }
+                    dpb->slots[minIdx]->dpb_status = UNUSED_REF;
+                }
             }
 
         } else {
@@ -447,7 +451,7 @@ void ref_pic_list_modif_st(Slice *slice, bool is_l0, int *refIdxLX, int modif_id
 
     bool rplm_occured = is_l0 ? slice->rplm_occured_l0 : slice->rplm_occured_l1;
     int prevPicNumLXPred = is_l0 ? slice->picNumL0Pred : slice->picNumL1Pred;
-    int num_ref_frames_active = is_l0 ? slice->sh->num_ref_idx_l0_active_minus1+1 : slice->sh->num_ref_idx_l1_active_minus1+1;
+    int num_ref_frames_active = is_l0 ? slice->sh->num_ref_idx_l0_active_minus1 : slice->sh->num_ref_idx_l1_active_minus1;
 
     int picNumLXPred = rplm_occured
         ? prevPicNumLXPred

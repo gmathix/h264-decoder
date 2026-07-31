@@ -371,7 +371,7 @@ void residual_block_cabac  (Macroblock *mb, int blkIdx, int iCbCr, BlockType blo
     } else {
         // the rest belongs to 4:2:2 or 4:4:4 stuff so not planning to implement them yet
     }
-    memset(coeffLevel, 0, maxNumCoeff);
+    memset(coeffLevel, 0, maxNumCoeff * sizeof(int16_t));
 
     // fine as long as the decoder is not multithreaded
     static int8_t  significant_coeff_flag[64];

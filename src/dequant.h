@@ -33,11 +33,11 @@ extern const uint8_t scaling_list_indices[2][2][3];
 
 
 void parse_scaling_list(int *scaling_list, int size, bool *useDefault, BitReader *br);
-void infer_flat_matrices(CodecContext *ctx);
-void scaling_list_fallback(int index, bool is4x4, bool isPPS, CodecContext *ctx);
+void infer_flat_matrices(Undo264Context *ctx);
+void scaling_list_fallback(int index, bool is4x4, bool isPPS, Undo264Context *ctx);
 
-void precompute_4x4_scales(CodecContext *ctx);
-void precompute_8x8_scales(CodecContext *ctx);
+void precompute_4x4_scales(Undo264Context *ctx);
+void precompute_8x8_scales(Undo264Context *ctx);
 
 
 

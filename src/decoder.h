@@ -11,7 +11,7 @@
 
 
 
-typedef struct CodecContext {
+typedef struct Undo264Context {
     bool initialized;
 
     const uint8_t *data;
@@ -111,14 +111,14 @@ typedef struct CodecContext {
     FILE *log_file;
     bool dump_monochrome;
 
-} CodecContext ;
+} Undo264Context ;
 
 
-CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome);
-void decoder_run(CodecContext *ctx);
-void decoder_free_metadata(CodecContext *ctx);
-void decoder_alloc_metadata(CodecContext *ctx);
-void decoder_free(CodecContext *ctx);
+Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome);
+void decoder_run(Undo264Context *ctx);
+void decoder_free_metadata(Undo264Context *ctx);
+void decoder_alloc_metadata(Undo264Context *ctx);
+void decoder_free(Undo264Context *ctx);
 
 
 

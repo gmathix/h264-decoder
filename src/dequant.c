@@ -111,7 +111,7 @@ const int matrix_scan_8x8[64] = {
 
 
 
-void copy_scaling_list(int *list, int size, int index, bool is4x4, CodecContext *ctx) {
+void copy_scaling_list(int *list, int size, int index, bool is4x4, Undo264Context *ctx) {
     for (int i = 0; i < size; i++) {
         if (is4x4) {
             ctx->scalingList4x4[index][i] = list[i];
@@ -135,7 +135,7 @@ void parse_scaling_list(int *scaling_list, int size, bool *useDefault, BitReader
     }
 }
 
-void scaling_list_fallback(int index, bool is4x4, bool isPPS, CodecContext *ctx) {
+void scaling_list_fallback(int index, bool is4x4, bool isPPS, Undo264Context *ctx) {
     bool useDefault = is4x4 ? ctx->useDefaultList4x4[index] : ctx->useDefaultList8x8[index-6];
     bool fallbackB = isPPS && ctx->seqScalingListPresent;
 
@@ -174,7 +174,7 @@ void scaling_list_fallback(int index, bool is4x4, bool isPPS, CodecContext *ctx)
     }
 }
 
-void infer_flat_matrices(CodecContext *ctx) {
+void infer_flat_matrices(Undo264Context *ctx) {
     for (int i = 0; i < 6; i++) {
         copy_scaling_list(flat_4x4_16, 16, i, true, ctx);
     }
@@ -194,7 +194,7 @@ static ALWAYS_INLINE void inverse_matrix_scan(
 }
 
 
-void precompute_4x4_scales(CodecContext *ctx) {
+void precompute_4x4_scales(Undo264Context *ctx) {
     int matrix[16];
 
     for (int n = 0; n < 6; n++) {
@@ -212,7 +212,7 @@ void precompute_4x4_scales(CodecContext *ctx) {
 }
 
 
-void precompute_8x8_scales(CodecContext *ctx) {
+void precompute_8x8_scales(Undo264Context *ctx) {
     int matrix[64];
 
     for (int n = 0; n < 2; n++) {

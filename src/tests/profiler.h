@@ -11,7 +11,7 @@
 
 
 typedef struct Profiler {
-    struct CodecContext *p_ctx;
+    struct Undo264Context *p_ctx;
 
 
     struct timespec frame_start, frame_end, mb_start, mb_end;

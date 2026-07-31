@@ -64,7 +64,7 @@ void dc_4x4_pred(uint8_t *dst, int stride,  int a_av, int b_av,
     } else if (!a_av && b_av) {
         dc = (top[1] + top[2] + top[3] + top[4] + 2) >> 2;
     } else {
-        dc = 1 << (8-1); // just assume BitDepthY = 8 because i don't want to add CodecContext everywhere here
+        dc = 1 << (8-1); // just assume BitDepthY = 8 because i don't want to add Undo264Context everywhere here
     }
     for (int y = 0; y < 4; y++) {
         for (int x = 0; x < 4; x++) {
@@ -691,7 +691,7 @@ static const intra_pred_chroma_func intra8x8_chroma_table[4] = {
 
 
 
-void intra_pred_4x4(Macroblock *mb, int blkIdx, int pred_mode, CodecContext *ctx) {
+void intra_pred_4x4(Macroblock *mb, int blkIdx, int pred_mode, Undo264Context *ctx) {
     uint8_t *luma = mb->p_pic->luma;
     int stride = mb->p_pic->widthY;
     int mb_y = mb->mb_y;
@@ -739,7 +739,7 @@ void intra_pred_4x4(Macroblock *mb, int blkIdx, int pred_mode, CodecContext *ctx
         );
 }
 
-void intra_pred_8x8(Macroblock *mb, int idx8x8, int pred_mode, CodecContext *ctx) {
+void intra_pred_8x8(Macroblock *mb, int idx8x8, int pred_mode, Undo264Context *ctx) {
     uint8_t *luma = mb->p_pic->luma;
     int stride = mb->p_pic->widthY;
     int mb_y = mb->mb_y;
@@ -790,7 +790,7 @@ void intra_pred_8x8(Macroblock *mb, int idx8x8, int pred_mode, CodecContext *ctx
         );
 }
 
-void intra_pred_16x16(Macroblock *mb, CodecContext *ctx) {
+void intra_pred_16x16(Macroblock *mb, Undo264Context *ctx) {
     uint8_t *luma = mb->p_pic->luma;
     int stride = mb->p_pic->widthY;
     int mb_y = mb->mb_y;
@@ -828,7 +828,7 @@ void intra_pred_16x16(Macroblock *mb, CodecContext *ctx) {
 }
 
 
-void intra_chroma_pred(Macroblock *mb, CodecContext *ctx) {
+void intra_chroma_pred(Macroblock *mb, Undo264Context *ctx) {
     uint8_t *cb = mb->p_pic->cb;
     uint8_t *cr = mb->p_pic->cr;
     int stride = mb->p_pic->widthC;

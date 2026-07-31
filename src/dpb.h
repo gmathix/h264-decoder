@@ -35,7 +35,7 @@ typedef struct DPB {
     Picture *prevPic;
     bool mmco_5_prev_occured;
 
-    CodecContext *ctx;
+    Undo264Context *ctx;
 
     int prevPocMsb;
     int prevPocLsb;
@@ -140,7 +140,7 @@ static Picture *findRefPic(DPB *dpb, PictureField fieldGetter, int fieldValue) {
 }
 
 
-static DPB *make_dbp(CodecContext *ctx) {
+static DPB *make_dbp(Undo264Context *ctx) {
     DPB *dpb = calloc(1, sizeof(DPB));
 
 
@@ -195,11 +195,11 @@ void mark_all_unused(DPB *dpb);
 void mark_curr_pic_lt(DPB *dpb, int lt_frame_idx);
 
 
-void ref_pic_list_modification(uint8_t type, struct Slice *slice, int maxFrameNum, int *maxLtIdx, CodecContext *ctx);
-void ref_pic_list_modif_st(struct Slice *slice, bool is_l0, int *refIdxLX, int modif_idc, int abs_diff, int maxFrameNum, CodecContext *ctx);
-void ref_pic_list_modif_lt(struct Slice *slice, bool is_l0, int *refIdxLX, int modif_idc, int lt_pic_num, int *maxLtIdx, CodecContext *ctx);
+void ref_pic_list_modification(uint8_t type, struct Slice *slice, int maxFrameNum, int *maxLtIdx, Undo264Context *ctx);
+void ref_pic_list_modif_st(struct Slice *slice, bool is_l0, int *refIdxLX, int modif_idc, int abs_diff, int maxFrameNum, Undo264Context *ctx);
+void ref_pic_list_modif_lt(struct Slice *slice, bool is_l0, int *refIdxLX, int modif_idc, int lt_pic_num, int *maxLtIdx, Undo264Context *ctx);
 void dec_ref_pic_marking(DPB *dpb, struct Slice *slice,  BitReader *br);
-void process_mmcos(Picture *pic, CodecContext *ctx);
+void process_mmcos(Picture *pic, Undo264Context *ctx);
 
 void dpb_empty_slots(DPB *dpb);
 void dpb_empty_ref_lists(DPB *dpb);

@@ -52,7 +52,7 @@ const uint8_t treshold_table[3][52] = {
 
 
 
-static ALWAYS_INLINE bool same_ref_pics(int refL0_0, int refL0_1, int refL1_0, int refL1_1, CodecContext *ctx) {
+static ALWAYS_INLINE bool same_ref_pics(int refL0_0, int refL0_1, int refL1_0, int refL1_1, Undo264Context *ctx) {
     // when refLX_X is -1 (no ref) we just get EMPTY_PIC which has dpb_pic_id = 0
     Picture *picL0_0 = ctx->dpb->lists[L0][1+refL0_0];
     Picture *picL0_1 = ctx->dpb->lists[L0][1+refL0_1];
@@ -65,7 +65,7 @@ static ALWAYS_INLINE bool same_ref_pics(int refL0_0, int refL0_1, int refL1_0, i
     return hash0 == hash1;
 }
 
-static ALWAYS_INLINE bool same_ref_pics_one_block(int refL0, int refL1, CodecContext *ctx) {
+static ALWAYS_INLINE bool same_ref_pics_one_block(int refL0, int refL1, Undo264Context *ctx) {
     return ctx->dpb->lists[L0][1+refL0]->dpb_pic_id == ctx->dpb->lists[L1][1+refL1]->dpb_pic_id;
 }
 
@@ -85,7 +85,7 @@ static ALWAYS_INLINE bool mv_diff_g4(MotionVector mv1, MotionVector mv2) {
  * @param blkIdx8x8N initial 8x8 block index in neighbor mb
  */
 void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int blkIdx8x8, int blkIdx8x8N,
-    bool mb_edge, bool vertical, uint8_t bS_list[4], CodecContext *ctx) {
+    bool mb_edge, bool vertical, uint8_t bS_list[4], Undo264Context *ctx) {
 
     MacroblockMetadata meta   = ctx->mb_metadata[mbAddr];
     MacroblockMetadata meta_n = ctx->mb_metadata[mbAddrN];
@@ -164,7 +164,7 @@ void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int b
 
 void derive_edge_treshold_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t bS, int y, int x, bool vertical,
     uint8_t *alpha, uint8_t *beta, int filter_flags[4], uint8_t *indexA,
-    uint8_t samples[24][24], CodecContext *ctx) {
+    uint8_t samples[24][24], Undo264Context *ctx) {
 
 
     int qpAv = (ctx->mb_metadata[mbAddr].QPY + ctx->mb_metadata[mbAddrN].QPY + 1) >> 1;
@@ -202,7 +202,7 @@ void derive_edge_treshold_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t bS
 
 void derive_edge_treshold_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t bS, int y, int x, bool vertical,
     uint8_t *alpha, uint8_t *beta, int filter_flags[2], uint8_t *indexA,
-    uint8_t samples[16][16], CodecContext *ctx) {
+    uint8_t samples[16][16], Undo264Context *ctx) {
 
 
     int qpAv = (ctx->mb_metadata[mbAddr].QPC + ctx->mb_metadata[mbAddrN].QPC + 1) >> 1;
@@ -472,7 +472,7 @@ void filter_2p_hor_edge_high_bS_chroma(int y, int x, const int filter_flags[2], 
 
 
 void filter_row_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int y, uint8_t luma_block[24][24],
-    uint8_t bS_list[4], int stride, CodecContext *ctx) {
+    uint8_t bS_list[4], int stride, Undo264Context *ctx) {
 
     uint8_t indexA, alpha, beta;
     int filter_flags[4];
@@ -498,7 +498,7 @@ void filter_row_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int y,
     }
 }
 void filter_col_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int x, uint8_t luma_block[24][24],
-    uint8_t bS_list[4], int stride, CodecContext *ctx) {
+    uint8_t bS_list[4], int stride, Undo264Context *ctx) {
 
     uint8_t indexA, alpha, beta;
     int filter_flags[4];
@@ -526,7 +526,7 @@ void filter_col_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int x,
 }
 
 void filter_row_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int y, uint8_t samples[16][16],
-    const uint8_t bS_list[4], int stride, CodecContext *ctx) {
+    const uint8_t bS_list[4], int stride, Undo264Context *ctx) {
 
     uint8_t indexA, alpha, beta;
     int filter_flags[2];
@@ -553,7 +553,7 @@ void filter_row_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int 
     }
 }
 void filter_col_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int x, uint8_t samples[16][16],
-    const uint8_t bS_list[4], int stride, CodecContext *ctx) {
+    const uint8_t bS_list[4], int stride, Undo264Context *ctx) {
 
     uint8_t indexA, alpha, beta;
     int filter_flags[2];
@@ -580,7 +580,7 @@ void filter_col_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int 
     }
 }
 
-void deblock_macroblock(Picture *pic, int mbAddr, CodecContext *ctx) {
+void deblock_macroblock(Picture *pic, int mbAddr, Undo264Context *ctx) {
     // make dummy mb just for accessing the neighbors afterward
     Macroblock *mb = make_mb(mbAddr, ctx);
     derive_macroblock_neighbors(mb, ctx);
@@ -699,7 +699,7 @@ void deblock_macroblock(Picture *pic, int mbAddr, CodecContext *ctx) {
 }
 
 
-void deblock_picture(Picture *pic, CodecContext *ctx) {
+void deblock_picture(Picture *pic, Undo264Context *ctx) {
     for (int i = 0; i < pic->num_mbs; i++) {
         deblock_macroblock(pic, i, ctx);
     }

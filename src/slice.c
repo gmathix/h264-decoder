@@ -35,7 +35,7 @@
 void CAFUNC(read_residual_luma,
     Macroblock *mb, int type, int t_8x8_flag, int cbp_luma,
     int startIdx, int endIdx,
-    SliceHeader *sh, CodecContext *ctx) {
+    SliceHeader *sh, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
 
@@ -87,7 +87,7 @@ void CAFUNC(read_residual_luma,
 /* 7.3.5.3 */
 void CAFUNC(read_residual,
     Macroblock *mb, int type, int t_8x8_flag, int startIdx, int endIdx, int cbp_luma, int cbp_chroma,
-    SliceHeader *sh, CodecContext *ctx) {
+    SliceHeader *sh, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
 
@@ -158,7 +158,7 @@ void CAFUNC(read_residual,
 //===== CABAC/CAVLC syntax element parsing =====//
 
 int CAFUNC(read_I_mb_type,
-    Macroblock *mb, SliceHeader *sh, int ctxIdx, CodecContext *ctx) {
+    Macroblock *mb, SliceHeader *sh, int ctxIdx, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
 
@@ -216,7 +216,7 @@ int CAFUNC(read_I_mb_type,
 }
 
 int CAFUNC(read_P_mb_type,
-    Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
+    Macroblock *mb, SliceHeader *sh, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
 
@@ -243,7 +243,7 @@ int CAFUNC(read_P_mb_type,
 }
 
 int CAFUNC(read_B_mb_type,
-    Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
+    Macroblock *mb, SliceHeader *sh, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
 
@@ -297,7 +297,7 @@ int CAFUNC(read_B_mb_type,
 }
 
 int CAFUNC(read_P_sub_mb_type,
-    Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
+    Macroblock *mb, SliceHeader *sh, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
 
@@ -325,7 +325,7 @@ int CAFUNC(read_P_sub_mb_type,
 }
 
 int CAFUNC(read_B_sub_mb_type,
-    Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
+    Macroblock *mb, SliceHeader *sh, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
 
@@ -368,7 +368,7 @@ int CAFUNC(read_B_sub_mb_type,
 }
 
 int CAFUNC(read_ref_idx,
-    Macroblock *mb, int list, int pos4x4, int num_ref_active_minus1, SliceHeader *sh, CodecContext *ctx) {
+    Macroblock *mb, int list, int pos4x4, int num_ref_active_minus1, SliceHeader *sh, Undo264Context *ctx) {
 
     #if CABAC
         #if CABAC_LOG
@@ -434,7 +434,7 @@ int CAFUNC(read_ref_idx,
 }
 
 int CAFUNC(read_mvd,
-    Macroblock *mb, int list, int xy, int pos4x4, SliceHeader *sh, CodecContext *ctx) {
+    Macroblock *mb, int list, int xy, int pos4x4, SliceHeader *sh, Undo264Context *ctx) {
 
     #if CABAC
     #if CABAC_LOG
@@ -502,7 +502,7 @@ int CAFUNC(read_mvd,
 
 
 int CAFUNC(read_intra_chroma_pred_mode,
-    Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
+    Macroblock *mb, SliceHeader *sh, Undo264Context *ctx) {
 
     #if CABAC
         #if CABAC_LOG
@@ -528,7 +528,7 @@ int CAFUNC(read_intra_chroma_pred_mode,
 }
 
 int CAFUNC(read_coded_block_pattern,
-    Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
+    Macroblock *mb, SliceHeader *sh, Undo264Context *ctx) {
 
     #if CABAC
         #if CABAC_LOG
@@ -588,7 +588,7 @@ int CAFUNC(read_coded_block_pattern,
 }
 
 int CAFUNC(read_mb_qp_delta,
-    Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
+    Macroblock *mb, SliceHeader *sh, Undo264Context *ctx) {
 
     #if CABAC
         #if CABAC_LOG
@@ -617,7 +617,7 @@ int CAFUNC(read_mb_qp_delta,
 
 /* 7.3.5.1 */
 void CAFUNC(read_mb_pred,
-    Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
+    Macroblock *mb, SliceHeader *sh, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
     Picture *currPic = ctx->curr_pic;
@@ -825,7 +825,7 @@ void CAFUNC(read_mb_pred,
 
 
 void CAFUNC(read_sub_mb_pred,
-    Macroblock *mb, SliceHeader *sh, CodecContext *ctx) {
+    Macroblock *mb, SliceHeader *sh, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
 
@@ -922,7 +922,7 @@ void CAFUNC(read_sub_mb_pred,
 
 /* 7.3.5 */
 void CAFUNC(read_macroblock,
-    Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
+    Macroblock *mb, SliceHeader *sh, NalUnit *nal_unit, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
 
@@ -1143,7 +1143,7 @@ void CAFUNC(read_macroblock,
 
 /* 7.3.4 */
 void CAFUNC(decode_slice,
-    SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx) {
+    SliceHeader *sh, NalUnit *nal_unit, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
 

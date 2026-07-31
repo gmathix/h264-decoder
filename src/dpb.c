@@ -396,7 +396,7 @@ void mark_curr_pic_lt(DPB *dpb, int lt_frame_idx) {
 
 
 
-void ref_pic_list_modification(uint8_t type, Slice *slice, int maxFrameNum, int *maxLtIdx, CodecContext *ctx) {
+void ref_pic_list_modification(uint8_t type, Slice *slice, int maxFrameNum, int *maxLtIdx, Undo264Context *ctx) {
     BitReader *br = ctx->br;
 
     int refIdxL0 = 0;
@@ -446,7 +446,7 @@ void ref_pic_list_modification(uint8_t type, Slice *slice, int maxFrameNum, int 
 
 }
 
-void ref_pic_list_modif_st(Slice *slice, bool is_l0, int *refIdxLX, int modif_idc, int abs_diff, int maxFrameNum, CodecContext *ctx) {
+void ref_pic_list_modif_st(Slice *slice, bool is_l0, int *refIdxLX, int modif_idc, int abs_diff, int maxFrameNum, Undo264Context *ctx) {
     DPB *dpb = ctx->dpb;
 
     bool rplm_occured = is_l0 ? slice->rplm_occured_l0 : slice->rplm_occured_l1;
@@ -495,7 +495,7 @@ void ref_pic_list_modif_st(Slice *slice, bool is_l0, int *refIdxLX, int modif_id
 }
 
 
-void ref_pic_list_modif_lt(Slice *slice, bool is_l0,  int *refIdxLX, int modif_idc, int lt_pic_num, int *maxLtIdx, CodecContext *ctx) {
+void ref_pic_list_modif_lt(Slice *slice, bool is_l0,  int *refIdxLX, int modif_idc, int lt_pic_num, int *maxLtIdx, Undo264Context *ctx) {
     DPB *dpb = ctx->dpb;
 
     int picNumLXPred = ctx->curr_pic->pic_num;
@@ -549,7 +549,7 @@ void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
     }
 }
 
-void process_mmcos(Picture *pic, CodecContext *ctx) {
+void process_mmcos(Picture *pic, Undo264Context *ctx) {
     if (pic->sh->adaptive_ref_pic_marking_mode_flag) {
 
         /* use a new bitreader to read back at the MMCO position in the bitstream */

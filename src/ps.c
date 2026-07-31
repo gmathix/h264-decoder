@@ -24,7 +24,7 @@
 
 
 /* 7.3.2.1.1 */
-int decode_sps(size_t global_bit_offset, CodecContext *ctx) {
+int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
     BitReader *br = ctx->br;
     ParamSets *ps = ctx->ps;
 
@@ -223,7 +223,7 @@ int decode_sps(size_t global_bit_offset, CodecContext *ctx) {
 
 
 /* 7.3.2.2 */
-int decode_pps(size_t global_bit_offset, CodecContext *ctx) {
+int decode_pps(size_t global_bit_offset, Undo264Context *ctx) {
     BitReader *br = ctx->br;
     ParamSets *ps = ctx->ps;
 
@@ -305,7 +305,7 @@ int decode_pps(size_t global_bit_offset, CodecContext *ctx) {
 
 
 /* E.1.1 */
-int decode_vui (size_t global_bit_offset, CodecContext *ctx) {
+int decode_vui (size_t global_bit_offset, Undo264Context *ctx) {
     BitReader *br = ctx->br;
 
     /* not used for now, just necessary parsing for bitreader alignement with the reference decoder */

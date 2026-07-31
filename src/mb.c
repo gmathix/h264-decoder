@@ -212,7 +212,7 @@ int8_t blk_2x2_neighbor_coords[4][4][2] = {
 
 int neighbor_tables_initialized = 0;
 
-void init_neighbor_tables(CodecContext *ctx) {
+void init_neighbor_tables(Undo264Context *ctx) {
     // replace -3 by -mb_width, -2 by -mb_width+1 and -4 by -mb_width-1
 
     int mb_width = ctx->ps->sps->pic_width_in_mbs;
@@ -237,7 +237,7 @@ void init_neighbor_tables(CodecContext *ctx) {
 
 
 
-void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
+void decode_i_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
     if (mb->mbAddr == mb_debug && ctx->prf->total_frames == frame_debug) {
         debugging = true;
     } else {
@@ -306,7 +306,7 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 
 
 
-void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
+void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
 
     if (mb->mbAddr == mb_debug && ctx->prf->total_frames == frame_debug) {
         debugging = true;
@@ -394,7 +394,7 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, CodecContext *ctx) {
 }
 
 
-void decode_b_macroblock(Macroblock *mb,  Slice *slice, CodecContext *ctx) {
+void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
 
     if (mb->mbAddr == mb_debug && ctx->curr_pic->poc == poc_debug) {
         debugging = true;

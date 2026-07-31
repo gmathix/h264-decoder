@@ -9,7 +9,7 @@
 #include "util/sliceutil.h"
 
 
-void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1, CodecContext *ctx) {
+void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1, Undo264Context *ctx) {
     Picture *currPic = ctx->curr_pic;
     SliceHeader *sh  = currPic->sh;
     PPS *pps         = sh->pps;
@@ -77,7 +77,7 @@ void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1,
 
 
 void inter_pred_single(Macroblock *mb, int pos4x4, MotionVector mv, int list,
-    int width, int height, uint8_t * restrict scratch_buf, CodecContext *ctx) {
+    int width, int height, uint8_t * restrict scratch_buf, Undo264Context *ctx) {
 
     Picture *currPic = mb->p_pic;
     Picture *refPic = ctx->dpb->lists[list][1+mv.ref_idx];
@@ -118,7 +118,7 @@ void inter_pred_single(Macroblock *mb, int pos4x4, MotionVector mv, int list,
 
 
 void inter_pred_bi(Macroblock *mb, int pos4x4, MotionVector mvL0, MotionVector mvL1,
-    int width, int height, uint8_t *scratch_buf, uint8_t *temp_bi_buf, CodecContext *ctx) {
+    int width, int height, uint8_t *scratch_buf, uint8_t *temp_bi_buf, Undo264Context *ctx) {
 
     Picture *currPic = mb->p_pic;
     Picture *picL0 = ctx->dpb->lists[L0][1+mvL0.ref_idx];
@@ -179,7 +179,7 @@ void inter_pred_bi(Macroblock *mb, int pos4x4, MotionVector mvL0, MotionVector m
 }
 
 void inter_pred_chroma_single(Macroblock *mb, int pos4x4, MotionVector mv, int list,
-    int width, int height, uint8_t *scratch_buf, CodecContext *ctx) {
+    int width, int height, uint8_t *scratch_buf, Undo264Context *ctx) {
 
     Picture *currPic = mb->p_pic;
     Picture *refPic  = ctx->dpb->lists[list][1+mv.ref_idx];
@@ -242,7 +242,7 @@ void inter_pred_chroma_single(Macroblock *mb, int pos4x4, MotionVector mv, int l
 
 
 void inter_pred_chroma_bi(Macroblock *mb, int pos4x4, MotionVector mvL0, MotionVector mvL1,
-    int width, int height, uint8_t *scratch_buf, uint8_t *temp_bi_buf, CodecContext *ctx) {
+    int width, int height, uint8_t *scratch_buf, uint8_t *temp_bi_buf, Undo264Context *ctx) {
 
     Picture *currPic = mb->p_pic;
     Picture *ref0  = ctx->dpb->lists[L0][1+mvL0.ref_idx];

@@ -11,7 +11,7 @@
 const Picture EMPTY_PICTURE = {};
 
 
-Picture *picture_alloc(SPS *sps, CodecContext *ctx) {
+Picture *picture_alloc(SPS *sps, Undo264Context *ctx) {
     Picture *p  = calloc(1, sizeof(Picture));
 
 	p->widthY      = sps->pic_width_samples_l;
@@ -59,7 +59,7 @@ void picture_free(Picture *p) {
     free(p->luma);
     free(p->cb);
     free(p->cr);
-    free(p->sh);
+    if (p->sh) free(p->sh);
 
     free(p->mb_types);
     free(p->pred_flags);
@@ -68,7 +68,7 @@ void picture_free(Picture *p) {
     free(p);
 }
 
-void dump_picture(Picture *p, CodecContext *ctx) {
+void dump_picture(Picture *p, Undo264Context *ctx) {
     int top    = ctx->ps->sps->crop_top_offset;
     int bottom = ctx->ps->sps->crop_bottom_offset;
     int left   = ctx->ps->sps->crop_left_offset;
@@ -88,7 +88,7 @@ void dump_picture(Picture *p, CodecContext *ctx) {
     }
 }
 
-void pic_pool_init(PicturePool *pool, CodecContext *ctx) {
+void pic_pool_init(PicturePool *pool, Undo264Context *ctx) {
     SPS *sps = ctx->ps->sps;
     int num_mbs = sps->pic_width_in_mbs * sps->pic_height_in_map_units;
 
@@ -110,10 +110,11 @@ void pic_pool_init(PicturePool *pool, CodecContext *ctx) {
     pool->nb_available = pool->size;
 }
 
-void pic_pool_free(PicturePool *pool, CodecContext *ctx) {
+void pic_pool_free(PicturePool *pool, Undo264Context *ctx) {
     for (int i = 0; i < pool->size; i++) {
         if (pool->slots[i]) picture_free(pool->slots[i]);
     }
+    free(pool);
 }
 
 Picture *pic_pool_get(PicturePool *pool) {

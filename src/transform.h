@@ -16,21 +16,21 @@
 
 extern const uint8_t blk_scan_8x8[8][8];
 
-void transform_luma_4x4(Macroblock *mb, int qp, int blkIdx, CodecContext *ctx);
-void transform_luma_8x8(Macroblock *mb, int qp, int i8x8, CodecContext *ctx);
-void transform_luma_16x16(Macroblock *mb, int qp, CodecContext *ctx);
-void transform_chroma(Macroblock *mb, CodecContext *ctx);
+void transform_luma_4x4(Macroblock *mb, int qp, int blkIdx, Undo264Context *ctx);
+void transform_luma_8x8(Macroblock *mb, int qp, int i8x8, Undo264Context *ctx);
+void transform_luma_16x16(Macroblock *mb, int qp, Undo264Context *ctx);
+void transform_chroma(Macroblock *mb, Undo264Context *ctx);
 
 
 
-static ALWAYS_INLINE void scaling_residual_4x4_lshift(int shift, int16_t (*scale)[4], int32_t c[4][4], int32_t d[4][4], bool is_luma, CodecContext *ctx) {
+static ALWAYS_INLINE void scaling_residual_4x4_lshift(int shift, int16_t (*scale)[4], int32_t c[4][4], int32_t d[4][4], bool is_luma, Undo264Context *ctx) {
     for (int i = 0; i < 4; i++) {
         for (int j =0 ; j < 4; j++) {
             d[i][j] = lshift(c[i][j] * scale[i][j], shift);
         }
     }
 }
-static ALWAYS_INLINE void scaling_residual_4x4_rshift_min(int shift, int16_t (*scale)[4], int32_t c[4][4], int32_t d[4][4], bool is_luma, CodecContext *ctx) {
+static ALWAYS_INLINE void scaling_residual_4x4_rshift_min(int shift, int16_t (*scale)[4], int32_t c[4][4], int32_t d[4][4], bool is_luma, Undo264Context *ctx) {
     for (int i = 0; i < 4; i++) {
         for (int j = 0 ; j < 4; j++) {
             d[i][j] = rshift_min(c[i][j] * scale[i][j], shift);
@@ -38,14 +38,14 @@ static ALWAYS_INLINE void scaling_residual_4x4_rshift_min(int shift, int16_t (*s
     }
 }
 
-static ALWAYS_INLINE void scaling_residual_8x8_lshift(int shift, int16_t (*scale)[8], int32_t c[8][8], int32_t d[8][8], bool is_luma, CodecContext *ctx) {
+static ALWAYS_INLINE void scaling_residual_8x8_lshift(int shift, int16_t (*scale)[8], int32_t c[8][8], int32_t d[8][8], bool is_luma, Undo264Context *ctx) {
     for (int i = 0; i < 8; i++) {
         for (int j =0 ; j < 8; j++) {
             d[i][j] = lshift(c[i][j] * scale[i][j], shift);
         }
     }
 }
-static ALWAYS_INLINE void scaling_residual_8x8_rshift_min(int shift, int16_t (*scale)[8], int32_t c[8][8], int32_t d[8][8], bool is_luma, CodecContext *ctx) {
+static ALWAYS_INLINE void scaling_residual_8x8_rshift_min(int shift, int16_t (*scale)[8], int32_t c[8][8], int32_t d[8][8], bool is_luma, Undo264Context *ctx) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0 ; j < 8; j++) {
             d[i][j] = rshift_min(c[i][j] * scale[i][j], shift);

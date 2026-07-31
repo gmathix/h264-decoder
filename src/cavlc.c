@@ -291,7 +291,7 @@ void init_vlc_tables() {
 
 /* 7.3.5.3.2 */
 void residual_block_cavlc(Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t *coeffLevel, uint8_t (*total_coeffs_table)[16],
-    int startIdx, int endIdx, int maxNumCoeff, bool isLuma, SliceHeader *sh, CodecContext *ctx) {
+    int startIdx, int endIdx, int maxNumCoeff, bool isLuma, SliceHeader *sh, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
 
@@ -325,7 +325,7 @@ void residual_block_cavlc(Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t
 
 
 void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, BlockType blockType, int *startIdx, int *endIdx, bool isLuma,
-                    int *totalCoeff, int *trailingOnes, int *nC, uint8_t (*total_coeffs_table)[16], SliceHeader *sh, CodecContext *ctx) {
+                    int *totalCoeff, int *trailingOnes, int *nC, uint8_t (*total_coeffs_table)[16], SliceHeader *sh, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
 
@@ -374,7 +374,7 @@ void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, BlockType blockType, int
 
 
 /* 7.3.5.3.2 */
-void parse_level(int16_t levelVal[], int blkIdx, int bt, int totalCoeff, int trailingOnes, CodecContext *ctx) {
+void parse_level(int16_t levelVal[], int blkIdx, int bt, int totalCoeff, int trailingOnes, Undo264Context *ctx) {
     BitReader *br = ctx->br;
 
 
@@ -432,7 +432,7 @@ void parse_level(int16_t levelVal[], int blkIdx, int bt, int totalCoeff, int tra
 }
 
 
-void parse_run(int16_t runVal[],int blkIdx,  int bt, int totalCoeff, int maxNumCoeff, int startIdx, int endIdx, SliceHeader *sh, CodecContext *ctx) {
+void parse_run(int16_t runVal[],int blkIdx,  int bt, int totalCoeff, int maxNumCoeff, int startIdx, int endIdx, SliceHeader *sh, Undo264Context *ctx) {
     BitReader *br = ctx->br;
 
 

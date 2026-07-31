@@ -113,10 +113,10 @@ typedef struct ParamSets {
 
 
 int  get_profile (ParamSets *ps);
-int  decode_sps  (size_t global_bit_offset, CodecContext *ctx);
-int  decode_pps  (size_t global_bit_offset, CodecContext *ctx);
+int  decode_sps  (size_t global_bit_offset, Undo264Context *ctx);
+int  decode_pps  (size_t global_bit_offset, Undo264Context *ctx);
 
-int decode_vui (size_t global_bit_offset, CodecContext *ctx);
+int decode_vui (size_t global_bit_offset, Undo264Context *ctx);
 
 void ps_uninit   (ParamSets *ps);
 

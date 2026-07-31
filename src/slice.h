@@ -87,7 +87,7 @@ static void slice_reset(Slice *slice) {
 
 
 /* 7.3.3.2 */
-static void pred_weight_table(uint8_t type, SliceHeader *sh, CodecContext *ctx) {
+static void pred_weight_table(uint8_t type, SliceHeader *sh, Undo264Context *ctx) {
     BitReader *br = ctx->br;
     SPS *sps = sh->sps;
     PPS *pps = sh->pps;
@@ -162,7 +162,7 @@ static void pred_weight_table(uint8_t type, SliceHeader *sh, CodecContext *ctx) 
 
 
 /* 7.3.3 */
-static SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
+static SliceHeader *read_slice_header(NalUnit *nal_unit, Undo264Context *ctx) {
 
 
     BitReader *br = ctx->br;
@@ -243,6 +243,7 @@ static SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
     /* initialize current picture */
     if (sh->first_mb == 0) {
         ctx->curr_pic = pic_pool_get(ctx->pool);
+        free(ctx->curr_pic->sh);
         picture_reset(ctx->curr_pic);
         // ctx->curr_pic = picture_alloc(sh, ctx);
         ctx->curr_pic->sh = sh;
@@ -332,7 +333,7 @@ static SliceHeader *read_slice_header(NalUnit *nal_unit, CodecContext *ctx) {
 
 
 
-void         decode_slice_data         (SliceHeader *sh, NalUnit *nal_unit, CodecContext *ctx);
-void         pred_weight_table         (uint8_t type, SliceHeader *sh, CodecContext *ctx);
+void         decode_slice_data         (SliceHeader *sh, NalUnit *nal_unit, Undo264Context *ctx);
+void         pred_weight_table         (uint8_t type, SliceHeader *sh, Undo264Context *ctx);
 
 #endif //TOY_H264_SLICE_H

@@ -52,7 +52,7 @@ extern int8_t  blk_2x2_neighbor_idx       [4][4];
 extern int8_t  blk_2x2_neighbor_coords [4][4][2];
 
 extern int     neighbor_tables_initialized;
-void           init_neighbor_tables(CodecContext *ctx);
+void           init_neighbor_tables(Undo264Context *ctx);
 
 
 
@@ -151,7 +151,7 @@ typedef struct Neighbors {
 } Neighbors ;
 
 
-static ALWAYS_INLINE Neighbor derive_a_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+static ALWAYS_INLINE Neighbor derive_a_neighbor_4x4(Macroblock *mb, int blkIdx, Undo264Context *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
@@ -164,7 +164,7 @@ static ALWAYS_INLINE Neighbor derive_a_neighbor_4x4(Macroblock *mb, int blkIdx, 
 
     return n;
 }
-static ALWAYS_INLINE Neighbor derive_b_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+static ALWAYS_INLINE Neighbor derive_b_neighbor_4x4(Macroblock *mb, int blkIdx, Undo264Context *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
@@ -177,7 +177,7 @@ static ALWAYS_INLINE Neighbor derive_b_neighbor_4x4(Macroblock *mb, int blkIdx, 
 
     return n;
 }
-static ALWAYS_INLINE Neighbor derive_c_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+static ALWAYS_INLINE Neighbor derive_c_neighbor_4x4(Macroblock *mb, int blkIdx, Undo264Context *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
@@ -194,7 +194,7 @@ static ALWAYS_INLINE Neighbor derive_c_neighbor_4x4(Macroblock *mb, int blkIdx, 
 
     return n;
 }
-static ALWAYS_INLINE Neighbor derive_d_neighbor_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+static ALWAYS_INLINE Neighbor derive_d_neighbor_4x4(Macroblock *mb, int blkIdx, Undo264Context *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
@@ -212,7 +212,7 @@ static ALWAYS_INLINE Neighbor derive_d_neighbor_4x4(Macroblock *mb, int blkIdx, 
 }
 
 
-static ALWAYS_INLINE Neighbors derive_neighbors_4x4(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+static ALWAYS_INLINE Neighbors derive_neighbors_4x4(Macroblock *mb, int blkIdx, Undo264Context *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
@@ -227,7 +227,7 @@ static ALWAYS_INLINE Neighbors derive_neighbors_4x4(Macroblock *mb, int blkIdx, 
 }
 
 
-static ALWAYS_INLINE Neighbors derive_neighbors_2x2(Macroblock *mb, int blkIdx, CodecContext *ctx) {
+static ALWAYS_INLINE Neighbors derive_neighbors_2x2(Macroblock *mb, int blkIdx, Undo264Context *ctx) {
     if (!neighbor_tables_initialized) {
         init_neighbor_tables(ctx);
     }
@@ -259,7 +259,7 @@ static ALWAYS_INLINE Neighbors derive_neighbors_2x2(Macroblock *mb, int blkIdx, 
     return n;
 }
 
-static ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, CodecContext *ctx) {
+static ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, Undo264Context *ctx) {
     int mb_addr = mb->mbAddr;
     int mb_width = ctx->ps->sps->pic_width_in_mbs;
 
@@ -295,7 +295,7 @@ static ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, CodecConte
         }
 }
 
-static ALWAYS_INLINE Macroblock *make_mb(int mbAddr, CodecContext *ctx) {
+static ALWAYS_INLINE Macroblock *make_mb(int mbAddr, Undo264Context *ctx) {
     Macroblock *mb = calloc(1, sizeof(Macroblock));
 
     mb->mbAddr = mbAddr;
@@ -305,7 +305,7 @@ static ALWAYS_INLINE Macroblock *make_mb(int mbAddr, CodecContext *ctx) {
     return mb;
 }
 
-static ALWAYS_INLINE void reset_mb(Macroblock *mb, int mbAddr, CodecContext *ctx) {
+static ALWAYS_INLINE void reset_mb(Macroblock *mb, int mbAddr, Undo264Context *ctx) {
     memset(&ctx->luma_total_coeffs[mbAddr], 0, 16);
     memset(&ctx->cr_total_coeffs[mbAddr], 0, 16);
     memset(&ctx->cb_total_coeffs[mbAddr], 0, 16);
@@ -321,8 +321,8 @@ static ALWAYS_INLINE void reset_mb(Macroblock *mb, int mbAddr, CodecContext *ctx
 }
 
 
-void decode_i_macroblock(Macroblock *mb, struct Slice *slice, CodecContext *ctx);
-void decode_p_macroblock(Macroblock *mb, struct Slice *slice, CodecContext *ctx);
-void decode_b_macroblock(Macroblock *mb, struct Slice *slice, CodecContext *ctx);
+void decode_i_macroblock(Macroblock *mb, struct Slice *slice, Undo264Context *ctx);
+void decode_p_macroblock(Macroblock *mb, struct Slice *slice, Undo264Context *ctx);
+void decode_b_macroblock(Macroblock *mb, struct Slice *slice, Undo264Context *ctx);
 
 #endif //TOY_H264_MB_H

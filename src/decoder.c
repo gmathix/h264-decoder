@@ -41,14 +41,14 @@ int frame_debug = -1;
 int frame_num_debug = -1;
 int poc_debug = -1;
 int mb_debug = -1;
-int nb_frames_before_stop = -1;
+int nb_frames_before_stop = 100;
 
 
-CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome) {
+Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome) {
 
     if (data == NULL) return NULL;
 
-    CodecContext *ctx = calloc(1, sizeof(CodecContext));
+    Undo264Context *ctx = calloc(1, sizeof(Undo264Context));
     if (!ctx) {
         return NULL;
     }
@@ -74,7 +74,6 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
 
 
     ctx->currMb = calloc(1, sizeof(Macroblock));
-    ctx->prevMb = calloc(1, sizeof(Macroblock));
 
     ctx->levelScale4x4 = calloc(6, sizeof( int16_t[52][4][4] ));
     ctx->levelScale8x8 = calloc(2, sizeof( int16_t[52][8][8] ));
@@ -122,7 +121,7 @@ CodecContext *decoder_init(const uint8_t *data, size_t size, char *out_path, cha
 
 
 // yes this now does not to belong to nal.c anymore because a NALcoholic deleted that file
-int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx) {
+int dispatch_nal_unit(NalUnit *nal_unit, Undo264Context *ctx) {
 
     bitreader_init(ctx->br, nal_unit->data, nal_unit->size);
 
@@ -199,7 +198,7 @@ int dispatch_nal_unit(NalUnit *nal_unit, CodecContext *ctx) {
 }
 
 
-void decoder_run(CodecContext *ctx) {
+void decoder_run(Undo264Context *ctx) {
     if (!ctx->initialized) return;
 
     BitReader nal_br = make_br(ctx->data, ctx->size);
@@ -224,7 +223,7 @@ void decoder_run(CodecContext *ctx) {
 	fflush(ctx->out_file);
 }
 
-void decoder_free_metadata(CodecContext *ctx) {
+void decoder_free_metadata(Undo264Context *ctx) {
     free(ctx->mb_metadata);
     free(ctx->luma_total_coeffs);
     free(ctx->cb_total_coeffs);
@@ -233,7 +232,7 @@ void decoder_free_metadata(CodecContext *ctx) {
 }
 
 /* caller's job to make sure metadata gets free beforehand */
-void decoder_alloc_metadata(CodecContext *ctx) {
+void decoder_alloc_metadata(Undo264Context *ctx) {
     printf("allocating metadata : num_mbs %d\n", ctx->num_mbs);
     ctx->num_mbs = (int32_t)ctx->ps->sps->pic_width_in_mbs * (int32_t)ctx->ps->sps->pic_height_in_map_units;
 
@@ -245,9 +244,10 @@ void decoder_alloc_metadata(CodecContext *ctx) {
     ctx->mb_metadata_initialized = true;
 }
 
-void decoder_free(CodecContext *ctx) {
+void decoder_free(Undo264Context *ctx) {
     decoder_free_metadata(ctx);
     pic_pool_free(ctx->pool, ctx);
+    free_cactx(ctx->cactx);
 
     munmap((void*)ctx->data, ctx->size);
     free(ctx->br);
@@ -263,7 +263,8 @@ void decoder_free(CodecContext *ctx) {
     free(ctx->current_slice);
 
 
-    free(ctx->prevMb);
+    free(ctx->currMb);
+    // free(ctx->prevMb);
 
 
     dpb_free(ctx->dpb);

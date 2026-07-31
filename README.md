@@ -2,11 +2,8 @@
 
 A H.264 decoder written in C
 
-## Project Philosophy 
-### Skip the shower, ship the decoder. Priorities.
-
 ## Current Status
-Fixing reference frames bugs
+Testing High profile correctness with CABAC
 
 ## Features and Scope
 Baseline profile, Main and High profile:

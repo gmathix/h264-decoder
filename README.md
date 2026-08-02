@@ -19,8 +19,6 @@ Baseline profile, Main and High profile:
 - Reference picture list modifications
 - YUV 4:2:0 output
 
-Does not support yet :
-- Multi-slice pictures
 
 Does and will not support :
 - MBAFF/PAFF

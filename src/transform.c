@@ -186,7 +186,7 @@ void transform_chroma(Macroblock *mb, Undo264Context *ctx) {
                   if (ctx->ps->sps->chroma_format_idc == 1) {
                         for (int i = 0; i < 2; i++)
                               for (int j = 0; j < 2; j++)
-                                    dcC[i][j] = ((f[i][j] * ctx->levelScale4x4[scaleIndex][qp][0][0]) << (qp/6)) >> 5;
+                                    dcC[i][j] = ((f[i][j] * ctx->levelScale4x4[scaleIndex][qp][0][0]) * (1 << (qp/6))) >> 5;
                   }
 
 

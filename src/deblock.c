@@ -257,7 +257,7 @@ void filter_4p_vert_edge_low_bS_luma(int y, int x, const int filter_flags[4],
             t = treshold + ((aP < beta) + (aQ < beta));
 
             delta = _clip3(-t, t,
-                (((q0 - p0) << 2) + (p1 - q1) + 4) >> 3);
+                (((q0 - p0) * (1 << 2)) + (p1 - q1) + 4) >> 3);
 
             /*p1*/ samples[y][x-2] += (aP < beta) * _clip3(-treshold, treshold,
                   (p2 + ((p0 + q0 + 1) >> 1) - (p1 << 1)) >> 1);
@@ -293,7 +293,7 @@ void filter_4p_hor_edge_low_bS_luma(int y, int x, const int filter_flags[4],
 
 
             delta = _clip3(-t, t,
-                (((q0 - p0) << 2) + (p1 - q1) + 4) >> 3);
+                (((q0 - p0) * (1 << 2)) + (p1 - q1) + 4) >> 3);
 
             /*p1*/ samples[y-2][x] += (aP < beta) * _clip3(-treshold, treshold,
                   (p2 + ((p0 + q0 + 1) >> 1) - (p1 << 1)) >> 1);
@@ -400,7 +400,7 @@ void filter_2p_vert_edge_low_bS_chroma(int y, int x, const int filter_flags[2],
             t = treshold + 1;
 
             delta = _clip3(-t, t,
-                (((q0 - p0) << 2) + (p1 - q1) + 4) >> 3);
+                (((q0 - p0) * (1 << 2)) + (p1 - q1) + 4) >> 3);
 
             /*p0*/ samples[y][x-1] = _clip1c(p0 + delta, 8);
             /*q0*/ samples[y][x]   = _clip1c(q0 - delta, 8);
@@ -426,7 +426,7 @@ void filter_2p_hor_edge_low_bS_chroma(int y, int x, const int filter_flags[2],
             t = treshold + 1;
 
             delta = _clip3(-t, t,
-                (((q0 - p0) << 2) + (p1 - q1) + 4) >> 3);
+                (((q0 - p0) * (1 << 2)) + (p1 - q1) + 4) >> 3);
 
             /*p0*/ samples[y-1][x] = _clip1c(p0 + delta, 8);
             /*q0*/ samples[y][x]   = _clip1c(q0 - delta, 8);

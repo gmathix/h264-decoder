@@ -290,7 +290,8 @@ int read_coeff_abs_level(Macroblock *mb, int coeffIdx, int numDecodAbsEq1, int n
         fprintf(ctx->log_file, "\ndecoding coeff_abs_level\n");
     #endif
 
-    int str = 0, val = 0;
+    int val = 0;
+    long str = 0;
     int inc0 = (numDecodAbsGt1 == 0) * _min(4, 1 + numDecodAbsEq1);
     int inc1 = 5 + _min(4 - (blockType == CHROMA_DC_LEVEL), numDecodAbsGt1);
     while (str += str + cabac_get_bit(ctx, ctxIdx + (val == 0)*inc0 + (val > 0)*inc1),

@@ -375,7 +375,8 @@ int CAFUNC(read_ref_idx,
             fprintf(ctx->log_file, "\nreading ref_idx_l%d\n", list);
         #endif
 
-        int ref_idx = 0, str = 0;
+        int ref_idx = 0;
+        long str = 0;
         static int ctxIdxInc[16] = {0, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5};
 
         Neighbors n = derive_neighbors_4x4(mb, pos4x4, ctx);
@@ -441,7 +442,8 @@ int CAFUNC(read_mvd,
         fprintf(ctx->log_file, "\nreading mvd_l%d[%d]\n", list, xy);
     #endif
     static int ctxIdxInc[9] = {0, 3, 4, 5, 6, 6, 6, 6, 6};
-    int mvd = 0, str = 0;
+    int mvd = 0;
+    long str = 0;
 
 
     Neighbors n = derive_neighbors_4x4(mb, pos4x4, ctx);
@@ -509,7 +511,8 @@ int CAFUNC(read_intra_chroma_pred_mode,
             fprintf(ctx->log_file, "\nreading intra chroma pred mode\n");
         #endif
         // maxBinIdxCtx=1 ctxIdxOffset=64
-        int intra_chroma_pred_mode = 0, str = 0;
+        int intra_chroma_pred_mode = 0;
+        long str = 0;
         int inc = (mb->has_mb_a && !IS_INTER(ctx->curr_pic->mb_types[mb->mbAddr + mb->mb_a_off]) &&
                     !IS_PCM(ctx->curr_pic->mb_types[mb->mbAddr + mb->mb_a_off]) && ctx->mb_metadata[mb->mbAddr + mb->mb_a_off].intra_chroma_pred_mode != 0) +
                   (mb->has_mb_b && !IS_INTER(ctx->curr_pic->mb_types[mb->mbAddr + mb->mb_b_off]) &&
@@ -558,7 +561,8 @@ int CAFUNC(read_coded_block_pattern,
         inc = ((cbp_luma >> 2 & 1) == 0) + 2*((cbp_luma >> 1 & 1) == 0);
         cbp_luma += cabac_get_bit(ctx, 73 + inc) << 3; // blkIdx = 3
 
-        int cbp_chroma = 0, str = 0;
+        int cbp_chroma = 0;
+        long str = 0;
         static int ctxIdxInc[2];
         inc = (mb->has_mb_a && IS_PCM(metaA.mb_type) ||
               ((mb->has_mb_a && !IS_SKIP(metaA.mb_type) &&
@@ -595,7 +599,8 @@ int CAFUNC(read_mb_qp_delta,
             fprintf(ctx->log_file, "\nreading mb_qp_delta\n");
         #endif
         // maxBinIdxCtx=2 ctxIdxOffset=60
-        int val = 0, str = 0;
+        int val = 0;
+        long str = 0;
         MacroblockMetadata prevMeta = mb->mbAddr > 0 ? ctx->mb_metadata[mb->mbAddr - 1] : ctx->mb_metadata[0];
         int inc = !((mb->mbAddr == 0 || IS_SKIP(prevMeta.mb_type)) ||
                     (IS_PCM(prevMeta.mb_type)) ||

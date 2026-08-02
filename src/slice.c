@@ -181,7 +181,7 @@ int CAFUNC(read_I_mb_type,
         if (!cabac_get_bit(ctx, ctxIdx + ctxIdxInc[0])) { // I_4x4
             mb_type = 0;
         } else {
-            if (cabac_get_bit_term(ctx, 276)) { // I_PCM
+            if (cabac_get_bit_term(ctx)) { // I_PCM
                 mb_type = 25;
             } else { // I_16x16
                 int str = 0;
@@ -644,8 +644,8 @@ void CAFUNC(read_mb_pred,
                     : mb->mb_type;
 
                 dcPredModePredictedFlag = (!n.a.av || !n.b.av ||
-                    (n.a.av && IS_INTER(mb_a_type) && ctx->ps->pps->constrained_intra_pred_flag) ||
-                    (n.b.av && IS_INTER(mb_b_type) && ctx->ps->pps->constrained_intra_pred_flag));
+                    (n.a.av && IS_INTER(mb_a_type) && sh->pps->constrained_intra_pred_flag) ||
+                    (n.b.av && IS_INTER(mb_b_type) && sh->pps->constrained_intra_pred_flag));
 
                 if (dcPredModePredictedFlag || !IS_INTRANxN(mb_a_type)) {
                     intraModeA = DC_PRED;
@@ -755,7 +755,8 @@ void CAFUNC(read_mb_pred,
         }
 
         if (sh->sps->chroma_format_idc == 1 || sh->sps->chroma_format_idc == 2) {
-            ctx->mb_metadata[mbAddr].intra_chroma_pred_mode = CACALL(read_intra_chroma_pred_mode, mb, sh, ctx);
+            int pred_mode = CACALL(read_intra_chroma_pred_mode, mb, sh, ctx);
+            ctx->mb_metadata[mbAddr].intra_chroma_pred_mode = pred_mode;
         }
     } else if (!IS_DIRECT(mb->mb_type)) {
         int type = mb->u.pb.mb_info.type;
@@ -958,9 +959,6 @@ void CAFUNC(read_macroblock,
     mb->mb_width_c  = 16 / sub_width_c_info[sh->sps->chroma_format_idc];
 
 
-    uint8_t pcm_samples_luma[256];
-    uint8_t pcm_samples_chroma[2 * mb->mb_height_c * mb->mb_width_c];
-
     bool intra_mb = IS_I_SLICE(sh->slice_type) || (IS_P_SLICE(sh->slice_type) && mb_type > 4) || (IS_B_SLICE(sh->slice_type) && mb_type > 22);
     if (intra_mb && IS_P_SLICE(sh->slice_type)) {
         mb_type -= 5;
@@ -1014,6 +1012,12 @@ void CAFUNC(read_macroblock,
     meta->cbp_chroma = cbp_chroma;
     meta->t_8x8_flag = 0;
     mb->t_8x8_flag = 0;
+    memset(meta->coded_block_flag, 0, 14 * 16);
+    memset(meta->mvd, 0, 2 * 16 * 2 * sizeof(int16_t));
+    for (int blk = 0; blk < 16; blk++) {
+        ctx->curr_pic->motion_info[mb->mbAddr][blk].mvs[L0].ref_idx = 0;
+        ctx->curr_pic->motion_info[mb->mbAddr][blk].mvs[L1].ref_idx = 0;
+    }
 
 
 
@@ -1038,6 +1042,10 @@ void CAFUNC(read_macroblock,
         for (int i = 0; i < mb->mb_width_c * mb->mb_height_c; i++) {
             mb->p_pic->cr[posC + (i/mb->mb_height_c)*widthC + i%mb->mb_width_c] = read_u(br, 8);
         }
+
+        #if CABAC
+            cabac_init_engine(ctx);
+        #endif
     } else {
 
         bool noSubMbPartSizeLessThan8x8 = true;
@@ -1107,7 +1115,7 @@ void CAFUNC(read_macroblock,
 
             mb->mb_qp_delta = CACALL(read_mb_qp_delta, mb, sh, ctx);
 
-            mb->QPY = mb->mbAddr == 0
+            mb->QPY = mb->mbAddr == sh->first_mb
                 ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + mb->mb_qp_delta + 52) % 52)
                 : _clip3(0, 51, (ctx->prevMb->QPY + mb->mb_qp_delta + 52) % 52);
 
@@ -1122,7 +1130,7 @@ void CAFUNC(read_macroblock,
 
             CACALL(read_residual, mb, type, mb->t_8x8_flag, 0, 15, cbp_luma, cbp_chroma, sh, ctx);
         } else {
-            mb->QPY = mb->mbAddr == 0
+            mb->QPY = mb->mbAddr == sh->first_mb
                 ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52)
                 : ctx->prevMb->QPY;
 
@@ -1164,6 +1172,7 @@ void CAFUNC(decode_slice,
     #endif
 
 
+    ctx->current_slice->num_mbs = 0;
 
     int mbaff_frame_flag = sh->sps->mb_aff_flag;
     int currMbAddr = sh->first_mb * (1 + mbaff_frame_flag);
@@ -1182,7 +1191,7 @@ void CAFUNC(decode_slice,
                 #endif
                 Macroblock *mb = ctx->currMb;
                 reset_mb(mb, currMbAddr, ctx);
-                derive_macroblock_neighbors(mb, ctx);
+                derive_macroblock_neighbors(mb, true, sh->first_mb, ctx);
                 int inc = (mb->has_mb_a && ctx->mb_metadata[currMbAddr - 1].mb_skip_flag == 0) +
                           (mb->has_mb_b && ctx->mb_metadata[currMbAddr + mb->mb_b_off].mb_skip_flag == 0);
                 #if CABAC_LOG
@@ -1200,7 +1209,7 @@ void CAFUNC(decode_slice,
                 for (int mbAddr = currMbAddr; mbAddr < currMbAddr + mb_skip_run; mbAddr++) {
                     Macroblock *mb = ctx->currMb;
                     reset_mb(mb, mbAddr, ctx);
-                    derive_macroblock_neighbors(mb, ctx);
+                    derive_macroblock_neighbors(mb, true, sh->first_mb, ctx);
             #endif
                     mb->mb_type = MB_TYPE_SKIP;
                     mb->slice_type = sh->slice_type;
@@ -1236,11 +1245,11 @@ void CAFUNC(decode_slice,
                     }
 
                     ctx->prevMb = mb;
+                    ctx->current_slice->num_mbs++;
                 }
 
                 #if !CABAC
                     currMbAddr += mb_skip_run;
-                    ctx->current_slice->num_mbs += mb_skip_run;
 
                     if (mb_skip_run > 0) {
                         moreDataFlag = more_rbsp_data(br) && currMbAddr < ctx->num_mbs;
@@ -1259,7 +1268,7 @@ void CAFUNC(decode_slice,
             Macroblock *mb = ctx->currMb;
 
             reset_mb(mb, currMbAddr, ctx);
-            derive_macroblock_neighbors(mb, ctx);
+            derive_macroblock_neighbors(mb, true, sh->first_mb, ctx);
 
             CACALL(read_macroblock, mb, sh, nal_unit, ctx);
             if (IS_I_SLICE(sh->slice_type)) {
@@ -1269,6 +1278,8 @@ void CAFUNC(decode_slice,
             } else if (IS_B_SLICE(sh->slice_type)) {
                 decode_b_macroblock(mb, ctx->current_slice, ctx);
             }
+
+            ctx->current_slice->num_mbs++;
 
             profiler_end_mb(ctx->prf);
         }
@@ -1283,7 +1294,7 @@ void CAFUNC(decode_slice,
             #if CABAC_LOG
                 fprintf(ctx->log_file, "\nreading end_of_slice_flag\n");
             #endif
-            int end_of_slice_flag = currMbAddr == ctx->curr_pic->num_mbs - 1 ? 0 : cabac_get_bit_term(ctx, 276);
+            int end_of_slice_flag = cabac_get_bit_term(ctx);
             moreDataFlag = !end_of_slice_flag;
         }
 
@@ -1291,8 +1302,6 @@ void CAFUNC(decode_slice,
             currMbAddr++;
             if (currMbAddr >= ctx->num_mbs) {
                 moreDataFlag = false;
-            } else {
-                ctx->current_slice->num_mbs = currMbAddr + 1;
             }
         }
     } while (moreDataFlag);

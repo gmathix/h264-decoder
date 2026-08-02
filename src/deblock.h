@@ -9,6 +9,7 @@
 #include "global.h"
 
 #include "picture.h"
+#include "slice.h"
 #include "util/formulas.h"
 
 
@@ -18,8 +19,8 @@ extern const uint8_t treshold_table[3][52];
 
 
 
-void deblock_picture(Picture *pic, Undo264Context *ctx);
-void deblock_macroblock(Picture *pic, int mbAddr, Undo264Context *ctx);
+void deblock_slice(Picture *pic, SliceHeader *sh, Undo264Context *ctx);
+void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Context *ctx);
 
 
 

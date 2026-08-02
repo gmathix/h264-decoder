@@ -43,8 +43,11 @@ static void free_cactx(CabacContext *cactx) {
 
 
 void cabac_init(Undo264Context *ctx);
+void cabac_init_ctx_vars(Slice *slice, int idc);
+void cabac_init_engine(Undo264Context *ctx);
+
 int cabac_get_bit(Undo264Context *ctx, int ctxIdx);
-int cabac_get_bit_term(Undo264Context *ctx, int ctxIdx);
+int cabac_get_bit_term(Undo264Context *ctx);
 int cabac_get_bit_bypass(Undo264Context *ctx);
 void  residual_block_cabac   (Macroblock *mb, int blkIdx, int iCbCr, BlockType blockType, int16_t *coeffLevel, uint8_t (*total_coeffs_table)[16], int startIdx, int endIdx, int maxNumCoeff, bool isLuma, struct SliceHeader *sh, Undo264Context *ctx);
 

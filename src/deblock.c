@@ -580,15 +580,15 @@ void filter_col_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int 
     }
 }
 
-void deblock_macroblock(Picture *pic, int mbAddr, Undo264Context *ctx) {
-    // make dummy mb just for accessing the neighbors afterward
-    Macroblock *mb = make_mb(mbAddr, ctx);
-    derive_macroblock_neighbors(mb, ctx);
-
-
-    const SliceHeader *sh = pic->sh;
+void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Context *ctx) {
     SPS *sps = sh->sps;
     PPS *pps = sh->pps;
+
+    bool disableSliceBoundaries = sh->disable_deblocking_filter_idc == 2;
+
+    // make dummy mb just for accessing the neighbors afterward
+    Macroblock *mb = make_mb(mbAddr, ctx);
+    derive_macroblock_neighbors(mb, disableSliceBoundaries, sh->first_mb, ctx);
 
 
     const bool fieldMbInFrame      = 0;
@@ -699,8 +699,8 @@ void deblock_macroblock(Picture *pic, int mbAddr, Undo264Context *ctx) {
 }
 
 
-void deblock_picture(Picture *pic, Undo264Context *ctx) {
-    for (int i = 0; i < pic->num_mbs; i++) {
-        deblock_macroblock(pic, i, ctx);
+void deblock_slice(Picture *pic, SliceHeader *sh, Undo264Context *ctx) {
+    for (int i = sh->first_mb; i < sh->first_mb + ctx->current_slice->num_mbs; i++) {
+        deblock_macroblock(pic, sh, i, ctx);
     }
 }

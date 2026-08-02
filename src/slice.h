@@ -248,12 +248,12 @@ static SliceHeader *read_slice_header(NalUnit *nal_unit, Undo264Context *ctx) {
         // ctx->curr_pic = picture_alloc(sh, ctx);
         ctx->curr_pic->sh = sh;
         ctx->curr_pic->nal_ref_idc = nal_unit->ref_idc;
-        ctx->current_slice->p_pic = ctx->curr_pic;
         ctx->curr_pic->pic_num = sh->frame_num;
         ctx->curr_pic->frame_num = sh->frame_num;
         derive_poc(ctx->dpb, ctx->curr_pic);
         printf(" POC : %d\n", ctx->curr_pic->poc);
     }
+    ctx->current_slice->p_pic = ctx->curr_pic;
 
 
     // init l0 and l1

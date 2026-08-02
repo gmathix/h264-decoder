@@ -14,7 +14,7 @@ int8_t p_state_idx[1024];
 int8_t val_mps[1024];
 
 
-void init_ctx_vars(Slice *slice, int idc) {
+void cabac_init_ctx_vars(Slice *slice, int idc) {
     int qpy = slice->sh->pps->pic_init_qp + slice->sh->slice_qp_delta;
 
     for (int idx = 0; idx < 1024; idx++) {
@@ -44,24 +44,16 @@ void cabac_init(Undo264Context *ctx) {
 
     int idc = IS_I_SLICE(slice->sh->slice_type) ? 0 : slice->sh->cabac_init_idc + 1;
 
-    init_ctx_vars(slice, idc);
+    cabac_init_ctx_vars(slice, idc);
+    cabac_init_engine(ctx);
+}
 
+void cabac_init_engine(Undo264Context *ctx) {
     ctx->cactx->codIRange       = 510;
     ctx->cactx->codIOffset      = (int16_t) read_u(ctx->br, 9);
     ctx->cactx->p_state_idx_ptr = p_state_idx;
     ctx->cactx->val_mps_ptr     = val_mps;
-
-    int num_mbs = ctx->ps->sps->pic_width_in_mbs * ctx->ps->sps->pic_height_in_map_units;
-    for (int i = 0; i < num_mbs; i++) {
-        memset(ctx->mb_metadata[i].coded_block_flag, 0, 14 * 16);
-        memset(ctx->mb_metadata[i].mvd, 0, 2 * 16 * 2 * sizeof(int16_t));
-        for (int blk = 0; blk < 16; blk++) {
-            ctx->curr_pic->motion_info[i][blk].mvs[L0].ref_idx = 0;
-            ctx->curr_pic->motion_info[i][blk].mvs[L1].ref_idx = 0;
-        }
-    }
 }
-
 
 
 
@@ -121,7 +113,7 @@ int cabac_get_bit(Undo264Context *ctx, int ctxIdx) {
     return bin;
 }
 
-int cabac_get_bit_term(Undo264Context *ctx, int ctxIdx) {
+int cabac_get_bit_term(Undo264Context *ctx) {
     CabacContext *cactx = ctx->cactx;
 
     int prevrange = cactx->codIRange;

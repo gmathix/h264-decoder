@@ -67,8 +67,8 @@ extern const Picture EMPTY_PICTURE;
 
 
 typedef struct PicturePool {
-	Picture *slots[MAX_DPB_SIZE + 1];
-	bool     available[MAX_DPB_SIZE + 1];
+	Picture *slots[MAX_DPB_SIZE + 2];
+	bool     available[MAX_DPB_SIZE + 2];
 	int      nb_available;
 	int      size;
 } PicturePool ;

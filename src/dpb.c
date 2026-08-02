@@ -451,7 +451,7 @@ void ref_pic_list_modif_st(Slice *slice, bool is_l0, int *refIdxLX, int modif_id
 
     bool rplm_occured = is_l0 ? slice->rplm_occured_l0 : slice->rplm_occured_l1;
     int prevPicNumLXPred = is_l0 ? slice->picNumL0Pred : slice->picNumL1Pred;
-    int num_ref_frames_active = is_l0 ? slice->sh->num_ref_idx_l0_active_minus1 : slice->sh->num_ref_idx_l1_active_minus1;
+    int num_ref_frames_active = is_l0 ? slice->sh->num_ref_idx_l0_active_minus1+1: slice->sh->num_ref_idx_l1_active_minus1+1;
 
     int picNumLXPred = rplm_occured
         ? prevPicNumLXPred

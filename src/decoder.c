@@ -41,7 +41,7 @@ int frame_debug = -1;
 int frame_num_debug = -1;
 int poc_debug = -1;
 int mb_debug = -1;
-int nb_frames_before_stop = 100;
+int nb_frames_before_stop = -1;
 
 
 Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome) {
@@ -157,13 +157,13 @@ int dispatch_nal_unit(NalUnit *nal_unit, Undo264Context *ctx) {
             }
 
             Slice *slice = ctx->current_slice;
+            deblock_slice(ctx->curr_pic, sh, ctx);
+
             if (slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs ||
                 slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs+1) { // end of picture
 
-                deblock_picture(ctx->curr_pic, ctx);
                 store_picture(ctx->dpb, ctx->curr_pic);
             }
-            // exit(1);
 
             profiler_end_frame(ctx->prf);
 
@@ -233,8 +233,9 @@ void decoder_free_metadata(Undo264Context *ctx) {
 
 /* caller's job to make sure metadata gets free beforehand */
 void decoder_alloc_metadata(Undo264Context *ctx) {
-    printf("allocating metadata : num_mbs %d\n", ctx->num_mbs);
+
     ctx->num_mbs = (int32_t)ctx->ps->sps->pic_width_in_mbs * (int32_t)ctx->ps->sps->pic_height_in_map_units;
+    printf("allocating metadata : num_mbs %d\n", ctx->num_mbs);
 
     ctx->mb_metadata = calloc(ctx->num_mbs, sizeof( MacroblockMetadata));
     ctx->luma_total_coeffs   = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));

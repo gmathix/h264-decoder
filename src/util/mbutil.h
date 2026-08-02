@@ -67,7 +67,7 @@
 #define IS_INTRANxN(a)     ((a) & (MB_TYPE_INTRA4x4 | MB_TYPE_INTRA8x8))
 #define IS_L0(a)           ((a) & MB_TYPE_L0)
 #define IS_PCM(a)          ((a) & MB_TYPE_INTRA_PCM)
-#define IS_INTRA(a)        ((a) & 7)
+#define IS_INTRA(a)        ((a) & 15)
 #define IS_INTER(a)        ((a) & (MB_TYPE_16x16 | MB_TYPE_16x8 | \
                                    MB_TYPE_8x16  | MB_TYPE_8x8 | \
                                    MB_TYPE_SKIP | MB_TYPE_DIRECT))

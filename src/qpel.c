@@ -21,12 +21,20 @@ const qpel_func qpel_funcs[16] = {
 
 
 static ALWAYS_INLINE int32_t vertical_pass_unclipped_2(const uint8_t *ref, int y, int x, int width) {
-    return       ref[(y-2)*width + x] - 5*ref[(y-1)*width + x] + 20*ref[(y+0)*width + x]
-            + 20*ref[(y+1)*width + x] - 5*ref[(y+2)*width + x] +    ref[(y+3)*width + x];
+    return       ref[(y-2)*width + x]
+            -  5*ref[(y-1)*width + x]
+            + 20*ref[(y+0)*width + x]
+            + 20*ref[(y+1)*width + x]
+            -  5*ref[(y+2)*width + x]
+            +    ref[(y+3)*width + x];
 }
 static ALWAYS_INLINE int32_t horizontal_pass_unclipped_2(const uint8_t *ref, int y, int x, int width) {
-    return      ref[y*width + x-2] - 5*ref[y*width + x-1] + 20*ref[y*width + x+0]
-           + 20*ref[y*width + x+1] - 5*ref[y*width + x+2] +    ref[y*width + x+3];
+    return       ref[y*width + x-2]
+            -  5*ref[y*width + x-1]
+            + 20*ref[y*width + x+0]
+            + 20*ref[y*width + x+1]
+            -  5*ref[y*width + x+2]
+            +    ref[y*width + x+3];
 }
 
 static ALWAYS_INLINE uint8_t vertical_pass_2(const uint8_t *ref, int y, int x, int width) {

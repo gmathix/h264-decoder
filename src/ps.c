@@ -25,6 +25,8 @@
 
 /* 7.3.2.1.1 */
 int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
+    printf("READING SPS\n");
+
     BitReader *br = ctx->br;
     ParamSets *ps = ctx->ps;
 
@@ -139,9 +141,6 @@ int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
 
     sps->max_num_ref_frames = read_ue(br);
     sps->gaps_in_frame_num_allowed_flag = read_u(br, 1);
-    if (sps->gaps_in_frame_num_allowed_flag) {
-        printf("WARNING: gaps in frame num detected. not doing that yet!\n");
-    }
 
 
     sps->pic_width_in_mbs_minus1 = read_ue(br);
@@ -224,6 +223,8 @@ int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
 
 /* 7.3.2.2 */
 int decode_pps(size_t global_bit_offset, Undo264Context *ctx) {
+    printf("READING PPS\n");
+
     BitReader *br = ctx->br;
     ParamSets *ps = ctx->ps;
 

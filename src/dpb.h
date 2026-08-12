@@ -178,7 +178,7 @@ static inline int ltPicNum(DPB *dpb, Picture **lX, int idx, int maxLtIdx) {
 
 
 void derive_poc(DPB *dpb, Picture *pic);
-void decode_pic_nums(DPB *dpb, struct SliceHeader *sh);
+void decode_pic_nums(DPB *dpb, int frame_num);
 int  bump(DPB *dpb);
 int  output_oldest_pic(DPB *dpb); // returns of output picture
 void store_picture(DPB *dpb, Picture *pic);

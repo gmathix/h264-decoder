@@ -165,6 +165,7 @@ int CAFUNC(read_I_mb_type,
     #if CABAC
         #if CABAC_LOG
             fprintf(ctx->log_file, "\nreading mb_type I slice\n");
+            fflush(ctx->log_file);
         #endif
         // maxBinIdx=6 ctxIdxOffset=3 for I slice
         // maxBinIdx=5 ctxIdxOffset=17 for P slice
@@ -223,6 +224,7 @@ int CAFUNC(read_P_mb_type,
     #if CABAC
         #if CABAC_LOG
             fprintf(ctx->log_file, "\nreading mb_type P slice\n");
+            fflush(ctx->log_file);
         #endif
         // prefix: maxBinIdxCtx=2 ctxIdxOffset=14
         // suffix: maxBinIdxCtx=5 ctxIdxOffset=17
@@ -250,6 +252,7 @@ int CAFUNC(read_B_mb_type,
     #if CABAC
         #if CABAC_LOG
             fprintf(ctx->log_file, "\nreading mb_type B slice\n");
+            fflush(ctx->log_file);
         #endif
         // prefix: maxBinIdxCtx=3 ctxIdxOffset=27
         // suffix: maxBinIdxCtx=5 ctxIdxOffset=32
@@ -304,6 +307,7 @@ int CAFUNC(read_P_sub_mb_type,
     #if CABAC
         #if CABAC_LOG
             fprintf(ctx->log_file, "\nreading sub_mb_type P slice\n");
+            fflush(ctx->log_file);
         #endif
         // maxBinIdxCtx=2 ctxIdxOffset=21
         int sub_mb_type = 0, str = 0;
@@ -311,7 +315,7 @@ int CAFUNC(read_P_sub_mb_type,
             sub_mb_type = 0;
         } else {
             if (str += str + cabac_get_bit(ctx, 21 + 1), str == 0) {
-                sub_mb_type = 2;
+                sub_mb_type = 1;
             } else {
                 str += str + cabac_get_bit(ctx, 21 + 2);
                 sub_mb_type = 5 - str;
@@ -332,6 +336,7 @@ int CAFUNC(read_B_sub_mb_type,
     #if CABAC
         #if CABAC_LOG
             fprintf(ctx->log_file, "\nreading sub_mb_type B slice\n");
+            fflush(ctx->log_file);
         #endif
         // maxBinIdxCtx=3 ctxIdxOffset=36
         static const int str2B_sub_mb_type[12] = {
@@ -352,7 +357,7 @@ int CAFUNC(read_B_sub_mb_type,
                 str += str + cabac_get_bit(ctx, 36 + 2);
                 str += str + cabac_get_bit(ctx, 36 + 3);
                 str += str + cabac_get_bit(ctx, 36 + 3);
-                if (!(str & 4) || str == 7) {
+                if (!(str & 4) || str == 7 || str == 6) {
                     sub_mb_type = str2B_sub_mb_type[str];
                 } else {
                     str += str + cabac_get_bit(ctx, 36 + 3);
@@ -373,6 +378,7 @@ int CAFUNC(read_ref_idx,
     #if CABAC
         #if CABAC_LOG
             fprintf(ctx->log_file, "\nreading ref_idx_l%d\n", list);
+            fflush(ctx->log_file);
         #endif
 
         int ref_idx = 0;
@@ -435,67 +441,68 @@ int CAFUNC(read_ref_idx,
 }
 
 int CAFUNC(read_mvd,
-    Macroblock *mb, int list, int xy, int pos4x4, SliceHeader *sh, Undo264Context *ctx) {
+    Macroblock *mb, int list, int xy, int pos4x4, int part, int subPart, SliceHeader *sh, Undo264Context *ctx) {
 
     #if CABAC
-    #if CABAC_LOG
-        fprintf(ctx->log_file, "\nreading mvd_l%d[%d]\n", list, xy);
-    #endif
-    static int ctxIdxInc[9] = {0, 3, 4, 5, 6, 6, 6, 6, 6};
-    int mvd = 0;
-    long str = 0;
+        #if CABAC_LOG
+            fprintf(ctx->log_file, "\nreading mvd_l%d[%d] part:%d subPart:%d\n", list, xy, part, subPart);
+            fflush(ctx->log_file);
+        #endif
+        static int ctxIdxInc[9] = {0, 3, 4, 5, 6, 6, 6, 6, 6};
+        int mvd = 0;
+        long str = 0;
 
 
-    Neighbors n = derive_neighbors_4x4(mb, pos4x4, ctx);
+        Neighbors n = derive_neighbors_4x4(mb, pos4x4, ctx);
 
-    bool predModeEqualA = n.a.av && ctx->curr_pic->motion_info[mb->mbAddr + n.a.mb_off][n.a.idx].mvs[list].ref_idx >= 0;
-    bool predModeEqualB = n.b.av && ctx->curr_pic->motion_info[mb->mbAddr + n.b.mb_off][n.b.idx].mvs[list].ref_idx >= 0;
+        bool predModeEqualA = n.a.av && ctx->curr_pic->motion_info[mb->mbAddr + n.a.mb_off][n.a.idx].mvs[list].ref_idx >= 0;
+        bool predModeEqualB = n.b.av && ctx->curr_pic->motion_info[mb->mbAddr + n.b.mb_off][n.b.idx].mvs[list].ref_idx >= 0;
 
-    MacroblockMetadata metaA = n.a.av ? ctx->mb_metadata[mb->mbAddr + n.a.mb_off] : (MacroblockMetadata) {};
-    MacroblockMetadata metaB = n.b.av ? ctx->mb_metadata[mb->mbAddr + n.b.mb_off] : (MacroblockMetadata) {};
+        MacroblockMetadata metaA = n.a.av ? ctx->mb_metadata[mb->mbAddr + n.a.mb_off] : (MacroblockMetadata) {};
+        MacroblockMetadata metaB = n.b.av ? ctx->mb_metadata[mb->mbAddr + n.b.mb_off] : (MacroblockMetadata) {};
 
-    int absMvdCompA = (n.a.av && !IS_SKIP(metaA.mb_type) && !IS_INTRA(metaA.mb_type) && predModeEqualA)
-                      * (_abs(metaA.mvd[list][n.a.idx][xy]));
-    int absMvdCompB = (n.b.av && !IS_SKIP(metaB.mb_type) && !IS_INTRA(metaB.mb_type) && predModeEqualB)
-                      * (_abs(metaB.mvd[list][n.b.idx][xy]));
+        int absMvdCompA = (n.a.av && !IS_SKIP(metaA.mb_type) && !IS_INTRA(metaA.mb_type) && predModeEqualA)
+                          * (_abs(metaA.mvd[list][n.a.idx][xy]));
+        int absMvdCompB = (n.b.av && !IS_SKIP(metaB.mb_type) && !IS_INTRA(metaB.mb_type) && predModeEqualB)
+                          * (_abs(metaB.mvd[list][n.b.idx][xy]));
 
-    int inc = 0;
-    inc += 2 * (absMvdCompA + absMvdCompB > 32);
-    inc += (inc == 0) * (absMvdCompA + absMvdCompB >= 3);
-    ctxIdxInc[0] = inc;
-    int ctxIdx = 40 + xy*7; // 40 for x, 47 for y
-    while (str += str + cabac_get_bit(ctx, ctxIdx + ctxIdxInc[mvd]),
-           (str & 1) && str != 0x1FF) {
-        mvd++;
-    }
-    if (str == 0x1FF) mvd = 9;
-
-
-    if (mvd == 9) {
-        int k = 3;
-        int bin;
-        int symbol = 0, bin_symbol = 0;
-        int val = 0;
-        do {
-            bin = cabac_get_bit_bypass(ctx);
-            if (bin == 1) {
-                symbol += 1 << k;
-                k++;
-            }
-        } while (bin != 0);
-        while (k--) {
-            if (cabac_get_bit_bypass(ctx) == 1) {
-                bin_symbol |= 1 << k;
-            }
+        int inc = 0;
+        inc += 2 * (absMvdCompA + absMvdCompB > 32);
+        inc += (inc == 0) * (absMvdCompA + absMvdCompB >= 3);
+        ctxIdxInc[0] = inc;
+        int ctxIdx = 40 + xy*7; // 40 for x, 47 for y
+        while (str += str + cabac_get_bit(ctx, ctxIdx + ctxIdxInc[mvd]),
+               (str & 1) && str != 0x1FF) {
+            mvd++;
         }
-        mvd += symbol + bin_symbol;
-    }
-    if (mvd != 0) {
-        int signBit = cabac_get_bit_bypass(ctx);
-        mvd *= (1 - 2*signBit);
-    }
+        if (str == 0x1FF) mvd = 9;
 
-    return mvd;
+
+        if (mvd == 9) {
+            int k = 3;
+            int bin;
+            int symbol = 0, bin_symbol = 0;
+            int val = 0;
+            do {
+                bin = cabac_get_bit_bypass(ctx);
+                if (bin == 1) {
+                    symbol += 1 << k;
+                    k++;
+                }
+            } while (bin != 0);
+            while (k--) {
+                if (cabac_get_bit_bypass(ctx) == 1) {
+                    bin_symbol |= 1 << k;
+                }
+            }
+            mvd += symbol + bin_symbol;
+        }
+        if (mvd != 0) {
+            int signBit = cabac_get_bit_bypass(ctx);
+            mvd *= (1 - 2*signBit);
+        }
+
+        return mvd;
 
     #else
         return read_se(ctx->br);
@@ -509,6 +516,7 @@ int CAFUNC(read_intra_chroma_pred_mode,
     #if CABAC
         #if CABAC_LOG
             fprintf(ctx->log_file, "\nreading intra chroma pred mode\n");
+            fflush(ctx->log_file);
         #endif
         // maxBinIdxCtx=1 ctxIdxOffset=64
         int intra_chroma_pred_mode = 0;
@@ -536,6 +544,7 @@ int CAFUNC(read_coded_block_pattern,
     #if CABAC
         #if CABAC_LOG
             fprintf(ctx->log_file, "\nreading coded_block_pattern\n");
+            fflush(ctx->log_file);
         #endif
         // prefix : maxBinIdxCtx=3 ctxIdxOffset=73
         // suffix : maxBinIdxCtx=1 ctxIdxOffset=77
@@ -597,6 +606,7 @@ int CAFUNC(read_mb_qp_delta,
     #if CABAC
         #if CABAC_LOG
             fprintf(ctx->log_file, "\nreading mb_qp_delta\n");
+            fflush(ctx->log_file);
         #endif
         // maxBinIdxCtx=2 ctxIdxOffset=60
         int val = 0;
@@ -605,7 +615,7 @@ int CAFUNC(read_mb_qp_delta,
         int inc = !((mb->mbAddr == 0 || IS_SKIP(prevMeta.mb_type)) ||
                     (IS_PCM(prevMeta.mb_type)) ||
                     (!IS_INTRA16x16(prevMeta.mb_type) && prevMeta.cbp_chroma == 0 && prevMeta.cbp_luma == 0) ||
-                    (ctx->prevMb->mb_qp_delta == 0));
+                    (prevMeta.mb_qp_delta == 0));
         static int incs[3] = {0, 2, 3};
         incs[0] = inc;
         while (str += str + cabac_get_bit(ctx, 60 + incs[_clip3(0, 2, val)]),
@@ -801,7 +811,7 @@ void CAFUNC(read_mb_pred,
             if ((part == 0 && (type & MB_TYPE_P0L0)) ||
                 (part == 1 && (type & MB_TYPE_P1L0))) {
                 for (int xy = 0; xy < 2; xy++) {
-                    int mvd = CACALL(read_mvd, mb, L0, xy, pos4x4, sh, ctx);
+                    int mvd = CACALL(read_mvd, mb, L0, xy, pos4x4, part, 0, sh, ctx);
                     mb->u.pb.mvd[L0][part][0][xy] = mvd;
                     for (int blk = 0; blk < (w >> 2) * (h >> 2); blk++) {
                         int blkIdx = (w == 16) * (part * 8 + blk) +
@@ -816,7 +826,7 @@ void CAFUNC(read_mb_pred,
             if ((part == 0 && (type & MB_TYPE_P0L1)) ||
                 (part == 1 && (type & MB_TYPE_P1L1))) {
                 for (int xy = 0; xy < 2; xy++) {
-                    int mvd =  CACALL(read_mvd, mb, L1, xy, pos4x4, sh, ctx);
+                    int mvd =  CACALL(read_mvd, mb, L1, xy, pos4x4, part, 0, sh, ctx);
                     mb->u.pb.mvd[L1][part][0][xy] = mvd;
                     for (int blk = 0; blk < (w >> 2) * (h >> 2); blk++) {
                         int blkIdx = (w == 16) * (part * 8 + blk) +
@@ -881,8 +891,11 @@ void CAFUNC(read_sub_mb_pred,
         if (!(mb->u.pb.sub_mb_info[part].type & SUB_MB_TYPE_DIRECT && IS_B_SLICE(sh->slice_type)) &&
             (mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L0)) {
             for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
+                int subPos4x4 = pos4x4 + (w == 8 && h == 4) * (subPart*4) +
+                                         (w == 4 && h == 8) * (subPart) +
+                                         (w == 4 && h == 4) * (subPart%2 + (subPart/2)*4);
                 for (int xy = 0; xy < 2; xy++) {
-                    int mvd = CACALL(read_mvd, mb, L0, xy, pos4x4, sh, ctx);
+                    int mvd = CACALL(read_mvd, mb, L0, xy, subPos4x4, part, subPart, sh, ctx);
                     mb->u.pb.mvd[L0][part][subPart][xy] = mvd;
                     for (int blk = 0; blk < (w >> 2) * (h >> 2); blk++) {
                         int blkIdx = (w == 8 && h == 8) * map_4x4[map_4x4[pos4x4] + blk] +
@@ -902,8 +915,11 @@ void CAFUNC(read_sub_mb_pred,
         if (!(mb->u.pb.sub_mb_info[part].type & SUB_MB_TYPE_DIRECT && IS_B_SLICE(sh->slice_type)) &&
             (mb->u.pb.sub_mb_info[part].type & MB_TYPE_P0L1)) {
             for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
+                int subPos4x4 = pos4x4 + (w == 8 && h == 4) * (subPart*4) +
+                                         (w == 4 && h == 8) * (subPart) +
+                                         (w == 4 && h == 4) * (subPart%2 + (subPart/2)*4);
                 for (int xy = 0; xy < 2; xy++) {
-                    int mvd = CACALL(read_mvd, mb, L1, xy, pos4x4, sh, ctx);
+                    int mvd = CACALL(read_mvd, mb, L1, xy, subPos4x4, part, subPart, sh, ctx);
                     mb->u.pb.mvd[L1][part][subPart][xy] = mvd;
                     for (int blk = 0; blk < (w >> 2) * (h >> 2); blk++) {
                         int blkIdx = (w == 8 && h == 8) * map_4x4[map_4x4[pos4x4] + blk] +
@@ -1012,10 +1028,11 @@ void CAFUNC(read_macroblock,
     memset(ctx->cr_total_coeffs[mb->mbAddr], 0, 16);
 
     MacroblockMetadata *meta = &ctx->mb_metadata[mb->mbAddr];
-    meta->mb_type    = mb->mb_type;
-    meta->cbp_luma   = cbp_luma;
-    meta->cbp_chroma = cbp_chroma;
-    meta->t_8x8_flag = 0;
+    meta->mb_type     = mb->mb_type;
+    meta->cbp_luma    = cbp_luma;
+    meta->cbp_chroma  = cbp_chroma;
+    meta->t_8x8_flag  = 0;
+    meta->mb_qp_delta = 0;
     mb->t_8x8_flag = 0;
     memset(meta->coded_block_flag, 0, 14 * 16);
     memset(meta->mvd, 0, 2 * 16 * 2 * sizeof(int16_t));
@@ -1023,7 +1040,6 @@ void CAFUNC(read_macroblock,
         ctx->curr_pic->motion_info[mb->mbAddr][blk].mvs[L0].ref_idx = 0;
         ctx->curr_pic->motion_info[mb->mbAddr][blk].mvs[L1].ref_idx = 0;
     }
-
 
 
 
@@ -1048,6 +1064,10 @@ void CAFUNC(read_macroblock,
             mb->p_pic->cr[posC + (i/mb->mb_height_c)*widthC + i%mb->mb_width_c] = read_u(br, 8);
         }
 
+        mb->QPY = mb->mbAddr == sh->first_mb
+                ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52)
+                : ctx->prevQPY;
+
         #if CABAC
             cabac_init_engine(ctx);
         #endif
@@ -1071,6 +1091,7 @@ void CAFUNC(read_macroblock,
                 #if CABAC
                     #if CABAC_LOG
                         fprintf(ctx->log_file, "\nreading transform_8x8_flag\n");
+                      fflush(ctx->log_file);
                     #endif
                     int inc = (mb->has_mb_a && ctx->mb_metadata[mb->mbAddr - 1].t_8x8_flag) +
                               (mb->has_mb_b && ctx->mb_metadata[mb->mbAddr + mb->mb_b_off].t_8x8_flag);
@@ -1105,6 +1126,7 @@ void CAFUNC(read_macroblock,
                 #if CABAC
                     #if CABAC_LOG
                         fprintf(ctx->log_file, "\nreading transform_8x8_flag\n");
+                        fflush(ctx->log_file);
                     #endif
                     int inc = (mb->has_mb_a && ctx->mb_metadata[mb->mbAddr - 1].t_8x8_flag) +
                               (mb->has_mb_b && ctx->mb_metadata[mb->mbAddr + mb->mb_b_off].t_8x8_flag);
@@ -1117,38 +1139,28 @@ void CAFUNC(read_macroblock,
         }
 
         if (cbp_luma > 0 || cbp_chroma > 0 || IS_INTRA16x16(type)) {
-
             mb->mb_qp_delta = CACALL(read_mb_qp_delta, mb, sh, ctx);
-
+            meta->mb_qp_delta = mb->mb_qp_delta;
             mb->QPY = mb->mbAddr == sh->first_mb
-                ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + mb->mb_qp_delta + 52) % 52)
-                : _clip3(0, 51, (ctx->prevMb->QPY + mb->mb_qp_delta + 52) % 52);
-
-
-            int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
-            mb->QPC = QPcTable[qPi];
-
-
-            meta->QPY = mb->QPY;
-            meta->QPC = mb->QPC;
-
+                ? (pps->pic_init_qp + sh->slice_qp_delta + mb->mb_qp_delta + 52) % 52
+                : (ctx->prevQPY + mb->mb_qp_delta + 52) % 52;
 
             CACALL(read_residual, mb, type, mb->t_8x8_flag, 0, 15, cbp_luma, cbp_chroma, sh, ctx);
         } else {
             mb->QPY = mb->mbAddr == sh->first_mb
-                ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52)
-                : ctx->prevMb->QPY;
-
-            int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
-            mb->QPC = QPcTable[qPi];
-
-            meta->QPY = mb->QPY;
-            meta->QPC = mb->QPC;
+                ? (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52
+                : ctx->prevQPY;
         }
     }
 
+    int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
+    mb->QPC = QPcTable[qPi];
 
-    ctx->prevMb = mb;
+    meta->QPY = mb->QPY;
+    meta->QPC = mb->QPC;
+
+    ctx->prevQPY = mb->QPY;
+    memset(ctx->prevQPC, mb->QPC, 2 * sizeof(int8_t));
 }
 
 
@@ -1193,14 +1205,16 @@ void CAFUNC(decode_slice,
             #if CABAC
                 #if CABAC_LOG
                     fprintf(ctx->log_file, "\n\nREADING MACROBLOCK %d (slice %d)\n", currMbAddr, ctx->prf->total_frames);
+                     fflush(ctx->log_file);
                 #endif
                 Macroblock *mb = ctx->currMb;
                 reset_mb(mb, currMbAddr, ctx);
-                derive_macroblock_neighbors(mb, true, sh->first_mb, ctx);
+                derive_macroblock_neighbors(mb, sh->first_mb, ctx);
                 int inc = (mb->has_mb_a && ctx->mb_metadata[currMbAddr - 1].mb_skip_flag == 0) +
                           (mb->has_mb_b && ctx->mb_metadata[currMbAddr + mb->mb_b_off].mb_skip_flag == 0);
                 #if CABAC_LOG
                     fprintf(ctx->log_file, "\nreading mb_skip_flag\n");
+                  fflush(ctx->log_file);
                 #endif
                 mb_skip_flag = IS_P_SLICE(sh->slice_type) ? cabac_get_bit(ctx, 11+inc) : cabac_get_bit(ctx, 24+inc);
                 ctx->mb_metadata[currMbAddr].mb_skip_flag = mb_skip_flag;
@@ -1214,24 +1228,25 @@ void CAFUNC(decode_slice,
                 for (int mbAddr = currMbAddr; mbAddr < currMbAddr + mb_skip_run; mbAddr++) {
                     Macroblock *mb = ctx->currMb;
                     reset_mb(mb, mbAddr, ctx);
-                    derive_macroblock_neighbors(mb, true, sh->first_mb, ctx);
+                    derive_macroblock_neighbors(mb, sh->first_mb, ctx);
             #endif
                     mb->mb_type = MB_TYPE_SKIP;
                     mb->slice_type = sh->slice_type;
                     mb->QPY = mb->mbAddr == sh->first_mb
-                        ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52)
-                        : ctx->prevMb->QPY;
+                        ? (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52
+                        : ctx->prevQPY;
 
                     int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
                     mb->QPC = QPcTable[qPi];
 
                     MacroblockMetadata *meta = &ctx->mb_metadata[mb->mbAddr];
-                    meta->mb_type    = MB_TYPE_SKIP;
-                    meta->QPY        = mb->QPY;
-                    meta->QPC        = mb->QPC;
-                    meta->cbp_luma   = 0;
-                    meta->cbp_chroma = 0;
-                    meta->t_8x8_flag = 0;
+                    meta->mb_type     = MB_TYPE_SKIP;
+                    meta->QPY         = mb->QPY;
+                    meta->QPC         = mb->QPC;
+                    meta->cbp_luma    = 0;
+                    meta->cbp_chroma  = 0;
+                    meta->t_8x8_flag  = 0;
+                    meta->mb_qp_delta = 0;
                     ctx->curr_pic->mb_types[mb->mbAddr] = mb->mb_type;
 
                     // for P_Skip only
@@ -1249,7 +1264,8 @@ void CAFUNC(decode_slice,
                         decode_b_macroblock(mb, ctx->current_slice, ctx);
                     }
 
-                    ctx->prevMb = mb;
+                    ctx->prevQPY = mb->QPY;
+                    memset(ctx->prevQPC, mb->QPC, 2 * sizeof(int8_t));
                     ctx->current_slice->num_mbs++;
                 }
 
@@ -1273,16 +1289,19 @@ void CAFUNC(decode_slice,
             Macroblock *mb = ctx->currMb;
 
             reset_mb(mb, currMbAddr, ctx);
-            derive_macroblock_neighbors(mb, true, sh->first_mb, ctx);
+            derive_macroblock_neighbors(mb, sh->first_mb, ctx);
 
             CACALL(read_macroblock, mb, sh, nal_unit, ctx);
-            if (IS_I_SLICE(sh->slice_type)) {
-                decode_i_macroblock(mb, ctx->current_slice, ctx);
-            } else if (IS_P_SLICE(sh->slice_type)) {
-                decode_p_macroblock(mb, ctx->current_slice, ctx);
-            } else if (IS_B_SLICE(sh->slice_type)) {
-                decode_b_macroblock(mb, ctx->current_slice, ctx);
+            if (!IS_PCM(mb->mb_type)) {
+                if (IS_I_SLICE(sh->slice_type)) {
+                    decode_i_macroblock(mb, ctx->current_slice, ctx);
+                } else if (IS_P_SLICE(sh->slice_type)) {
+                    decode_p_macroblock(mb, ctx->current_slice, ctx);
+                } else if (IS_B_SLICE(sh->slice_type)) {
+                    decode_b_macroblock(mb, ctx->current_slice, ctx);
+                }
             }
+
 
             ctx->current_slice->num_mbs++;
 
@@ -1298,6 +1317,7 @@ void CAFUNC(decode_slice,
             }
             #if CABAC_LOG
                 fprintf(ctx->log_file, "\nreading end_of_slice_flag\n");
+                fflush(ctx->log_file);
             #endif
             int end_of_slice_flag = cabac_get_bit_term(ctx);
             moreDataFlag = !end_of_slice_flag;

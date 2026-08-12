@@ -40,7 +40,7 @@ static ALWAYS_INLINE int32_t rshift_norm(int32_t n, int32_t f, int32_t s) {
 }
 
 static ALWAYS_INLINE int32_t lshift(int32_t n, int16_t qp) {
-    return n << qp;
+    return n * (1 << qp);
 }
 
 

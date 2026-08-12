@@ -103,6 +103,8 @@ typedef struct Undo264Context {
 
     struct Macroblock *prevMb;
     struct Macroblock *currMb;
+    int8_t prevQPY;
+    int8_t prevQPC[2];
 
 
     char *out_path;

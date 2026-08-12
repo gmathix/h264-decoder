@@ -74,6 +74,7 @@ int cabac_get_bit(Undo264Context *ctx, int ctxIdx) {
 
     #if CABAC_LOG
         fprintf(ctx->log_file, "ctxIdx:%d range:%d offset:%d state:%d mps:%d ", ctxIdx, prevrange, prevoff, p, val);
+        fflush(ctx->log_file);
     #endif
 
     cactx->codIRange -= codIRangeLPS;
@@ -89,12 +90,14 @@ int cabac_get_bit(Undo264Context *ctx, int ctxIdx) {
         }
         #if CABAC_LOG
             fprintf(ctx->log_file, "trans:%d ",trans_idx_lps[pStateIdx]);
+            fflush(ctx->log_file);
         #endif
         p_state_idx[ctxIdx] = trans_idx_lps[pStateIdx];
     } else {
         bin = valMPS;
         #if CABAC_LOG
                 fprintf(ctx->log_file, "trans:%d ",trans_idx_mps[pStateIdx]);
+            fflush(ctx->log_file);
         #endif
         p_state_idx[ctxIdx] = trans_idx_mps[pStateIdx];
     }
@@ -106,6 +109,7 @@ int cabac_get_bit(Undo264Context *ctx, int ctxIdx) {
 
     #if CABAC_LOG
         fprintf(ctx->log_file, "   bit:%d\n", bin);
+        fflush(ctx->log_file);
     #endif
 
 
@@ -147,19 +151,22 @@ int cabac_get_bit_bypass(Undo264Context *ctx) {
 
     #if CABAC_LOG
         fprintf(ctx->log_file, "range:%d offset:%d ", cactx->codIRange, cactx->codIOffset);
+        fflush(ctx->log_file);
     #endif
 
     cactx->codIOffset = (cactx->codIOffset << 1) | read_u(ctx->br, 1);
     if (cactx->codIOffset >= cactx->codIRange) {
         cactx->codIOffset -= cactx->codIRange;
         #if CABAC_LOG
-                fprintf(ctx->log_file, "  bit:1\n");
+            fprintf(ctx->log_file, "  bit:1\n");
+            fflush(ctx->log_file);
         #endif
         return 1;
     }
 
     #if CABAC_LOG
         fprintf(ctx->log_file, "  bit:0\n");
+        fflush(ctx->log_file);
     #endif
     return 0;
 }
@@ -171,6 +178,7 @@ int read_coded_block_flag(Macroblock *mb, int blkIdx, int iCbCr, BlockType block
 
     #if CABAC_LOG
         fprintf(ctx->log_file, "\nreading coded_block_flag\n");
+        fflush(ctx->log_file);
     #endif
     if (blockType == CHROMA_AC_LEVEL || blockType == LUMA_LEVEL_8x8) {
         blkIdx = map_4x4[blkIdx * 4];

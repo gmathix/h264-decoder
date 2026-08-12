@@ -241,6 +241,7 @@ static SliceHeader *read_slice_header(NalUnit *nal_unit, Undo264Context *ctx) {
 
 
     /* initialize current picture */
+
     if (sh->first_mb == 0) {
         ctx->curr_pic = pic_pool_get(ctx->pool);
         free(ctx->curr_pic->sh);
@@ -252,8 +253,12 @@ static SliceHeader *read_slice_header(NalUnit *nal_unit, Undo264Context *ctx) {
         ctx->curr_pic->frame_num = sh->frame_num;
         derive_poc(ctx->dpb, ctx->curr_pic);
         printf(" POC : %d\n", ctx->curr_pic->poc);
+    } else {
+        ctx->curr_pic->sh = sh;
     }
     ctx->current_slice->p_pic = ctx->curr_pic;
+
+
 
 
     // init l0 and l1

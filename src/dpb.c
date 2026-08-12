@@ -11,7 +11,7 @@
 #include "util/sliceutil.h"
 
 
-int picture_to_find = -1;
+int picture_to_find = 4;
 
 
 static void print_ref_lists(DPB *dpb, Picture *pic) {
@@ -114,12 +114,12 @@ void derive_poc(DPB *dpb, Picture *pic) {
     }
 }
 
-void decode_pic_nums(DPB *dpb, SliceHeader *sh) {
+void decode_pic_nums(DPB *dpb, int frame_num) {
     for (int i = 0; i < dpb->size; i++) {
         Picture *pic = dpb->slots[i];
         if (pic != NULL) {
             if (pic->dpb_status == SHORT_TERM_REF) {
-                if (pic->frame_num > sh->frame_num)
+                if (pic->frame_num > frame_num)
                     pic->frame_num_wrap = pic->frame_num - dpb->ctx->maxFrameNum;
                 else
                     pic->frame_num_wrap = pic->frame_num;
@@ -174,10 +174,33 @@ int bump(DPB *dpb) {
 }
 
 
+void sliding_window_marking(SliceHeader *sh, DPB *dpb) {
+    int numShortTerm = 0;
+    int numLongTerm = 0;
+    for (int i = 0; i < dpb->size; i++) {
+        if (dpb->slots[i] != NULL && dpb->slots[i]->dpb_status == SHORT_TERM_REF) {
+            numShortTerm++;
+        } else if (dpb->slots[i] != NULL && dpb->slots[i]->dpb_status == LONG_TERM_REF) {
+            numLongTerm++;
+        }
+    }
+    if (numShortTerm + numLongTerm == _max(sh->sps->max_num_ref_frames, 1)) {
+        int minFrameNumWrap = INT32_MAX;
+        int minIdx = 0;
+        for (int i = 0; i < dpb->size; i++) {
+            Picture *pic = dpb->slots[i];
+            if (pic != NULL && pic->dpb_status == SHORT_TERM_REF && pic->frame_num_wrap < minFrameNumWrap) {
+                minFrameNumWrap = pic->frame_num_wrap;
+                minIdx = i;
+            }
+        }
+        dpb->slots[minIdx]->dpb_status = UNUSED_REF;
+    }
+}
 
 void store_picture(DPB *dpb, Picture *pic) {
     // derive_poc(dpb, pic);
-    decode_pic_nums(dpb, pic->sh);
+    decode_pic_nums(dpb, pic->sh->frame_num);
 
     if (pic->sh->idr_pic_flag) {
         for (int i = 0; i < dpb->size; i++) {
@@ -193,32 +216,9 @@ void store_picture(DPB *dpb, Picture *pic) {
         }
     } else {
         if (!pic->sh->adaptive_ref_pic_marking_mode_flag) {
-
-            // sliding window marking, only when storing a reference picture
             if (pic->nal_ref_idc != 0) {
-                int numShortTerm = 0;
-                int numLongTerm = 0;
-                for (int i = 0; i < dpb->size; i++) {
-                    if (dpb->slots[i] != NULL && dpb->slots[i]->dpb_status == SHORT_TERM_REF) {
-                        numShortTerm++;
-                    } else if (dpb->slots[i] != NULL && dpb->slots[i]->dpb_status == LONG_TERM_REF) {
-                        numLongTerm++;
-                    }
-                }
-                if (numShortTerm + numLongTerm == _max(pic->sh->sps->max_num_ref_frames, 1)) {
-                    int minFrameNumWrap = INT32_MAX;
-                    int minIdx = 0;
-                    for (int i = 0; i < dpb->size; i++) {
-                        Picture *pic = dpb->slots[i];
-                        if (pic != NULL && pic->dpb_status == SHORT_TERM_REF && pic->frame_num_wrap < minFrameNumWrap) {
-                            minFrameNumWrap = pic->frame_num_wrap;
-                            minIdx = i;
-                        }
-                    }
-                    dpb->slots[minIdx]->dpb_status = UNUSED_REF;
-                }
+                sliding_window_marking(pic->sh, dpb);
             }
-
         } else {
             // MMCOs
             process_mmcos(pic, dpb->ctx);
@@ -256,7 +256,7 @@ void pad_list_with_empty(DPB *dpb, Picture **list) {
 void init_ref_pic_lists(DPB *dpb, SliceHeader *sh) {
     dpb_empty_ref_lists(dpb);
 
-    decode_pic_nums(dpb, sh);
+    decode_pic_nums(dpb, sh->frame_num);
 
     Picture *curr_pic = dpb->ctx->curr_pic;
 
@@ -518,6 +518,26 @@ void ref_pic_list_modif_lt(Slice *slice, bool is_l0,  int *refIdxLX, int modif_i
 
 /* 7.3.3.3 */
 void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
+
+    SliceHeader *sh = slice->sh;
+
+    // gaps in frame_num
+    if (dpb->prevPic &&
+        sh->frame_num != dpb->prevPic->frame_num &&
+        sh->frame_num != (dpb->prevPic->frame_num + 1) % dpb->ctx->maxFrameNum) {
+
+        if (!sh->sps->gaps_in_frame_num_allowed_flag) {
+            fprintf(stderr, "error: disallowed gap in frame_num detected\n");
+        }
+
+        int curr_frame_num = dpb->prevPic->frame_num;
+        while (curr_frame_num != sh->frame_num) {
+            curr_frame_num = (curr_frame_num + 1) % dpb->ctx->maxFrameNum;
+
+            decode_pic_nums(dpb, curr_frame_num);
+            sliding_window_marking(sh, dpb);
+        }
+    }
 
     if (slice->sh->idr_pic_flag) {
 

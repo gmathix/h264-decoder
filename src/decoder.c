@@ -74,6 +74,8 @@ Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, c
 
 
     ctx->currMb = calloc(1, sizeof(Macroblock));
+    ctx->prevQPY = 0;
+    memset(ctx->prevQPC, 0, 2 * sizeof(int8_t));
 
     ctx->levelScale4x4 = calloc(6, sizeof( int16_t[52][4][4] ));
     ctx->levelScale8x8 = calloc(2, sizeof( int16_t[52][8][8] ));
@@ -157,18 +159,19 @@ int dispatch_nal_unit(NalUnit *nal_unit, Undo264Context *ctx) {
             }
 
             Slice *slice = ctx->current_slice;
-            deblock_slice(ctx->curr_pic, sh, ctx);
+            // deblock_slice(ctx->curr_pic, sh, ctx);
+
+
+            printf("done slice %lu %s(frame_num %d, pic %lu)\n\n",
+                ctx->prf->total_frames, slice->p_pic->sh->idr_pic_flag ? "(IDR) " : "", sh->frame_num, ctx->prf->total_frames);
 
             if (slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs ||
                 slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs+1) { // end of picture
 
                 store_picture(ctx->dpb, ctx->curr_pic);
+                profiler_end_frame(ctx->prf);
             }
 
-            profiler_end_frame(ctx->prf);
-
-            printf("done slice %lu %s(frame_num %d)\n\n",
-                ctx->prf->total_frames-1, slice->p_pic->sh->idr_pic_flag ? "(IDR) " : "", sh->frame_num);
 
 
 

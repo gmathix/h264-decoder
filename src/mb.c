@@ -238,19 +238,6 @@ void init_neighbor_tables(Undo264Context *ctx) {
 
 
 void decode_i_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
-    if (mb->mbAddr == mb_debug && ctx->prf->total_frames == frame_debug) {
-        debugging = true;
-    } else {
-        debugging = false;
-    }
-
-    if (debugging) {
-        fprintf(stderr, "DEBUGGING MB %d type:%s qpy:%d qpc:%d\n",
-            mb->mbAddr, mb_type_to_string(mb->mb_type), mb->QPY, mb->QPC);
-
-    }
-
-
     if (IS_INTRA4x4(mb->mb_type)) {
         for (int i = 0; i < 16; i++) {
             int blkIdx = map_4x4[i];
@@ -278,16 +265,6 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
             }
         }
 
-        if (debugging) {
-            for (int y = 0; y < 16; y++) {
-                for (int x = 0; x < 16; x++) {
-                    printf("%3d ", mb->p_pic->luma[(mb->mb_y*16 + y)*mb->p_pic->widthY + (mb->mb_x*16) + x]);
-                }
-                printf("\n");
-            }
-            printf("\n");
-        }
-
         intra_chroma_pred(mb, ctx);
         transform_chroma(mb, ctx);
     }
@@ -307,13 +284,6 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
 
 
 void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
-
-    if (mb->mbAddr == mb_debug && ctx->prf->total_frames == frame_debug) {
-        debugging = true;
-    } else {
-        debugging = false;
-    }
-
     for (int i = 0; i < 16; i++) {
         ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L0] = (MotionVector) {-1, 0, 0};
         ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L1] = (MotionVector) {-1, 0, 0};
@@ -366,8 +336,9 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
                 uint8_t *scratch_buf_chroma = ctx->mc_scratch_buffers[(subW * subH) / 16 - 1];
 
                 for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
-                    int blkIdx = part * 4 + (subPart % 2 == 1) * (1 * (subW == 4)) + (subPart >= 2) * (2 * (subH == 4));
-                    int pos4x4 = map_4x4[blkIdx];
+                    int pos4x4 = map_4x4[part*4] + (subW == 8 && subH == 4) * (subPart * 4) +
+                                                   (subW == 4 && subH == 8) * (subPart) +
+                                                   (subW == 4 && subH == 4) * (subPart + (subPart/2)*2);
                     MotionVector mv = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
                     derive_pred_weights(mv.ref_idx, 0, true, false, ctx);
 
@@ -381,12 +352,18 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
         if (!IS_SKIP(mb->mb_type)) {
             if (mb->t_8x8_flag) {
                 for (int i = 0; i < 4; i++) {
-                    transform_luma_8x8(mb, mb->QPY, i, ctx);
+                    if ((mb->residuals.cbp_luma >> i) & 1) {
+                        transform_luma_8x8(mb, mb->QPY, i, ctx);
+                    }
                 }
             } else {
-                 for (int i = 0; i < 16; i++) {
-                     transform_luma_4x4(mb, mb->QPY, map_4x4[i], ctx);
-                 }
+                for (int i8x8 = 0; i8x8 < 4; i8x8++) {
+                    if ((mb->residuals.cbp_luma >> i8x8) & 1) {
+                        for (int i4x4 = 0; i4x4 < 4; i4x4++) {
+                            transform_luma_4x4(mb, mb->QPY, map_4x4[i8x8*4+i4x4], ctx);
+                        }
+                    }
+                }
             }
             transform_chroma(mb, ctx);
         }
@@ -395,22 +372,6 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
 
 
 void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
-
-    if (mb->mbAddr == mb_debug && ctx->curr_pic->poc == poc_debug) {
-        debugging = true;
-    } else {
-        debugging = false;
-    }
-
-    if (debugging) {
-        fprintf(stderr, "DEBUGGING MB %d type:%s qpy:%d qpc:%d\n",
-            mb->mbAddr, mb_type_to_string(mb->mb_type), mb->QPY, mb->QPC);
-
-    }
-
-
-
-
     for (int i = 0; i < 16; i++) {
         ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L0] = (MotionVector) {-1, 0, 0};
         ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L1] = (MotionVector) {-1, 0, 0};
@@ -507,9 +468,10 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                 if (l0 + l1 == 1) {
                     int list = l0 ? L0 : L1;
                     for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
-                        int blkIdx = part * 4 + (subPart % 2 == 1) * (1 * (subW == 4)) + (subPart >= 2) * (2 * (subH == 4));
-                        int pos4x4 = map_4x4[blkIdx];
-                        MotionVector mv = ctx->curr_pic->motion_info[mb->mbAddr][map_4x4[blkIdx]].mvs[list];
+                        int pos4x4 = map_4x4[part*4] + (subW == 8 && subH == 4) * (subPart * 4) +
+                                                   (subW == 4 && subH == 8) * (subPart) +
+                                                   (subW == 4 && subH == 4) * (subPart + (subPart/2)*2);
+                        MotionVector mv = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[list];
                         derive_pred_weights(mv.ref_idx, mv.ref_idx, l0, l1, ctx);
 
                         inter_pred_single(mb, pos4x4, mv, list, subW, subH, scratch_buf, ctx);
@@ -517,8 +479,9 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                     }
                 } else if (l0 + l1 == 2) {
                     for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
-                        int blkIdx = part * 4 + (subPart % 2 == 1) * (1 * (subW == 4)) + (subPart >= 2) * (2 * (subH == 4));
-                        int pos4x4 = map_4x4[blkIdx];
+                        int pos4x4 = map_4x4[part*4] + (subW == 8 && subH == 4) * (subPart * 4) +
+                                                   (subW == 4 && subH == 8) * (subPart) +
+                                                   (subW == 4 && subH == 4) * (subPart + (subPart/2)*2);
                         MotionVector mvL0 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
                         MotionVector mvL1 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L1];
                         derive_pred_weights(mvL0.ref_idx, mvL1.ref_idx, true, true, ctx);

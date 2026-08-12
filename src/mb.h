@@ -84,6 +84,7 @@ typedef struct {
  */
 typedef struct MacroblockMetadata {
     int32_t mb_type;
+    int8_t  mb_qp_delta;
     int32_t sub_mb_type[4];
     int8_t  coded_block_flag[14][16];
     int8_t  mb_skip_flag;
@@ -191,6 +192,7 @@ static ALWAYS_INLINE Neighbor derive_c_neighbor_4x4(Macroblock *mb, int blkIdx, 
     n.c      = (Coord){blk_4x4_neighbor_coords[blkIdx][2][1], blk_4x4_neighbor_coords[blkIdx][2][0]};
     n.av     = (mb_c_off == 0 || mb->has_mb_c || ((mb_b_off == 0 || mb->has_mb_b) && blkIdx!=3 && blkIdx!=7 && blkIdx!=11 && blkIdx!=15))
         && n.idx != -1;
+    n.av = (mb_c_off == 0 || (mb_c_off == mb_b_off && mb->has_mb_b) || (mb_c_off == mb_b_off+1 && mb->has_mb_c));
 
     return n;
 }
@@ -259,18 +261,18 @@ static ALWAYS_INLINE Neighbors derive_neighbors_2x2(Macroblock *mb, int blkIdx, 
     return n;
 }
 
-static ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, bool slice_boundary_constraint, int first_mb_in_slice, Undo264Context *ctx) {
+static ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, int first_mb_in_slice, Undo264Context *ctx) {
     int mb_addr = mb->mbAddr;
     int mb_width = ctx->ps->sps->pic_width_in_mbs;
 
-    if (mb_addr % mb_width != 0 && (!slice_boundary_constraint || mb_addr-1 >= first_mb_in_slice)) {
+    if (mb_addr % mb_width != 0 && mb_addr-1 >= first_mb_in_slice) {
         mb->has_mb_a = 1;
         mb->mb_a_off = - 1;
     } else { // top left, can't have A neighbor
         mb->has_mb_a = 0;
         mb->mb_a_off = 0;
     }
-    if (mb_addr / mb_width >= 1 && (!slice_boundary_constraint || mb_addr-mb_width >= first_mb_in_slice)) {
+    if (mb_addr / mb_width >= 1 && mb_addr-mb_width >= first_mb_in_slice) {
         mb->has_mb_b = 1;
         mb->mb_b_off = - mb_width;
     } else { // top row, can't have B neighbor
@@ -278,7 +280,7 @@ static ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, bool slice
         mb->mb_b_off = 0;
     }
     if (mb_addr / mb_width >= 1 &&
-        (mb_addr+1) % mb_width != 0 && (!slice_boundary_constraint || mb_addr-mb_width+1 >= first_mb_in_slice)) {
+        (mb_addr+1) % mb_width != 0 && mb_addr-mb_width+1 >= first_mb_in_slice) {
         mb->has_mb_c = 1;
         mb->mb_c_off = - mb_width + 1;
         } else { // top row or right column, can't have C neighbor
@@ -286,7 +288,7 @@ static ALWAYS_INLINE void derive_macroblock_neighbors(Macroblock *mb, bool slice
             mb->mb_c_off = 0;
         }
     if (mb_addr / mb_width >= 1 &&
-        mb_addr % mb_width != 0 && (!slice_boundary_constraint || mb_addr-mb_width-1 >= first_mb_in_slice)) {
+        mb_addr % mb_width != 0 && mb_addr-mb_width-1 >= first_mb_in_slice) {
         mb->has_mb_d = 1;
         mb->mb_d_off = - mb_width - 1;
         } else { // top row or left column, can't have D neighbor

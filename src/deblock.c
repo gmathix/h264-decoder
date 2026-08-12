@@ -584,20 +584,22 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
     SPS *sps = sh->sps;
     PPS *pps = sh->pps;
 
-    bool disableSliceBoundaries = sh->disable_deblocking_filter_idc == 2;
+
 
     // make dummy mb just for accessing the neighbors afterward
     Macroblock *mb = make_mb(mbAddr, ctx);
-    derive_macroblock_neighbors(mb, disableSliceBoundaries, sh->first_mb, ctx);
+    derive_macroblock_neighbors(mb, sh->first_mb, ctx);
 
-
-    const bool fieldMbInFrame      = 0;
-    const bool filterInternalEdges = sh->disable_deblocking_filter_idc != 1;
-    const bool filterLeftMbEdge    = mb->has_mb_a && filterInternalEdges;
-    const bool filterTopMbEdge     = mb->has_mb_b && filterInternalEdges;
 
     const int widthY     = pic->widthY;
     const int widthC     = pic->widthC;
+
+    const bool disableSliceBoundaries = sh->disable_deblocking_filter_idc == 2;
+    const bool filterInternalEdges    = sh->disable_deblocking_filter_idc != 1;
+    const bool filterLeftMbEdge       = filterInternalEdges && (mb->mbAddr % sps->pic_width_in_mbs != 0) && (!disableSliceBoundaries || mb->has_mb_a);
+    const bool filterTopMbEdge        = filterInternalEdges && (mb->mbAddr >= sps->pic_width_in_mbs) && (!disableSliceBoundaries || mb->has_mb_b);
+
+
     const int luma_pos   = mb->mb_y*16*widthY + mb->mb_x*16;
     const int chroma_pos = mb->mb_y*8*widthC + mb->mb_x*8;
     uint8_t *luma_base_dst = &pic->luma[luma_pos];

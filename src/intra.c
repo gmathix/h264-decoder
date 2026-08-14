@@ -843,6 +843,12 @@ void intra_chroma_pred(Macroblock *mb, Undo264Context *ctx) {
 
     Neighbors n = derive_neighbors_2x2(mb, 0, ctx);
 
+    PPS *pps = ctx->curr_pic->sh->pps;
+
+    n.a.av = n.a.av && !(IS_INTER(ctx->mb_metadata[mb->mbAddr + n.a.mb_off].mb_type) && pps->constrained_intra_pred_flag);
+    n.b.av = n.b.av && !(IS_INTER(ctx->mb_metadata[mb->mbAddr + n.b.mb_off].mb_type) && pps->constrained_intra_pred_flag);
+
+
     if (n.a.av) {
         for (int y = 0; y < 8; y++) {
             left_cb[y+1] = cb[(mb_y*8 + y)*stride + mb_x*8 - 1];

@@ -208,7 +208,7 @@ static ALWAYS_INLINE Neighbor derive_d_neighbor_4x4(Macroblock *mb, int blkIdx, 
     n.mb_off = blk_4x4_mb_neighbors[blkIdx][3];
     n.idx    = blk_4x4_neighbor_idx[blkIdx][3];
     n.c      = (Coord){blk_4x4_neighbor_coords[blkIdx][3][1], blk_4x4_neighbor_coords[blkIdx][3][0]};
-    n.av     = (mb_a_off == 0 || mb->has_mb_a) && (mb_b_off == 0 || mb->has_mb_b);
+    n.av     = (mb_a_off == 0 || mb->has_mb_a) && (mb_b_off == 0 || mb->has_mb_b) && (mb_a_off == 0 || mb_b_off == 0 || mb->has_mb_d);
 
     return n;
 }

@@ -364,37 +364,38 @@ static ALWAYS_INLINE void derive_spatial_direct_mv(Macroblock *mb, int partIdx, 
         directZeroPred = true;
     }
 
-    int list;
-    MotionInfo colocated = get_colocated_mv(mb, partIdx, 0, &list, ctx);
-    MotionVector mvCol = colocated.mvs[list];
+    for (int subPart = 0; subPart < 4; subPart++) {
+        int list;
+        MotionInfo colocated = get_colocated_mv(mb, partIdx, subPart, &list, ctx);
+        MotionVector mvCol = colocated.mvs[list];
+        mvL0 = (MotionVector) {0, 0, 0};
+        mvL1 = (MotionVector) {0, 0, 0};
 
-    bool colZero = (ctx->dpb->lists[L1][1+0]->dpb_status == SHORT_TERM_REF) &&
-                   (mvCol.ref_idx == 0) &&
-                   (mvCol.x >= -1 && mvCol.x <= 1) &&
-                   (mvCol.y >= -1 && mvCol.y <= 1);
+        bool colZero = (ctx->dpb->lists[L1][1+0]->dpb_status == SHORT_TERM_REF) &&
+                       (mvCol.ref_idx == 0) &&
+                       (mvCol.x >= -1 && mvCol.x <= 1) &&
+                       (mvCol.y >= -1 && mvCol.y <= 1);
 
 
 
-    if (!directZeroPred) {
-        if (!(refIdxL0 < 0 || (refIdxL0 == 0 && colZero))) {
-            mvL0 = get_median_mv(mb, refIdxL0, 0, 3, 0, ctx);
+        if (!directZeroPred) {
+            if (!(refIdxL0 < 0 || (refIdxL0 == 0 && colZero))) {
+                mvL0 = get_median_mv(mb, refIdxL0, 0, 3, 0, ctx);
+            }
+            if (!(refIdxL1 < 0 || (refIdxL1 == 0 && colZero))) {
+                mvL1 = get_median_mv(mb, refIdxL1, 0, 3, 1, ctx);
+            }
         }
-        if (!(refIdxL1 < 0 || (refIdxL1 == 0 && colZero))) {
-            mvL1 = get_median_mv(mb, refIdxL1, 0, 3, 1, ctx);
-        }
-    }
-    mvL0.ref_idx = (int8_t) refIdxL0;
-    mvL1.ref_idx = (int8_t) refIdxL1;
+        mvL0.ref_idx = (int8_t) refIdxL0;
+        mvL1.ref_idx = (int8_t) refIdxL1;
 
-    bool predFlagL0 = refIdxL0 >= 0;
-    bool predFlagL1 = refIdxL1 >= 0;
+        bool predFlagL0 = refIdxL0 >= 0;
+        bool predFlagL1 = refIdxL1 >= 0;
 
 
-
-    currPic->pred_flags[mb->mbAddr][L0][partIdx] = predFlagL0;
-    currPic->pred_flags[mb->mbAddr][L1][partIdx] = predFlagL1;
-    for (int i = 0; i < 4; i++) {
-        int pos = map_4x4[partIdx * 4 + i];
+        currPic->pred_flags[mb->mbAddr][L0][partIdx] = predFlagL0;
+        currPic->pred_flags[mb->mbAddr][L1][partIdx] = predFlagL1;
+        int pos = map_4x4[partIdx * 4 + subPart];
         currPic->motion_info[mb->mbAddr][pos].mvs[L0] = mvL0;
         currPic->motion_info[mb->mbAddr][pos].mvs[L1] = mvL1;
         currPic->motion_info[mb->mbAddr][pos].ref_pics[L0] = ctx->dpb->lists[L0][1+mvL0.ref_idx];

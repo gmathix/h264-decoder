@@ -8,14 +8,31 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define RES_FULLHD   0
+#define RES_QCIF     1
+#define RES_CIF      2
+
+#define RES_WIDTH(res)   \
+    res == RES_FULLHD ? 1920 : \
+    res == RES_QCIF   ?  352 : \
+    res == RES_CIF    ?  176 : \
+    0
+#define RES_HEIGHT(res)  \
+    res == RES_FULLHD ? 1080 : \
+    res == RES_QCIF   ?  352 : \
+    res == RES_CIF    ?  144 : \
+    0
+
+
 
 #define ONLY_LUMA     0
 #define ONLY_CHROMA   0
 #define START_FRAME   0
 #define INPUT_IS_GRAY 0
+#define CURR_RESOLUTION     RES_CIF
 
-const int WIDTH = 1920;
-const int HEIGHT = 1080;
+const int WIDTH = RES_WIDTH(CURR_RESOLUTION);
+const int HEIGHT = RES_HEIGHT(CURR_RESOLUTION);
 
 const int Y_SIZE = WIDTH * HEIGHT;
 const int U_SIZE = WIDTH/2 * HEIGHT/2;
@@ -55,7 +72,7 @@ void print_mb(uint8_t *frame, int blk_size, int mb_idx, int frame_stride)
 
 
 int main(void) {
-    char *ref_path = "../videos/dec_ref/horizon5-jm.yuv";
+    char *ref_path = "../videos/AVCv1/CAPCM1_Sand_E/CAPCM1_Sand_E_ffmpeg.yuv";
     char *test_path = "../videos/output_inter.yuv";
 
     FILE *ref_file = fopen(ref_path, "rb");

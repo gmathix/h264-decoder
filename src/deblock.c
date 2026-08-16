@@ -52,12 +52,11 @@ const uint8_t treshold_table[3][52] = {
 
 
 
-static ALWAYS_INLINE bool same_ref_pics(int refL0_0, int refL0_1, int refL1_0, int refL1_1, Undo264Context *ctx) {
+static ALWAYS_INLINE bool same_ref_pics(
+    const Picture *picL0_0, const Picture *picL1_0,
+    const Picture *picL0_1, const Picture *picL1_1) {
+
     // when refLX_X is -1 (no ref) we just get EMPTY_PIC which has dpb_pic_id = 0
-    Picture *picL0_0 = ctx->dpb->lists[L0][1+refL0_0];
-    Picture *picL0_1 = ctx->dpb->lists[L0][1+refL0_1];
-    Picture *picL1_0 = ctx->dpb->lists[L1][1+refL1_0];
-    Picture *picL1_1 = ctx->dpb->lists[L1][1+refL1_1];
     int hash0 = ((picL0_0->dpb_pic_id != 0) * (1 << picL0_0->dpb_pic_id)) |
                 ((picL1_0->dpb_pic_id != 0) * (1 << picL1_0->dpb_pic_id));
     int hash1 = ((picL0_1->dpb_pic_id != 0) * (1 << picL0_1->dpb_pic_id)) |
@@ -101,10 +100,16 @@ void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int b
         int idx_8x8   = blkIdx8x8   + (i/2)*blkAdd8x8;
         int idx_n_8x8 = blkIdx8x8N  + (i/2)*blkAdd8x8;
 
-        MotionVector mvL0_0 = ctx->curr_pic->motion_info[mbAddr][idx].mvs[0];
-        MotionVector mvL0_1 = ctx->curr_pic->motion_info[mbAddrN][idx_n].mvs[0];
-        MotionVector mvL1_0 = ctx->curr_pic->motion_info[mbAddr][idx].mvs[1];
-        MotionVector mvL1_1 = ctx->curr_pic->motion_info[mbAddrN][idx_n].mvs[1];
+
+        const MotionVector mvL0_0 = ctx->curr_pic->motion_info[mbAddr][idx].mvs[L0];
+        const MotionVector mvL1_0 = ctx->curr_pic->motion_info[mbAddr][idx].mvs[L1];
+        const Picture *picL0_0 = ctx->curr_pic->motion_info[mbAddr][idx].ref_pics[L0];
+        const Picture *picL1_0 = ctx->curr_pic->motion_info[mbAddr][idx].ref_pics[L1];
+
+        const MotionVector mvL0_1 = ctx->curr_pic->motion_info[mbAddrN][idx_n].mvs[L0];
+        const MotionVector mvL1_1 = ctx->curr_pic->motion_info[mbAddrN][idx_n].mvs[L1];
+        const Picture *picL0_1 = ctx->curr_pic->motion_info[mbAddrN][idx_n].ref_pics[L0];
+        const Picture *picL1_1 = ctx->curr_pic->motion_info[mbAddrN][idx_n].ref_pics[L1];
 
         /*
          * bS = 4
@@ -132,16 +137,16 @@ void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int b
         /* bS = 1
          * <=> too much writing, 8.7.2.1
          */
-    	int flag0_0 = ctx->curr_pic->pred_flags[mbAddr][0][idx_8x8];
-    	int flag1_0 = ctx->curr_pic->pred_flags[mbAddr][1][idx_8x8];
-    	int flag0_1 = ctx->curr_pic->pred_flags[mbAddrN][0][idx_n_8x8];
-    	int flag1_1 = ctx->curr_pic->pred_flags[mbAddrN][1][idx_n_8x8];
-        int nbMV0   = flag0_0 + flag1_0;
-        int nbMV1   = flag0_1 + flag1_1;
-        MotionVector singleMV0 = flag0_0 ? mvL0_0 : mvL1_0;
-        MotionVector singleMV1 = flag0_1 ? mvL0_1 : mvL1_1;
+    	int flagL0_0 = ctx->curr_pic->pred_flags[mbAddr][L0][idx_8x8];
+    	int flagL1_0 = ctx->curr_pic->pred_flags[mbAddr][L1][idx_8x8];
+    	int flagL0_1 = ctx->curr_pic->pred_flags[mbAddrN][L0][idx_n_8x8];
+    	int flagL1_1 = ctx->curr_pic->pred_flags[mbAddrN][L1][idx_n_8x8];
+        int nbMV0   = flagL0_0 + flagL1_0;
+        int nbMV1   = flagL0_1 + flagL1_1;
+        MotionVector singleMV0 = flagL0_0 ? mvL0_0 : mvL1_0;
+        MotionVector singleMV1 = flagL0_1 ? mvL0_1 : mvL1_1;
 
-        bool same_pics = same_ref_pics(mvL0_0.ref_idx, mvL0_1.ref_idx, mvL1_0.ref_idx, mvL1_1.ref_idx, ctx);
+        bool same_pics = same_ref_pics(picL0_0, picL1_0, picL0_1, picL1_1);
 
         curr_bS += ((curr_bS == 0) &&
         	(
@@ -167,7 +172,11 @@ void derive_edge_treshold_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t bS
     uint8_t samples[24][24], Undo264Context *ctx) {
 
 
-    int qpAv = (ctx->mb_metadata[mbAddr].QPY + ctx->mb_metadata[mbAddrN].QPY + 1) >> 1;
+    MacroblockMetadata *meta0 = &ctx->mb_metadata[mbAddr];
+    MacroblockMetadata *meta1 = &ctx->mb_metadata[mbAddrN];
+    int qp0 = !IS_PCM(meta0->mb_type) * meta0->QPY;
+    int qp1 = !IS_PCM(meta1->mb_type) * meta1->QPY;
+    int qpAv = (qp0 + qp1 + 1) >> 1;
 
 
 
@@ -204,8 +213,11 @@ void derive_edge_treshold_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t 
     uint8_t *alpha, uint8_t *beta, int filter_flags[2], uint8_t *indexA,
     uint8_t samples[16][16], Undo264Context *ctx) {
 
-
-    int qpAv = (ctx->mb_metadata[mbAddr].QPC + ctx->mb_metadata[mbAddrN].QPC + 1) >> 1;
+    MacroblockMetadata *meta0 = &ctx->mb_metadata[mbAddr];
+    MacroblockMetadata *meta1 = &ctx->mb_metadata[mbAddrN];
+    int qp0 = !IS_PCM(meta0->mb_type) * meta0->QPC;
+    int qp1 = !IS_PCM(meta1->mb_type) * meta1->QPC;
+    int qpAv = (qp0 + qp1 + 1) >> 1;
 
 
 
@@ -593,11 +605,12 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
 
     const int widthY     = pic->widthY;
     const int widthC     = pic->widthC;
+    const int mbWidth    = sps->pic_width_in_mbs;
 
     const bool disableSliceBoundaries = sh->disable_deblocking_filter_idc == 2;
     const bool filterInternalEdges    = sh->disable_deblocking_filter_idc != 1;
-    const bool filterLeftMbEdge       = filterInternalEdges && (mb->mbAddr % sps->pic_width_in_mbs != 0) && (!disableSliceBoundaries || mb->has_mb_a);
-    const bool filterTopMbEdge        = filterInternalEdges && (mb->mbAddr >= sps->pic_width_in_mbs) && (!disableSliceBoundaries || mb->has_mb_b);
+    const bool filterLeftMbEdge       = filterInternalEdges && (mb->mbAddr % mbWidth != 0) && (!disableSliceBoundaries || mb->has_mb_a);
+    const bool filterTopMbEdge        = filterInternalEdges && (mb->mbAddr >= mbWidth) && (!disableSliceBoundaries || mb->has_mb_b);
 
 
     const int luma_pos   = mb->mb_y*16*widthY + mb->mb_x*16;
@@ -617,13 +630,13 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
 
     if (filterLeftMbEdge) {
         // x = 0
-        derive_edge_bS_list(mbAddr, mbAddr + mb->mb_a_off,
+        derive_edge_bS_list(mbAddr, mbAddr - 1,
             0, 3, 0, 1,
             true, true, bS_list, ctx);
 
-        filter_col_luma(pic, mbAddr, mbAddr + mb->mb_a_off, luma_base_dst, 0, luma_block, bS_list, widthY, ctx);
-        filter_col_chroma(pic, mbAddr, mbAddr + mb->mb_a_off, cb_base_dst, 0, cb_block, bS_list, widthC, ctx);
-        filter_col_chroma(pic, mbAddr, mbAddr + mb->mb_a_off, cr_base_dst, 0, cr_block, bS_list, widthC, ctx);
+        filter_col_luma(pic, mbAddr, mbAddr - 1, luma_base_dst, 0, luma_block, bS_list, widthY, ctx);
+        filter_col_chroma(pic, mbAddr, mbAddr - 1, cb_base_dst, 0, cb_block, bS_list, widthC, ctx);
+        filter_col_chroma(pic, mbAddr, mbAddr - 1, cr_base_dst, 0, cr_block, bS_list, widthC, ctx);
     }
     if (filterInternalEdges) {
 
@@ -658,14 +671,14 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
 
     if (filterTopMbEdge) {
         // y = 0
-        derive_edge_bS_list(mbAddr, mbAddr + mb->mb_b_off,
+        derive_edge_bS_list(mbAddr, mbAddr - mbWidth,
             0, 12, 0, 2,
             true, false, bS_list, ctx);
 
 
-        filter_row_luma(pic, mbAddr, mbAddr + mb->mb_b_off, luma_base_dst, 0, luma_block, bS_list, widthY, ctx);
-        filter_row_chroma(pic, mbAddr, mbAddr + mb->mb_b_off, cb_base_dst, 0, cb_block, bS_list, widthC, ctx);
-        filter_row_chroma(pic, mbAddr, mbAddr + mb->mb_b_off, cr_base_dst, 0, cr_block, bS_list, widthC, ctx);
+        filter_row_luma(pic, mbAddr, mbAddr - mbWidth, luma_base_dst, 0, luma_block, bS_list, widthY, ctx);
+        filter_row_chroma(pic, mbAddr, mbAddr - mbWidth, cb_base_dst, 0, cb_block, bS_list, widthC, ctx);
+        filter_row_chroma(pic, mbAddr, mbAddr - mbWidth, cr_base_dst, 0, cr_block, bS_list, widthC, ctx);
     }
     if (filterInternalEdges) {
 

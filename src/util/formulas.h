@@ -5,13 +5,9 @@
 #ifndef TOY_H264_FORMULAS_H
 #define TOY_H264_FORMULAS_H
 
-#include "../global.h"
 #include <stdint.h>
 #include <math.h>
 #include <stdio.h>
-
-#include "../decoder.h"
-#include "../ps.h"
 
 
 

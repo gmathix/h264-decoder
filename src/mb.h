@@ -323,6 +323,19 @@ static ALWAYS_INLINE void reset_mb(Macroblock *mb, int mbAddr, Undo264Context *c
 }
 
 
+static void reset_motion_info(int mbAddr, Undo264Context *ctx) {
+    MotionInfo *motion_info = ctx->curr_pic->motion_info[mbAddr];
+    for (int i = 0; i < 16; i++) {
+        motion_info[i].mvs[L0] = (MotionVector) {-1, 0, 0};
+        motion_info[i].mvs[L1] = (MotionVector) {-1, 0, 0};
+        motion_info[i].ref_pics[L0] = &EMPTY_PICTURE;
+        motion_info[i].ref_pics[L1] = &EMPTY_PICTURE;
+    }
+    memset(&ctx->curr_pic->pred_flags[mbAddr][L0][0], false, 4);
+    memset(&ctx->curr_pic->pred_flags[mbAddr][L1][0], false, 4);
+}
+
+
 void decode_i_macroblock(Macroblock *mb, struct Slice *slice, Undo264Context *ctx);
 void decode_p_macroblock(Macroblock *mb, struct Slice *slice, Undo264Context *ctx);
 void decode_b_macroblock(Macroblock *mb, struct Slice *slice, Undo264Context *ctx);

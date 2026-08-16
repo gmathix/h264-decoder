@@ -1068,12 +1068,7 @@ void CAFUNC(read_macroblock,
                 ? _clip3(0, 51, (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52)
                 : ctx->prevQPY;
 
-        for (int i = 0; i < 16; i++) {
-            ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L0] = (MotionVector) {-1, 0, 0};
-            ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L1] = (MotionVector) {-1, 0, 0};
-        }
-        memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L0][0], false, 4);
-        memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L1][0], false, 4);
+        reset_motion_info(mb->mbAddr, ctx);
 
         #if CABAC
             cabac_init_engine(ctx);

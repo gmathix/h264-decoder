@@ -358,9 +358,13 @@ void residual_block_cabac  (Macroblock *mb, int blkIdx, int iCbCr, BlockType blo
     // store coded_block_flag
     if (blockType == LUMA_INTRA_16x16_DC_LEVEL || blockType == CB_INTRA_16x16_DC_LEVEL || blockType == CR_INTRA_16x16_DC_LEVEL) {
         memset(ctx->mb_metadata[mb->mbAddr].coded_block_flag[blockType], codedBlockFlag, 16);
+        if (blockType == LUMA_INTRA_16x16_DC_LEVEL) memset(ctx->luma_total_coeffs[mb->mbAddr], codedBlockFlag, 16);
     } else if (blockType == LUMA_INTRA_16x16_AC_LEVEL || blockType == LUMA_LEVEL_4x4) {
         ctx->mb_metadata[mb->mbAddr].coded_block_flag[LUMA_INTRA_16x16_AC_LEVEL][blkIdx] = codedBlockFlag;
         ctx->mb_metadata[mb->mbAddr].coded_block_flag[LUMA_LEVEL_4x4][blkIdx] = codedBlockFlag;
+
+        // exclusively for the deblocking filter here, just say that this block has nonzero coeffs or not
+        if (blockType == LUMA_LEVEL_4x4) ctx->luma_total_coeffs[mb->mbAddr][blkIdx] = codedBlockFlag;
     } else if (blockType == CHROMA_DC_LEVEL) {
         for (int i = 0; i < 16; i++) {
             ctx->mb_metadata[mb->mbAddr].coded_block_flag[blockType][i] |= codedBlockFlag << iCbCr;
@@ -368,6 +372,7 @@ void residual_block_cabac  (Macroblock *mb, int blkIdx, int iCbCr, BlockType blo
     } else if (blockType == CHROMA_AC_LEVEL || blockType == LUMA_LEVEL_8x8) {
         for (int i = 0; i < 4; i++) {
             ctx->mb_metadata[mb->mbAddr].coded_block_flag[blockType][map_4x4[blkIdx*4] + i + (i >= 2)*2] |= codedBlockFlag << iCbCr;
+            if (blockType == LUMA_LEVEL_8x8) ctx->luma_total_coeffs[mb->mbAddr][map_4x4[blkIdx*4] + i + (i >= 2)*2] = codedBlockFlag;
         }
     } else {
         // the rest belongs to 4:2:2 or 4:4:4 stuff so not planning to implement them yet

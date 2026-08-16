@@ -17,7 +17,7 @@
 #include "util/expgolomb.h"
 #include "util/mbutil.h"
 #include "util/predutil.h"
-
+#include "util/logger.h"
 
 /* table 7-11 */
 const I_MbInfo i_mb_type_info[26] = {
@@ -270,13 +270,7 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
     }
 
 
-
-    for (int i = 0; i < 16; i++) {
-        ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L0] = (MotionVector) {-1, 0, 0};
-        ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L1] = (MotionVector) {-1, 0, 0};
-    }
-    memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L0][0], false, 4);
-    memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L1][0], false, 4);
+    reset_motion_info(mb->mbAddr, ctx);
 }
 
 
@@ -284,12 +278,16 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
 
 
 void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
-    for (int i = 0; i < 16; i++) {
-        ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L0] = (MotionVector) {-1, 0, 0};
-        ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L1] = (MotionVector) {-1, 0, 0};
+    reset_motion_info(mb->mbAddr, ctx);
+
+
+    if (ctx->curr_pic->poc == poc_debug && mb->mbAddr == mb_debug) {
+        debugging = true;
+    } else {
+        debugging = false;
     }
-    memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L0][0], false, 4);
-    memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L1][0], false, 4);
+
+
 
     if (IS_INTRA(mb->mb_type)) {
         decode_i_macroblock(mb, slice, ctx);
@@ -372,12 +370,15 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
 
 
 void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
-    for (int i = 0; i < 16; i++) {
-        ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L0] = (MotionVector) {-1, 0, 0};
-        ctx->curr_pic->motion_info[mb->mbAddr][i].mvs[L1] = (MotionVector) {-1, 0, 0};
+    reset_motion_info(mb->mbAddr, ctx);
+
+
+    if (ctx->curr_pic->poc == poc_debug && mb->mbAddr == mb_debug) {
+        debugging = true;
+    } else {
+        debugging = false;
     }
-    memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L0][0], false, 4);
-    memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L1][0], false, 4);
+
 
 
 
@@ -385,7 +386,9 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
         decode_i_macroblock(mb, slice, ctx);
     } else {
         if (IS_SKIP(mb->mb_type) || IS_DIRECT(mb->mb_type)) {
-            for (int part = 0; part < 4; part++) derive_direct_mv(mb, part, ctx);
+            for (int part = 0; part < 4; part++) {
+                derive_direct_mv(mb, part, ctx);
+            }
         } else if (IS_16x16(mb->mb_type)) {
             if (mb->mb_type & MB_TYPE_P0L0) derive_16x16_mv(mb, L0, ctx);
             if (mb->mb_type & MB_TYPE_P0L1) derive_16x16_mv(mb, L1, ctx);
@@ -439,11 +442,19 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                     MotionVector mv = pic->motion_info[mb->mbAddr][pos4x4].mvs[list];
                     derive_pred_weights(mv.ref_idx, mv.ref_idx, l0, l1, ctx);
 
+                    if (debugging) {
+                        printf("part %d   mvL%d:(%d,%d,%d)\n", part, list, mv.ref_idx, mv.x, mv.y);
+                    }
+
                     inter_pred_single(mb, pos4x4, mv, list, w, h, scratch_buf, ctx);
                     inter_pred_chroma_single(mb, pos4x4, mv, list, w / 2, h / 2, scratch_buf_chroma, ctx);
                 } else if (l0 + l1 == 2) {
                     MotionVector mvL0 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
                     MotionVector mvL1 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L1];
+
+                    if (debugging) {
+                        printf("part %d   mvL0:(%d,%d,%d) mvL1:(%d,%d,%d)\n", part, mvL0.ref_idx, mvL0.x, mvL0.y, mvL1.ref_idx, mvL1.x, mvL1.y);
+                    }
 
                     derive_pred_weights(mvL0.ref_idx, mvL1.ref_idx, true, true, ctx);
 
@@ -473,6 +484,9 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                                                    (subW == 4 && subH == 4) * (subPart + (subPart/2)*2);
                         MotionVector mv = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[list];
                         derive_pred_weights(mv.ref_idx, mv.ref_idx, l0, l1, ctx);
+                        if (debugging) {
+                            printf("part %d   mvL%d:(%d,%d,%d)\n", part, list, mv.ref_idx, mv.x, mv.y);
+                        }
 
                         inter_pred_single(mb, pos4x4, mv, list, subW, subH, scratch_buf, ctx);
                         inter_pred_chroma_single(mb, pos4x4, mv, list, subW / 2, subH / 2, scratch_buf_chroma, ctx);
@@ -486,12 +500,28 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                         MotionVector mvL1 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L1];
                         derive_pred_weights(mvL0.ref_idx, mvL1.ref_idx, true, true, ctx);
 
+                        if (debugging) {
+                            printf("part %d   mvL0:(%d,%d,%d) mvL1:(%d,%d,%d)\n", part, mvL0.ref_idx, mvL0.x, mvL0.y, mvL1.ref_idx, mvL1.x, mvL1.y);
+                        }
+
                         inter_pred_bi(mb, pos4x4, mvL0, mvL1, subW, subH, scratch_buf, temp_bi_buf, ctx);
                         inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, subW / 2, subH / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
                     }
                 }
             }
         }
+
+        // if (debugging) {
+        //     printf("l0 ref mb: \n");
+        //     print_macroblock(ctx->dpb->lists[L0][1], mb->mbAddr, 0);
+        //
+        //     printf("\nl1 ref mb: \n");
+        //     print_macroblock(ctx->dpb->lists[L1][1], mb->mbAddr, 0);
+        //
+        //     printf("\ndecoded mb: \n");
+        //     print_macroblock(ctx->curr_pic, mb->mbAddr, 0);
+        // }
+
 
 
         if (!IS_SKIP(mb->mb_type)) {

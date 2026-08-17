@@ -13,9 +13,20 @@
 #include "ps.h"
 
 typedef struct Picture {
+
+	uint8_t   *luma;
+	uint8_t   *cb;
+	uint8_t   *cr;
+
+	MotionInfo   (*motion_info) [16];
+	int *mb_types;
+	bool (*pred_flags) [2][4];
+
+
     int nal_ref_idc;
 
 
+	int  non_existing;
     int  frame_num_offset;
     int  frame_num_wrap;
     int  frame_num;
@@ -51,15 +62,10 @@ typedef struct Picture {
 	int widthCropC, heightCropC;
 
 
-    /* metadata used for B slices prediction */
-    int *mb_types;
-    MotionInfo   (*motion_info) [16];
-    bool (*pred_flags) [2][4];
 
 
-    uint8_t   *luma;
-    uint8_t   *cb;
-    uint8_t   *cr;
+
+
 } Picture ;
 
 extern const Picture EMPTY_PICTURE;
@@ -67,8 +73,8 @@ extern const Picture EMPTY_PICTURE;
 
 
 typedef struct PicturePool {
-	Picture *slots[MAX_DPB_SIZE + 2];
-	bool     available[MAX_DPB_SIZE + 2];
+	Picture *slots[2 * MAX_DPB_SIZE ];
+	bool     available[2 * MAX_DPB_SIZE ];
 	int      nb_available;
 	int      size;
 } PicturePool ;

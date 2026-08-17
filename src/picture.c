@@ -92,7 +92,7 @@ void pic_pool_init(PicturePool *pool, Undo264Context *ctx) {
     SPS *sps = ctx->ps->sps;
     int num_mbs = sps->pic_width_in_mbs * sps->pic_height_in_map_units;
 
-    pool->size = MAX_DPB_SIZE + 2;
+    pool->size = 2 * MAX_DPB_SIZE;
     pool->nb_available = pool->size;
 
     if (!ctx->mb_metadata_initialized || num_mbs != ctx->num_mbs) {

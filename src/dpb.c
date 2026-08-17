@@ -11,7 +11,7 @@
 #include "util/sliceutil.h"
 
 
-int picture_to_find = 4;
+int picture_to_find = 70;
 
 
 static void print_ref_lists(DPB *dpb, Picture *pic) {
@@ -131,30 +131,37 @@ void decode_pic_nums(DPB *dpb, int frame_num) {
     }
 }
 
+void output_pic(int idx, DPB *dpb) {
+    Picture *pic = dpb->slots[idx];
+
+    if (dpb->pictures_dumped == picture_to_find) {
+        // stderr to see it better
+        fprintf(stderr, "Picture %d : POC:%d frame_num:%d\n", picture_to_find, pic->poc, pic->frame_num);
+    }
+
+    if (!pic->non_existing)
+        dump_picture(pic, dpb->ctx);
+    pic->is_output = true;
+
+    pic_pool_getback(pic, dpb->ctx->pool);
+    dpb->slots[idx] = NULL;
+    dpb->fullness--;
+    dpb->pictures_dumped++;
+}
+
 int output_oldest_pic(DPB *dpb) {
     int min_poc = INT32_MAX;
     int min_idx = -1;
     for (int i = 0; i < dpb->size; i++) {
         Picture *pic = dpb->slots[i];
-        if (pic != NULL && pic->poc < min_poc && !pic->is_output) {
+        if (pic != NULL && pic->poc < min_poc && !pic->is_output && !pic->non_existing) {
+
             min_poc = pic->poc;
             min_idx = i;
         }
     }
     if (min_idx != -1) {
-        Picture *old_pic = dpb->slots[min_idx];
-
-        if (dpb->pictures_dumped == picture_to_find) {
-            // stderr to see it better
-            fprintf(stderr, "Picture %d : POC:%d frame_num:%d\n", picture_to_find, old_pic->poc, old_pic->frame_num);
-        }
-
-        dump_picture(old_pic, dpb->ctx);
-        old_pic->is_output = true;
-        pic_pool_getback(old_pic, dpb->ctx->pool);
-        dpb->slots[min_idx] = NULL;
-        dpb->fullness--;
-        dpb->pictures_dumped++;
+        output_pic(min_idx, dpb);
     }
 
     return min_idx;
@@ -167,14 +174,11 @@ int bump(DPB *dpb) {
             return i;
         }
     }
-    while (dpb->fullness == dpb->size) {
-        return output_oldest_pic(dpb);
-    }
-    return 0;
+    return output_oldest_pic(dpb);
 }
 
 
-void sliding_window_marking(SliceHeader *sh, DPB *dpb) {
+int sliding_window_marking(SliceHeader *sh, DPB *dpb) {
     int numShortTerm = 0;
     int numLongTerm = 0;
     for (int i = 0; i < dpb->size; i++) {
@@ -195,7 +199,9 @@ void sliding_window_marking(SliceHeader *sh, DPB *dpb) {
             }
         }
         dpb->slots[minIdx]->dpb_status = UNUSED_REF;
+        return minIdx;
     }
+    return -1;
 }
 
 void store_picture(DPB *dpb, Picture *pic) {
@@ -205,6 +211,11 @@ void store_picture(DPB *dpb, Picture *pic) {
     if (pic->sh->idr_pic_flag) {
         for (int i = 0; i < dpb->size; i++) {
             output_oldest_pic(dpb);
+        }
+        for (int i = 0; i < dpb->size; i++) {
+            if (dpb->slots[i] && dpb->slots[i]->non_existing) {
+                output_pic(i, dpb);
+            }
         }
         dpb->fullness = 0;
         if (pic->sh->long_term_reference_flag) {
@@ -217,7 +228,7 @@ void store_picture(DPB *dpb, Picture *pic) {
     } else {
         if (!pic->sh->adaptive_ref_pic_marking_mode_flag) {
             if (pic->nal_ref_idc != 0) {
-                sliding_window_marking(pic->sh, dpb);
+                int idx = sliding_window_marking(pic->sh, dpb);
             }
         } else {
             // MMCOs
@@ -232,8 +243,21 @@ void store_picture(DPB *dpb, Picture *pic) {
 
 
     pic->dpb_pic_id = dpb->curr_pic_dpb_id;
-    dpb->curr_pic_dpb_id = (dpb->curr_pic_dpb_id + 1) % (MAX_DPB_SIZE+1); // 0 reserved for EMPTY_PICTURE
-    if (dpb->curr_pic_dpb_id == 0) dpb->curr_pic_dpb_id = 1;
+    while (1) {
+        dpb->curr_pic_dpb_id = (dpb->curr_pic_dpb_id + 1) % (MAX_DPB_SIZE+2); // 0 reserved for EMPTY_PICTURE
+        if (dpb->curr_pic_dpb_id == 0) dpb->curr_pic_dpb_id = 1;
+
+        // check that no other picture has this id (could happen with long-term ref frames)
+        int match = 0;
+        for (int i = 0; i < dpb->size; i++) {
+            if (dpb->slots[i] && dpb->slots[i]->dpb_pic_id == pic->dpb_pic_id && dpb->slots[i] != pic) {
+                pic->dpb_pic_id = dpb->curr_pic_dpb_id;
+                match = 1;
+            }
+        }
+        if (!match) break;
+    }
+
 
 
     int index = bump(dpb);
@@ -489,7 +513,8 @@ void ref_pic_list_modif_st(Slice *slice, bool is_l0, int *refIdxLX, int modif_id
     int nIdx = *refIdxLX;
     for (int cIdx = *refIdxLX; cIdx <= num_ref_frames_active; cIdx++) {
         if (picNum(dpb, lX, cIdx, maxFrameNum) != picNumLX) {
-            lX[1+nIdx++] = lX[1+cIdx];
+            lX[1+nIdx] = lX[1+cIdx];
+            nIdx++;
         }
     }
 }
@@ -522,21 +547,53 @@ void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
     SliceHeader *sh = slice->sh;
 
     // gaps in frame_num
-    if (dpb->prevPic &&
-        sh->frame_num != dpb->prevPic->frame_num &&
-        sh->frame_num != (dpb->prevPic->frame_num + 1) % dpb->ctx->maxFrameNum) {
+    if (dpb->prevPic
+        && sh->frame_num != dpb->prevPic->frame_num
+        && sh->frame_num != (dpb->prevPic->frame_num + 1) % dpb->ctx->maxFrameNum
+        && !sh->idr_pic_flag) {
 
         if (!sh->sps->gaps_in_frame_num_allowed_flag) {
-            fprintf(stderr, "error: disallowed gap in frame_num detected\n");
+            printf("warning: disallowed gap in frame_num detected\n");
         }
 
         int curr_frame_num = dpb->prevPic->frame_num;
-        while (curr_frame_num != sh->frame_num) {
+        do {
             curr_frame_num = (curr_frame_num + 1) % dpb->ctx->maxFrameNum;
 
+            int old_idx = -1;
+            do {
+                old_idx = output_oldest_pic(dpb);
+            } while (old_idx != -1);
+
             decode_pic_nums(dpb, curr_frame_num);
-            sliding_window_marking(sh, dpb);
-        }
+            int idx = sliding_window_marking(sh, dpb);
+            if (idx != -1) {
+                Picture *pic = dpb->slots[idx];
+                if (pic->non_existing || pic->poc <= slice->p_pic->poc || !pic->is_output) {
+                    output_pic(idx, dpb);
+                }
+            }
+
+
+            Picture *nonExistingPic = pic_pool_get(dpb->ctx->pool);
+            nonExistingPic->frame_num = curr_frame_num;
+            nonExistingPic->pic_num = curr_frame_num;
+            nonExistingPic->frame_num_wrap = curr_frame_num;
+            nonExistingPic->non_existing = true;
+            nonExistingPic->dpb_status = SHORT_TERM_REF;
+            nonExistingPic->is_output = false;
+
+
+            if (idx == -1) {
+                idx = bump(dpb);
+            }
+            // printf("%d\n", curr_frame_num);
+
+            dpb->slots[idx] = nonExistingPic;
+            dpb->prevPic = nonExistingPic;
+            dpb->fullness++;
+        } while (curr_frame_num != sh->frame_num &&
+            ((curr_frame_num + 1) % dpb->ctx->maxFrameNum) != sh->frame_num);
     }
 
     if (slice->sh->idr_pic_flag) {
@@ -549,6 +606,7 @@ void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
         if (slice->sh->adaptive_ref_pic_marking_mode_flag) {
             /* passive parsing. actual parsing and operations will be done when picture is stored */
             slice->sh->mmco_position_bits = br->byte_pos*8 + br->bit_pos;
+
             uint32_t mmco = 0;
             do {
                 mmco = read_ue(br);

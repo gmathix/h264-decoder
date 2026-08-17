@@ -165,14 +165,14 @@ static DPB *make_dbp(Undo264Context *ctx) {
 }
 
 static inline int picNum(DPB *dpb, Picture **lX, int idx, int maxPicNum) {
-    if (lX[idx] != NULL && lX[idx]->dpb_status == SHORT_TERM_REF)
-        return lX[idx]->pic_num;
+    if (lX[1+idx] != NULL && lX[1+idx]->dpb_status == SHORT_TERM_REF)
+        return lX[1+idx]->pic_num;
     return maxPicNum;
 }
 
 static inline int ltPicNum(DPB *dpb, Picture **lX, int idx, int maxLtIdx) {
-    if (lX[idx] != NULL && lX[idx]->dpb_status == LONG_TERM_REF)
-        return lX[idx]->long_term_frame_idx;
+    if (lX[1+idx] != NULL && lX[1+idx]->dpb_status == LONG_TERM_REF)
+        return lX[1+idx]->long_term_frame_idx;
     return 2 * (maxLtIdx + 1);
 }
 

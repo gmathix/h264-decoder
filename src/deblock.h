@@ -28,9 +28,9 @@ void filter_row_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int y,
     uint8_t bs_list[4], int stride, Undo264Context *ctx);
 void filter_col_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int x, uint8_t samples[24][24],
     uint8_t bs_list[4], int stride, Undo264Context *ctx);
-void filter_row_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int y, uint8_t samples[16][16],
+void filter_row_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int y, int iCbCr, uint8_t samples[16][16],
     const uint8_t bs_list[4], int stride, Undo264Context *ctx);
-void filter_col_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int x, uint8_t samples[16][16],
+void filter_col_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int x, int iCbCr, uint8_t samples[16][16],
     const uint8_t bs_list[4], int stride, Undo264Context *ctx);
 
 
@@ -63,7 +63,7 @@ void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int b
 void derive_edge_treshold_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t bS, int y, int x, bool vertical,
     uint8_t *alpha, uint8_t *beta, int filter_flags[4], uint8_t *indexA,
     uint8_t samples[24][24], Undo264Context *ctx);
-void derive_edge_treshold_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t bS, int y, int x, bool vertical,
+void derive_edge_treshold_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t bS, int y, int x, int iCbCr, bool vertical,
     uint8_t *alpha, uint8_t *beta, int filter_flags[2], uint8_t *indexA,
     uint8_t samples[16][16], Undo264Context *ctx);
 

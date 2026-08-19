@@ -157,9 +157,9 @@ void transform_chroma(Macroblock *mb, Undo264Context *ctx) {
 
       int nbCr4x4 = (mb->mb_height_c/4) * (mb->mb_width_c/4);
 
-      int32_t qp = mb->QPC;
-
       for (int iCbCr = 0; iCbCr < 2; iCbCr++) {
+            int qp = mb->QPC[iCbCr];
+
             uint8_t *dst = iCbCr
                   ? mb->p_pic->cr
                   : mb->p_pic->cb;

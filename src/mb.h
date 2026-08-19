@@ -89,7 +89,7 @@ typedef struct MacroblockMetadata {
     int8_t  coded_block_flag[14][16];
     int8_t  mb_skip_flag;
     uint8_t QPY;
-    uint8_t QPC;
+    uint8_t QPC[2];
     uint8_t t_8x8_flag;
     uint8_t cbp_luma;
     uint8_t cbp_chroma;
@@ -117,7 +117,7 @@ typedef struct Macroblock {
     int has_mb_a, has_mb_b, has_mb_c, has_mb_d;
     int mb_a_off, mb_b_off, mb_c_off, mb_d_off;
 
-    int32_t mb_qp_delta, QPY, QPC;
+    int32_t mb_qp_delta, QPY, QPC[2];
     int     t_8x8_flag;
 
     MacroblockResiduals residuals;

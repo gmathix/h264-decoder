@@ -51,6 +51,14 @@ int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
     }
 
 
+    if (profile_idc != PROFILE_BASELINE &&
+        profile_idc != PROFILE_MAIN &&
+        profile_idc != PROFILE_EXTENDED &&
+        profile_idc != PROFILE_HIGH) {
+
+        printf("profile_idc %s not supported, exiting.\n", profile_to_string(profile_idc));
+        exit(67);
+    }
 
 
     sps->sps_id = sps_id;
@@ -248,7 +256,10 @@ int decode_pps(size_t global_bit_offset, Undo264Context *ctx) {
     pps->bottom_field_pic_order_in_frame_present_flag = read_u(br, 1);
     pps->num_slice_groups_minus1 = read_ue(br);
 
-    assert(pps->num_slice_groups_minus1 == 0); // no slice groups for now, nobody uses them anyway
+    if (pps->num_slice_groups_minus1 > 0) {
+        printf("multiple slice groups not supported, exiting.\n");
+        exit(67);
+    }
 
 
 
@@ -283,6 +294,8 @@ int decode_pps(size_t global_bit_offset, Undo264Context *ctx) {
 
         }
         pps->second_chroma_qp_index_offset = read_se(br);
+    } else {
+        pps->second_chroma_qp_index_offset = pps->chroma_qp_index_offset;
     }
 
     precompute_4x4_scales(ctx);

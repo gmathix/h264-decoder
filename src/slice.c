@@ -1155,14 +1155,16 @@ void CAFUNC(read_macroblock,
         }
     }
 
-    int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
-    mb->QPC = QPcTable[qPi];
+    int qPiCb = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
+    int qPiCr = _clip3(0, 51, mb->QPY + pps->second_chroma_qp_index_offset);
+    mb->QPC[0] = QPcTable[qPiCb];
+    mb->QPC[1] = QPcTable[qPiCr];
 
     meta->QPY = mb->QPY;
-    meta->QPC = mb->QPC;
+    meta->QPC[0] = mb->QPC[0];
+    meta->QPC[1] = mb->QPC[1];
 
     ctx->prevQPY = mb->QPY;
-    memset(ctx->prevQPC, mb->QPC, 2 * sizeof(int8_t));
 }
 
 
@@ -1238,13 +1240,16 @@ void CAFUNC(decode_slice,
                         ? (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52
                         : ctx->prevQPY;
 
-                    int qPi = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
-                    mb->QPC = QPcTable[qPi];
+                    int qPiCb = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
+                    int qPiCr = _clip3(0, 51, mb->QPY + pps->second_chroma_qp_index_offset);
+                    mb->QPC[0] = QPcTable[qPiCb];
+                    mb->QPC[1] = QPcTable[qPiCr];
 
                     MacroblockMetadata *meta = &ctx->mb_metadata[mb->mbAddr];
                     meta->mb_type     = MB_TYPE_SKIP;
                     meta->QPY         = mb->QPY;
-                    meta->QPC         = mb->QPC;
+                    meta->QPC[0]      = mb->QPC[0];
+                    meta->QPC[1]      = mb->QPC[1];
                     meta->cbp_luma    = 0;
                     meta->cbp_chroma  = 0;
                     meta->t_8x8_flag  = 0;
@@ -1267,7 +1272,6 @@ void CAFUNC(decode_slice,
                     }
 
                     ctx->prevQPY = mb->QPY;
-                    memset(ctx->prevQPC, mb->QPC, 2 * sizeof(int8_t));
                     ctx->current_slice->num_mbs++;
                 }
 

@@ -209,14 +209,14 @@ void derive_edge_treshold_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t bS
     }
 }
 
-void derive_edge_treshold_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t bS, int y, int x, bool vertical,
+void derive_edge_treshold_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t bS, int y, int x, int iCbCr, bool vertical,
     uint8_t *alpha, uint8_t *beta, int filter_flags[2], uint8_t *indexA,
     uint8_t samples[16][16], Undo264Context *ctx) {
 
     MacroblockMetadata *meta0 = &ctx->mb_metadata[mbAddr];
     MacroblockMetadata *meta1 = &ctx->mb_metadata[mbAddrN];
-    int qp0 = !IS_PCM(meta0->mb_type) * meta0->QPC;
-    int qp1 = !IS_PCM(meta1->mb_type) * meta1->QPC;
+    int qp0 = !IS_PCM(meta0->mb_type) * meta0->QPC[iCbCr];
+    int qp1 = !IS_PCM(meta1->mb_type) * meta1->QPC[iCbCr];
     int qpAv = (qp0 + qp1 + 1) >> 1;
 
 
@@ -537,7 +537,7 @@ void filter_col_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int x,
     }
 }
 
-void filter_row_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int y, uint8_t samples[16][16],
+void filter_row_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int y, int iCbCr, uint8_t samples[16][16],
     const uint8_t bS_list[4], int stride, Undo264Context *ctx) {
 
     uint8_t indexA, alpha, beta;
@@ -546,7 +546,7 @@ void filter_row_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int 
     for (int i = 0; i < 4; i++) {
         int bS = bS_list[i];
 
-        derive_edge_treshold_chroma(pic, mbAddr, mbAddrN, bS, 4+y, 4+i*2, false,
+        derive_edge_treshold_chroma(pic, mbAddr, mbAddrN, bS, 4+y, 4+i*2, iCbCr, false,
             &alpha, &beta, filter_flags, &indexA, samples, ctx);
 
         if (bS > 0) {
@@ -564,7 +564,7 @@ void filter_row_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int 
         dst++;
     }
 }
-void filter_col_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int x, uint8_t samples[16][16],
+void filter_col_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int x, int iCbCr, uint8_t samples[16][16],
     const uint8_t bS_list[4], int stride, Undo264Context *ctx) {
 
     uint8_t indexA, alpha, beta;
@@ -573,7 +573,7 @@ void filter_col_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int 
     for (int i = 0; i < 4; i++) {
         int bS = bS_list[i];
 
-        derive_edge_treshold_chroma(pic, mbAddr, mbAddrN, bS, 4+i*2, 4+x, true,
+        derive_edge_treshold_chroma(pic, mbAddr, mbAddrN, bS, 4+i*2, 4+x, iCbCr, true,
             &alpha, &beta, filter_flags, &indexA, samples, ctx);
 
         if (bS > 0) {
@@ -635,8 +635,8 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
             true, true, bS_list, ctx);
 
         filter_col_luma(pic, mbAddr, mbAddr - 1, luma_base_dst, 0, luma_block, bS_list, widthY, ctx);
-        filter_col_chroma(pic, mbAddr, mbAddr - 1, cb_base_dst, 0, cb_block, bS_list, widthC, ctx);
-        filter_col_chroma(pic, mbAddr, mbAddr - 1, cr_base_dst, 0, cr_block, bS_list, widthC, ctx);
+        filter_col_chroma(pic, mbAddr, mbAddr - 1, cb_base_dst, 0, 0, cb_block, bS_list, widthC, ctx);
+        filter_col_chroma(pic, mbAddr, mbAddr - 1, cr_base_dst, 0, 1, cr_block, bS_list, widthC, ctx);
     }
     if (filterInternalEdges) {
 
@@ -655,8 +655,8 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
             false, true, bS_list, ctx);
 
         filter_col_luma(pic, mbAddr, mbAddr, luma_base_dst + 8, 8, luma_block, bS_list, widthY, ctx);
-        filter_col_chroma(pic, mbAddr, mbAddr, cb_base_dst + 4, 4, cb_block, bS_list, widthC, ctx);
-        filter_col_chroma(pic, mbAddr, mbAddr, cr_base_dst + 4, 4, cr_block, bS_list, widthC, ctx);
+        filter_col_chroma(pic, mbAddr, mbAddr, cb_base_dst + 4, 4, 0, cb_block, bS_list, widthC, ctx);
+        filter_col_chroma(pic, mbAddr, mbAddr, cr_base_dst + 4, 4, 1, cr_block, bS_list, widthC, ctx);
 
 
         // x = 12
@@ -677,8 +677,8 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
 
 
         filter_row_luma(pic, mbAddr, mbAddr - mbWidth, luma_base_dst, 0, luma_block, bS_list, widthY, ctx);
-        filter_row_chroma(pic, mbAddr, mbAddr - mbWidth, cb_base_dst, 0, cb_block, bS_list, widthC, ctx);
-        filter_row_chroma(pic, mbAddr, mbAddr - mbWidth, cr_base_dst, 0, cr_block, bS_list, widthC, ctx);
+        filter_row_chroma(pic, mbAddr, mbAddr - mbWidth, cb_base_dst, 0, 0, cb_block, bS_list, widthC, ctx);
+        filter_row_chroma(pic, mbAddr, mbAddr - mbWidth, cr_base_dst, 0, 1, cr_block, bS_list, widthC, ctx);
     }
     if (filterInternalEdges) {
 
@@ -697,8 +697,8 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
             false, false, bS_list, ctx);
 
         filter_row_luma(pic, mbAddr, mbAddr, luma_base_dst + 8*widthY, 8, luma_block, bS_list, widthY, ctx);
-        filter_row_chroma(pic, mbAddr, mbAddr, cb_base_dst + 4*widthC, 4, cb_block, bS_list, widthC, ctx);
-        filter_row_chroma(pic, mbAddr, mbAddr, cr_base_dst + 4*widthC, 4, cr_block, bS_list, widthC, ctx);
+        filter_row_chroma(pic, mbAddr, mbAddr, cb_base_dst + 4*widthC, 4, 0, cb_block, bS_list, widthC, ctx);
+        filter_row_chroma(pic, mbAddr, mbAddr, cr_base_dst + 4*widthC, 4, 1, cr_block, bS_list, widthC, ctx);
 
 
         // y = 12

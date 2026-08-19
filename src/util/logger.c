@@ -10,7 +10,7 @@
 #include "formulas.h"
 #include "mbutil.h"
 #include "sliceutil.h"
-
+#include "../picture.h"
 
 void print_annexb_header(size_t size, int nal_ref_idc, int nal_unit_type) {
     printf("Annex B NALU, len %lu, nal_ref_idc %d, nal_unit_type %d\n\n",
@@ -77,4 +77,24 @@ void print_value(int32_t value) {
     printf("(");
     spaces(MAX_PARAM_VALUE_INT16_SIZE - nb_digits(value));
     printf("%d)\n", value);
+}
+
+
+
+void print_macroblock(Picture *pic, int mbAddr, int iYCbCr) {
+    int stride = iYCbCr == 0 ? pic->widthY : pic->widthC;
+    int blkSize = iYCbCr == 0 ? 16 : 8;
+
+    int mbY = mbAddr / (stride / blkSize);
+    int mbX = mbAddr % (stride / blkSize);
+
+    uint8_t *plane = iYCbCr == 0 ? pic->luma : iYCbCr == 1 ? pic->cb : pic->cr;
+    for (int y = 0; y < blkSize; y++) {
+        for (int x = 0; x < blkSize; x++) {
+            printf("%3d ", plane[(mbY*blkSize+y)*stride + mbX*blkSize+x]);
+            if (x % 4 == 3) printf("  ");
+        }
+        printf("\n");
+        if (y % 4 == 3) printf("\n");
+    }
 }

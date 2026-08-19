@@ -25,7 +25,7 @@
 #define NAL_LOG     (ALL_LOG    |   0)
 
 
-#define ALWAYS_INLINE /*inline __attribute__((always_inline))*/
+#define ALWAYS_INLINE inline __attribute__((always_inline))
 #define OPTIMIZE_O0   __attribute__((optimize("O0")))
 #define OPTIMIZE_O1   __attribute__((optimize("O1")))
 #define OPTIMIZE_O2   __attribute__((optimize("O2")))
@@ -137,26 +137,8 @@ typedef enum {
 } BlockType ;
 
 
-static char* blockType_to_string(int bt) {
-    switch (bt) {
-        case LUMA_INTRA_16x16_DC_LEVEL: return "Lum16DC";
-        case LUMA_INTRA_16x16_AC_LEVEL: return "Lum16AC";
-        case CB_INTRA_16x16_DC_LEVEL: return "Cb16DC";
-        case CB_INTRA_16x16_AC_LEVEL: return "Cb16AC";
-        case CR_INTRA_16x16_DC_LEVEL: return "Cr16DC";
-        case CR_INTRA_16x16_AC_LEVEL: return "Cr16AC";
-        case LUMA_LEVEL_4x4: return "Lum4";
-        case CHROMA_DC_LEVEL: return "ChrDC";
-        case CHROMA_AC_LEVEL: return "ChrAC";
-        case CB_LEVEL_4x4: return "Cb4";
-        case CR_LEVEL_4x4: return "Cr4";
-        case LUMA_LEVEL_8x8: return "Luma8";
-        default: return "Block";
-    }
-}
-
-
-char *NalUnitTypeToString(uint8_t nal_unit_type);
+char* blockType_to_string(int bt);
+extern char* profile_to_string(int profile);
 
 
 typedef struct NalUnit {
@@ -167,8 +149,8 @@ typedef struct NalUnit {
 } NalUnit;
 
 typedef struct Coord {
-    int32_t x;
-    int32_t y;
+    int16_t x;
+    int16_t y;
 } Coord ;
 
 

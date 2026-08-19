@@ -8,7 +8,7 @@
 #include "slice.h"
 
 
-const Picture EMPTY_PICTURE = {};
+Picture EMPTY_PICTURE = {};
 
 
 Picture *picture_alloc(SPS *sps, Undo264Context *ctx) {

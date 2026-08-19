@@ -32,17 +32,17 @@ void profiler_end_frame(Profiler *prf) {
 
 
 void profiler_start_mb(Profiler *prf) {
-    // clock_gettime(CLOCK_MONOTONIC, &prf->mb_start);
+    clock_gettime(CLOCK_MONOTONIC, &prf->mb_start);
 }
 
 
 void profiler_end_mb(Profiler *prf) {
-    // clock_gettime(CLOCK_MONOTONIC, &prf->mb_end);
-    //
-    // prf->mbs_seconds += prf->mb_end.tv_sec - prf->mb_start.tv_sec;
-    // prf->mbs_microseconds += (prf->mb_end.tv_nsec - prf->mb_start.tv_nsec) / 1000;
-    //
-    // prf->total_mbs++;
+    clock_gettime(CLOCK_MONOTONIC, &prf->mb_end);
+
+    prf->mbs_seconds += prf->mb_end.tv_sec - prf->mb_start.tv_sec;
+    prf->mbs_microseconds += (prf->mb_end.tv_nsec - prf->mb_start.tv_nsec) / 1000;
+
+    prf->total_mbs++;
 }
 
 long long get_total_frame_microseconds(Profiler *prf) {

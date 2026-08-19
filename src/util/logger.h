@@ -12,6 +12,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "../picture.h"
+
 
 #define MAX_BIT_OFFSET_SIZE         15
 #define MAX_TITLE_OFFSET_SIZE        4
@@ -75,7 +77,7 @@ void print_info_only(char *info);
 void print_bits(int32_t bits, int length);
 void print_value(int32_t value);
 
-
+void print_macroblock(Picture *pic, int mbAddr, int iYCbCr);
 
 
 

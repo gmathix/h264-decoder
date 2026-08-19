@@ -1,55 +1,80 @@
-cmake_minimum_required(VERSION 4.0)
-project(h264_decoder C)
+cmake_minimum_required(VERSION 3.20)
+project(h264_decoder
+        VERSION 1.0
+        DESCRIPTION "A H.264 decoder written in C"
+        LANGUAGES C
+)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
+set(CMAKE_C_EXTENSIONS OFF)
 
-set(H264_SOURCES
-        main.c
+# default to a sane build type if none is given (for makefile/ninja only)
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo)
+endif()
 
-        src/intra.c
-        src/annexb.c
-        src/ps.c
-        src/decoder.c
-        src/mb.c
-        src/cavlc.c
-        src/vlc.c
-        src/transform.c
-        src/picture.c
-        src/dequant.c
-        src/dpb.c
-        src/inter.c
-        src/qpel.c
-        src/deblock.c
-        src/cabac.c
+option(USE_NATIVE_ARCH "Optimize for the host CPU (-march:native); breaks portability" OFF)
+option(USE_SANITIZERS "Build with ASan/UBSan" OFF)
+option(BUILD_TOOLS "Build gen_rgb_video / compare_streams helper tools" ON)
 
-        src/util/bitreader.c
-        src/util/logger.c
-        src/util/expgolomb.c
-        src/tests/profiler.c
+set(UNDO264_SOURCES
+        src/main.c
+    src/intra.c
+    src/annexb.c
+    src/ps.c
+    src/decoder.c
+    src/mb.c
+    src/cavlc.c
+    src/vlc.c
+    src/transform.c
+    src/picture.c
+    src/dequant.c
+    src/dpb.c
+    src/inter.c
+    src/qpel.c
+    src/deblock.c
+    src/cabac.c
+    src/util/bitreader.c
+    src/util/logger.c
+    src/util/expgolomb.c
+    src/tests/profiler.c
 )
 
-add_executable(h264_decoder ${H264_SOURCES})
-target_compile_options(h264_decoder PRIVATE
-        -O3
-        -march=native
+# warning/flag interface
+add_library(undo264_warnings INTERFACE)
+target_compile_options(undo264_warnings INTERFACE
+    $<$<C_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
+    $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<BOOL:${USE_NATIVE_ARCH}>>:-march=native>
+    $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<CONFIG:Release>>:-O3>
+    $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<CONFIG:Debug>>:-O0 -g3>
 )
-target_link_libraries(h264_decoder PRIVATE m)
 
-add_executable(h264_decoder_debug ${H264_SOURCES})
-target_compile_options(h264_decoder_debug PRIVATE
-        -O0
-        -g3
-        -fsanitize=address
-        -fsanitize=undefined
+add_library(undo264_sanitizers INTERFACE)
+if(USE_SANITIZERS)
+    target_compile_options(undo264_sanitizers INTERFACE -fsanitize=address,undefined -g3 -O0)
+    target_link_options(undo264_sanitizers INTERFACE -fsanitize=address,undefined)
+endif()
+
+
+# main target
+add_executable(undo264 ${UNDO264_SOURCES})
+target_link_libraries(undo264 PRIVATE m undo264_warnings undo264_sanitizers)
+target_include_directories(undo264 PRIVATE src)
+target_compile_definitions(undo264 PRIVATE _DEFAULT_SOURCE
+    $<$<CONFIG:Debug>:SLICES_LOG=1>
 )
-target_link_options(h264_decoder_debug PRIVATE
-        -fsanitize=address
-        -fsanitize=undefined
-)
-target_link_libraries(h264_decoder_debug PRIVATE m)
 
-add_executable(gen_rgb_video src/tests/gen_rgb_video.c)
-target_link_libraries(gen_rgb_video PRIVATE m)
+# optional helper tools
+if(BUILD_TOOLS)
+    add_executable(gen_rgb_video src/tests/gen_rgb_video.c)
+    target_link_libraries(gen_rgb_video PRIVATE m)
 
-add_executable(compare_streams src/tests/streamcomp.c)
+    add_executable(compare_streams src/tests/streamcomp.c)
+endif()
+
+
+# install rules
+include(GNUInstallDirs)
+install(TARGETS undo264 RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})

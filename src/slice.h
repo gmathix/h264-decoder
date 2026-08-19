@@ -90,7 +90,6 @@ static void slice_reset(Slice *slice) {
 static void pred_weight_table(uint8_t type, SliceHeader *sh, Undo264Context *ctx) {
     BitReader *br = ctx->br;
     SPS *sps = sh->sps;
-    PPS *pps = sh->pps;
 
 
     ctx->wpred.luma_log2_weight_denom = read_ue(br);
@@ -101,7 +100,7 @@ static void pred_weight_table(uint8_t type, SliceHeader *sh, Undo264Context *ctx
     int luma_weight_l0_flag;
     int chroma_weight_l0_flag;
 
-    for (int i = 0; i < sh->num_ref_idx_l0_active_minus1+1; i++) {
+    for (unsigned i = 0; i < sh->num_ref_idx_l0_active_minus1+1; i++) {
         luma_weight_l0_flag = read_u(br, 1);
         if (luma_weight_l0_flag) {
             ctx->wpred.luma_weight[L0][i] = read_se(br);
@@ -175,8 +174,10 @@ static SliceHeader *read_slice_header(NalUnit *nal_unit, Undo264Context *ctx) {
     sh->slice_type = read_ue(br);
     sh->pps_id     = read_ue(br);
 
-    printf("DECODING %s SLICE\n", slice_type_to_string(sh->slice_type));
-    printf("  first_mb:%d\n", sh->first_mb);
+    #ifdef SLICES_LOG
+        printf("DECODING %s SLICE\n", slice_type_to_string(sh->slice_type));
+        printf("  first_mb:%d\n", sh->first_mb);
+    #endif
 
 
     bool i_slice  = IS_I_SLICE(sh->slice_type);
@@ -311,7 +312,9 @@ static SliceHeader *read_slice_header(NalUnit *nal_unit, Undo264Context *ctx) {
     if (sh->first_mb == 0) {
         // calculate POC only now, because MMCO 5 can occur and infer POC = 0
         derive_poc(ctx->dpb, ctx->curr_pic);
-        printf(" POC : %d\n", ctx->curr_pic->poc);
+        #ifdef SLICES_LOG
+                printf(" POC : %d\n", ctx->curr_pic->poc);
+        #endif
     }
 
 

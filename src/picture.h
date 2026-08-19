@@ -68,7 +68,7 @@ typedef struct Picture {
 
 } Picture ;
 
-extern const Picture EMPTY_PICTURE;
+extern Picture EMPTY_PICTURE;
 
 
 

@@ -13,23 +13,20 @@
 
 int picture_to_find = -1;
 
-#undef stderr
-#define stderr stdout
-
 static void print_ref_lists(DPB *dpb, Picture *pic) {
-    fprintf(stderr, "L0:\n");
+    fprintf(stdout, "L0:\n");
     for (int i = 0; i < dpb->effective_ref_idx_l0_active; i++) {
         Picture *ref = dpb->lists[L0][1+i];
         if (ref) {
-            fprintf(stderr, " %d - POC:%3d  %s \n", i, ref->poc, ref->dpb_status == SHORT_TERM_REF ? "short-term" : "long-term");
+            fprintf(stdout, " %d - POC:%3d  %s \n", i, ref->poc, ref->dpb_status == SHORT_TERM_REF ? "short-term" : "long-term");
         }
     }
 
-    fprintf(stderr, "\nL1:\n");
+    fprintf(stdout, "\nL1:\n");
     for (int i = 0; i < dpb->effective_ref_idx_l1_active; i++) {
         Picture *ref = dpb->lists[L0][1+i];
         if (ref) {
-            fprintf(stderr, " %d - POC:%3d  %s \n", i, ref->poc, ref->dpb_status == SHORT_TERM_REF ? "short-term" : "long-term");
+            fprintf(stdout, " %d - POC:%3d  %s \n", i, ref->poc, ref->dpb_status == SHORT_TERM_REF ? "short-term" : "long-term");
         }
     }
 }
@@ -467,13 +464,17 @@ void ref_pic_list_modification(uint8_t type, Slice *slice, int maxFrameNum, int 
 
     int refIdxL0 = 0;
     if (type%5 != 2 && type%5 != 4) {
-        printf("  * l0 modifications\n");
+        #ifdef SLICES_LOG
+            printf("  * l0 modifications\n");
+        #endif
         int l0_modif_flag = read_u(br, 1);
         if (l0_modif_flag) {
             uint32_t modif_idc = 0;
             do {
                 modif_idc = read_ue(br);
-                printf("   modif_idc:%d\n", modif_idc);
+                #ifdef SLICES_LOG
+                    printf("   modif_idc:%d\n", modif_idc);
+                #endif
                 if (modif_idc == 0 || modif_idc == 1) {
                     uint32_t abs_diff = read_ue(br) + 1;
                     ref_pic_list_modif_st(slice, true, &refIdxL0, modif_idc, abs_diff, maxFrameNum, ctx);
@@ -483,13 +484,17 @@ void ref_pic_list_modification(uint8_t type, Slice *slice, int maxFrameNum, int 
                 }
             } while (modif_idc != 3);
         } else {
-            printf("    no modification\n");
+            #ifdef SLICES_LOG
+                printf("    no modification\n");
+            #endif
         }
     }
 
     int refIdxL1 = 0;
     if (type%5 == 1) {
-        printf("  * l1 modifications\n");
+        #ifdef SLICES_LOG
+            printf("  * l1 modifications\n");
+        #endif
         int l1_modif_flag = read_u(br, 1);
         if (l1_modif_flag) {
             uint32_t modif_idc = 0;
@@ -504,12 +509,15 @@ void ref_pic_list_modification(uint8_t type, Slice *slice, int maxFrameNum, int 
                 }
             } while (modif_idc != 3);
         } else {
-            printf("    no modifications\n");
+            #ifdef SLICES_LOG
+                printf("    no modifications\n");
+            #endif
         }
     }
 
-    print_ref_lists(ctx->dpb, ctx->curr_pic);
-
+    #ifdef SLICES_LOG
+        print_ref_lists(ctx->dpb, ctx->curr_pic);
+    #endif
 }
 
 // puts a short-term ref picture at position refIdxLX (advancing 0..num_ref_idx_active-1)
@@ -555,7 +563,7 @@ void ref_pic_list_modif_st(Slice *slice, bool is_l0, int *refIdxLX, int modif_id
     lX[1+(*refIdxLX)++] = refpic;
     int nIdx = *refIdxLX;
     for (int cIdx = *refIdxLX; cIdx <= num_ref_frames_active; cIdx++) {
-        if (picNum(dpb, lX, cIdx, maxFrameNum) != picNumLX) {
+        if (picNum(lX, cIdx, maxFrameNum) != picNumLX) {
             lX[1+nIdx] = lX[1+cIdx];
             nIdx++;
         }
@@ -577,7 +585,7 @@ void ref_pic_list_modif_lt(Slice *slice, bool is_l0,  int *refIdxLX, int modif_i
     lX[1+(*refIdxLX)++] = refpic;
     int nIdx = *refIdxLX;
     for (int cIdx = *refIdxLX; cIdx <= num_ref_idx_lX_active; cIdx++) {
-        if (ltPicNum(dpb, lX, cIdx, *maxLtIdx) != lt_pic_num) {
+        if (ltPicNum(lX, cIdx, *maxLtIdx) != lt_pic_num) {
             lX[1+nIdx++] = lX[1+cIdx];
         }
     }
@@ -657,8 +665,10 @@ void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
             uint32_t mmco = 0;
             do {
                 mmco = read_ue(br);
-                printf("mmco:%d\n", mmco);
 
+                #ifdef SLICES_LOG
+                    printf("mmco:%d\n", mmco);
+                #endif
                 if (mmco == 1 || mmco == 3) {
                     uint32_t diff_pic_nums = read_ue(br) + 1;
                 }
@@ -673,7 +683,9 @@ void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
                 }
             } while (mmco != 0);
         } else {
-            printf("no MMCOs\n");
+            #ifdef SLICES_LOG
+                printf("no MMCOs\n");
+            #endif
         }
     }
 }

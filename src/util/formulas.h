@@ -77,9 +77,6 @@ static ALWAYS_INLINE int _median(int x, int y, int z) {
 }
 
 
-static ALWAYS_INLINE void nothing() { void *nothing = NULL; }
-
-
 
 
 #endif //TOY_H264_FORMULAS_H

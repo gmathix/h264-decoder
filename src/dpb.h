@@ -67,7 +67,7 @@ static bool lowerThan(int field, int ref)      { return field < ref; }
 static bool greaterOrEqual(int field, int ref) { return field >= ref; }
 static bool lowerOrEqual(int field, int ref)   { return field <= ref; }
 static bool equalTo(int field, int ref)        { return field == ref; }
-static bool dontGiveAShit(int field, int ref)  { return true; }
+static bool dontGiveAShit(int field, int ref)  { return true || field || ref; } // just to suppress to compiler warning
 
 
 /* returns how many pictures were added to the dest list */
@@ -161,13 +161,13 @@ static DPB *make_dbp(Undo264Context *ctx) {
     return dpb;
 }
 
-static inline int picNum(DPB *dpb, Picture **lX, int idx, int maxPicNum) {
+static inline int picNum(Picture **lX, int idx, int maxPicNum) {
     if (lX[1+idx] != NULL && lX[1+idx]->dpb_status == SHORT_TERM_REF)
         return lX[1+idx]->pic_num;
     return maxPicNum;
 }
 
-static inline int ltPicNum(DPB *dpb, Picture **lX, int idx, int maxLtIdx) {
+static inline int ltPicNum(Picture **lX, int idx, int maxLtIdx) {
     if (lX[1+idx] != NULL && lX[1+idx]->dpb_status == LONG_TERM_REF)
         return lX[1+idx]->long_term_frame_idx;
     return 2 * (maxLtIdx + 1);

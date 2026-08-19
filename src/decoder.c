@@ -39,8 +39,8 @@
 int debugging = 0;
 int frame_debug = -1;
 int frame_num_debug = -1;
-int poc_debug = -1;
-int mb_debug = -1;
+int poc_debug = 60;
+int mb_debug = 395;
 int nb_frames_before_stop = -1;
 
 
@@ -75,7 +75,6 @@ Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, c
 
     ctx->currMb = calloc(1, sizeof(Macroblock));
     ctx->prevQPY = 0;
-    memset(ctx->prevQPC, 0, 2 * sizeof(int8_t));
 
     ctx->levelScale4x4 = calloc(6, sizeof( int16_t[52][4][4] ));
     ctx->levelScale8x8 = calloc(2, sizeof( int16_t[52][8][8] ));
@@ -159,11 +158,12 @@ int dispatch_nal_unit(NalUnit *nal_unit, Undo264Context *ctx) {
             }
 
             Slice *slice = ctx->current_slice;
-            // deblock_slice(ctx->curr_pic, sh, ctx);
+            deblock_slice(ctx->curr_pic, sh, ctx);
 
-
-            printf("done slice %lu %s(frame_num %d, pic %lu)\n\n",
-                ctx->prf->total_frames, slice->p_pic->sh->idr_pic_flag ? "(IDR) " : "", sh->frame_num, ctx->prf->total_frames);
+            #ifdef SLICES_LOG
+                printf("done slice %lu %s(frame_num %d, pic %lu)\n\n",
+                    ctx->prf->total_frames, slice->p_pic->sh->idr_pic_flag ? "(IDR) " : "", sh->frame_num, ctx->prf->total_frames);
+            #endif
 
             if (slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs ||
                 slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs+1) { // end of picture
@@ -238,7 +238,6 @@ void decoder_free_metadata(Undo264Context *ctx) {
 void decoder_alloc_metadata(Undo264Context *ctx) {
 
     ctx->num_mbs = (int32_t)ctx->ps->sps->pic_width_in_mbs * (int32_t)ctx->ps->sps->pic_height_in_map_units;
-    printf("allocating metadata : num_mbs %d\n", ctx->num_mbs);
 
     ctx->mb_metadata = calloc(ctx->num_mbs, sizeof( MacroblockMetadata));
     ctx->luma_total_coeffs   = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
@@ -276,4 +275,37 @@ void decoder_free(Undo264Context *ctx) {
     fclose(ctx->out_file);
 
     free(ctx);
+}
+
+
+char* profile_to_string(int profile) {
+    switch (profile) {
+        case PROFILE_CAVLC_444: return "CAVLC_444";
+        case PROFILE_BASELINE: return "Baseline";
+        case PROFILE_MAIN: return "Main";
+        case PROFILE_EXTENDED: return "Extended";
+        case PROFILE_HIGH: return "High";
+        case PROFILE_HIGH_10: return "High 10-bit";
+        case PROFILE_HIGH_422: return "High 4:2:2";
+        case PROFILE_HIGH_PRED_444: return "High 4:4:4";
+        default: return "Unknown";
+    }
+}
+
+char* blockType_to_string(int bt) {
+    switch (bt) {
+        case LUMA_INTRA_16x16_DC_LEVEL: return "Lum16DC";
+        case LUMA_INTRA_16x16_AC_LEVEL: return "Lum16AC";
+        case CB_INTRA_16x16_DC_LEVEL: return "Cb16DC";
+        case CB_INTRA_16x16_AC_LEVEL: return "Cb16AC";
+        case CR_INTRA_16x16_DC_LEVEL: return "Cr16DC";
+        case CR_INTRA_16x16_AC_LEVEL: return "Cr16AC";
+        case LUMA_LEVEL_4x4: return "Lum4";
+        case CHROMA_DC_LEVEL: return "ChrDC";
+        case CHROMA_AC_LEVEL: return "ChrAC";
+        case CB_LEVEL_4x4: return "Cb4";
+        case CR_LEVEL_4x4: return "Cr4";
+        case LUMA_LEVEL_8x8: return "Luma8";
+        default: return "Block";
+    }
 }

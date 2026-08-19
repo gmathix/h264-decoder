@@ -25,8 +25,6 @@
 
 /* 7.3.2.1.1 */
 int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
-    printf("READING SPS\n");
-
     BitReader *br = ctx->br;
     ParamSets *ps = ctx->ps;
 
@@ -231,8 +229,6 @@ int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
 
 /* 7.3.2.2 */
 int decode_pps(size_t global_bit_offset, Undo264Context *ctx) {
-    printf("READING PPS\n");
-
     BitReader *br = ctx->br;
     ParamSets *ps = ctx->ps;
 

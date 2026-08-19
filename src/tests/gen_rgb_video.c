@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <stdint.h>
 
 /*
  * Usage : ./gen_rgb_video <width> <height> <frames> <output.rgb>
@@ -24,7 +25,7 @@ typedef enum {
 } GradientType ;
 
 static void write_frame(FILE *f, int w, int h, int frame, GradientType type) {
-    u_char *row = malloc(w*3);
+    uint8_t *row = malloc(w*3);
 
     float hue_shit = (float)frame / 30.0f; // full cycle every 30 frames
 

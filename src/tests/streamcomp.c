@@ -14,22 +14,22 @@
 
 #define RES_WIDTH(res)   \
     res == RES_FULLHD ? 1920 : \
-    res == RES_QCIF   ?  352 : \
-    res == RES_CIF    ?  176 : \
+    res == RES_QCIF   ?  176 : \
+    res == RES_CIF    ?  352 : \
     0
 #define RES_HEIGHT(res)  \
     res == RES_FULLHD ? 1080 : \
-    res == RES_QCIF   ?  352 : \
-    res == RES_CIF    ?  144 : \
+    res == RES_QCIF   ?  144 : \
+    res == RES_CIF    ?  288 : \
     0
 
 
 
-#define ONLY_LUMA     0
+#define ONLY_LUMA     1
 #define ONLY_CHROMA   0
 #define START_FRAME   0
 #define INPUT_IS_GRAY 0
-#define CURR_RESOLUTION     RES_CIF
+#define CURR_RESOLUTION     RES_QCIF
 
 const int WIDTH = RES_WIDTH(CURR_RESOLUTION);
 const int HEIGHT = RES_HEIGHT(CURR_RESOLUTION);
@@ -72,7 +72,7 @@ void print_mb(uint8_t *frame, int blk_size, int mb_idx, int frame_stride)
 
 
 int main(void) {
-    char *ref_path = "../videos/AVCv1/CAPCM1_Sand_E/CAPCM1_Sand_E_ffmpeg.yuv";
+    char *ref_path = "../videos/out_ffmpeg.yuv";
     char *test_path = "../videos/output_inter.yuv";
 
     FILE *ref_file = fopen(ref_path, "rb");

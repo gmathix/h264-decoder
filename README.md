@@ -3,7 +3,7 @@
 A H.264 decoder written in C
 
 ## Current Status
-Testing High profile correctness with CABAC
+Fixing High profile bugs against FRExt suite
 
 ## Features and Scope
 Baseline profile, Main and High profile:
@@ -16,9 +16,8 @@ Baseline profile, Main and High profile:
 - Custom scaling lists
 - Deblocking filter
 - Memory management control operations (MMCOs)
-- Reference picture list modifications
+- Long-term reference pictures
 - YUV 4:2:0 output
-
 
 Does and will not support :
 - MBAFF/PAFF
@@ -26,7 +25,26 @@ Does and will not support :
 - FMO (multiple slice groups)
 - ASO (arbitrary slice ordering)
 - Any format other than 4:2:0
-- Any profile other than Baseline, Main or High
+- Profiles: CAVLC 4:4:4, High 10-bit, High 4:2:2, High 4:4:4
+
+
+## Correctness and Testing
+
+Undo264 gives bit-exact output on all official ITU-T conformance bitstreams for Baseline and Main (AVCv1 suite), 
+and 21/24 for High profile (FRExt suite), excluding bitstreams that are out of this decoder's scope. 
+
+A script for downloading the AVCv1 (Baseline, Main) and FRExt (High) suites is available in the test/ folder, 
+as well as an automated script to run those test suites 
+and compare undo264's output either against given reference decoded files or against FFmpeg's H.264 decoder output, 
+which is supposed to be bit-exact. 
+
+To run the test suites in the test/ folder : 
+```shell
+chmod +x download_vectors.sh && chmod +d conformance_test.sh
+./download_vectors.sh # may take a while to download and extract
+./conformance_test.sh AVCv1
+./conformance_test.sh FRExt
+```
 
 
 ## Performance
@@ -40,27 +58,40 @@ But, correctness and robustness first, performance second.
 
 I'd like to understand how the GCC managed to achieve that 5 -> 20 jump, but I'd have to learn assembly and that's a different learning path which I will eventually take when this project is finished. 
 
-## Correctness
 
-Decoder output was tested against reference output (JM) using 30 different videos for each profile, each encoded either with x264, NVIDIA NVENC or Vulkan.
-Then, PSNR was measured with FFmpeg:
-- Baseline Profile: bit-exact (PSNR +inf)
-- Main Profile (CAVLC): bit-exact
-- High Profile (CAVLC): bit-exact
 
-## Usage
-As simple as, for example : 
+## Building
+
+Requirements: CMake >= 3.20, a C11 compiler (GCC or Clang) and optionally Ninja.
+
+### Quick start
 ```shell
-./h264_decoder videos/256x256_radial.h264 output.yuv
+cmake --preset release
+cmake --build --preset release
+./build/release/undo264 <input.264> <output.yuv>
 ```
-I made a few synthetic gradient streams located in the videos/h264/ folder, but they suck, so :  
-If you want to use it on your own video, you'll likely have to re-encode it, because virtually all H.264 streams (except professional editing content) are coded using either Main or High profile, which this decoder does not fully support yet.  
-Therefore you'd need to run a command like this one : 
+
+### Available presets
+
+| Preset    | Build type      | Notes                                  |
+|-----------|------------------|-----------------------------------------|
+| `release` | Release (-O3)    | Default for normal use                  |
+| `debug`   | Debug + ASan/UBSan | Use while developing / hunting bugs   |
+| `profile` | RelWithDebInfo + `-march=native` | For local profiling (Cachegrind, perf) — **not portable**, do not distribute this binary |
+
+### Options
+
+| Option            | Default | Effect                                     |
+|--------------------|---------|--------------------------------------------|
+| `USE_NATIVE_ARCH`  | OFF     | Adds `-march=native`. Only for local builds |
+| `USE_SANITIZERS`   | OFF     | Enables ASan + UBSan                       |
+| `BUILD_TOOLS`      | ON      | Builds `gen_rgb_video` and `compare_streams` |
+
+### Installing
+
 ```shell
-ffmpeg -i input.264 -c:v libx264 -profile:v main -x264-params "no-cabac:1" -preset slow -pix_fmt yuv420p -an output.264
+cmake --install build/release --prefix /usr/local
 ```
-This will output a stream in Main profile, without CABAC.  
-Use  ```--preset veryslow``` if you want to minimize quality loss.
 
 
 ## License

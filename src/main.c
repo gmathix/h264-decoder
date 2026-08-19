@@ -6,28 +6,29 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "src/decoder.h"
+#include "decoder.h"
 
-#include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "src/tests/profiler.h"
+#include "tests/profiler.h"
+
+#include "sys/mman.h"
 
 
 int main(int argc, char *argv[]) {
 
     if (argc == 1) {
         printf("please specify an input file.\n"
-               "Usage : h264_decoder <input_file> [output_file]");
+               "Usage : undo264 <input_file> [output_file]\n");
         return 1;
     }
 
 
-    const char *in_path  = argv[1];
-    const char *out_path = argc > 2 ? argv[2] : "output.yuv";
-    const char *log_path = "../log/log.txt";
+    char *in_path  = argv[1];
+    char *out_path = argc > 2 ? argv[2] : "output.yuv";
+    char *log_path = "../log/log.txt";
 
 
     FILE *test = fopen(in_path, "rb");

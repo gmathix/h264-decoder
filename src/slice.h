@@ -244,7 +244,7 @@ static SliceHeader *read_slice_header(NalUnit *nal_unit, Undo264Context *ctx) {
 
     if (sh->first_mb == 0) {
         ctx->curr_pic = pic_pool_get(ctx->pool);
-        free(ctx->curr_pic->sh);
+        if (ctx->curr_pic->sh && !ctx->curr_pic->non_existing) free(ctx->curr_pic->sh);
         picture_reset(ctx->curr_pic);
         // ctx->curr_pic = picture_alloc(sh, ctx);
         ctx->curr_pic->sh = sh;
@@ -252,7 +252,7 @@ static SliceHeader *read_slice_header(NalUnit *nal_unit, Undo264Context *ctx) {
         ctx->curr_pic->pic_num = sh->frame_num;
         ctx->curr_pic->frame_num = sh->frame_num;
         derive_poc(ctx->dpb, ctx->curr_pic);
-        printf(" POC : %d\n", ctx->curr_pic->poc);
+        ctx->curr_pic->non_existing = false;
     } else {
         ctx->curr_pic->sh = sh;
     }
@@ -306,6 +306,14 @@ static SliceHeader *read_slice_header(NalUnit *nal_unit, Undo264Context *ctx) {
     if (nal_unit->ref_idc != 0) {
         dec_ref_pic_marking(ctx->dpb, ctx->current_slice, ctx->br);
     }
+
+
+    if (sh->first_mb == 0) {
+        // calculate POC only now, because MMCO 5 can occur and infer POC = 0
+        derive_poc(ctx->dpb, ctx->curr_pic);
+        printf(" POC : %d\n", ctx->curr_pic->poc);
+    }
+
 
     if (pps->cabac_flag && !i_slice && !si_slice) {
         sh->cabac_init_idc = read_ue(br);

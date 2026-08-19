@@ -59,7 +59,6 @@ void picture_free(Picture *p) {
     free(p->luma);
     free(p->cb);
     free(p->cr);
-    if (p->sh) free(p->sh);
 
     free(p->mb_types);
     free(p->pred_flags);

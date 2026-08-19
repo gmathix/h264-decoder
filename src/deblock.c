@@ -57,10 +57,10 @@ static ALWAYS_INLINE bool same_ref_pics(
     const Picture *picL0_1, const Picture *picL1_1) {
 
     // when refLX_X is -1 (no ref) we just get EMPTY_PIC which has dpb_pic_id = 0
-    int hash0 = ((picL0_0->dpb_pic_id != 0) * (1 << picL0_0->dpb_pic_id)) |
-                ((picL1_0->dpb_pic_id != 0) * (1 << picL1_0->dpb_pic_id));
-    int hash1 = ((picL0_1->dpb_pic_id != 0) * (1 << picL0_1->dpb_pic_id)) |
-                ((picL1_1->dpb_pic_id != 0) * (1 << picL1_1->dpb_pic_id));
+    long hash0 = ((picL0_0->dpb_pic_id != 0) * (1L << picL0_0->dpb_pic_id)) |
+                ((picL1_0->dpb_pic_id != 0)  * (1L << picL1_0->dpb_pic_id));
+    long hash1 = ((picL0_1->dpb_pic_id != 0) * (1L << picL0_1->dpb_pic_id)) |
+                ((picL1_1->dpb_pic_id != 0)  * (1L << picL1_1->dpb_pic_id));
     return hash0 == hash1;
 }
 

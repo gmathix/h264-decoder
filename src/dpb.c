@@ -11,27 +11,57 @@
 #include "util/sliceutil.h"
 
 
-int picture_to_find = 70;
+int picture_to_find = -1;
 
+#undef stderr
+#define stderr stdout
 
 static void print_ref_lists(DPB *dpb, Picture *pic) {
-    fprintf(stderr, "FRAME_NUM %d (total %d)\n", pic->frame_num, dpb->ctx->prf->total_frames);
-    fprintf(stderr, "ref pic list 0:\n");
-    for (int i = 0; i < MAX_DPB_SIZE+1; i++) {
+    fprintf(stderr, "L0:\n");
+    for (int i = 0; i < dpb->effective_ref_idx_l0_active; i++) {
         Picture *ref = dpb->lists[L0][1+i];
         if (ref) {
-            fprintf(stderr, " ref poc : %d\n", ref->poc);
+            fprintf(stderr, " %d - POC:%3d  %s \n", i, ref->poc, ref->dpb_status == SHORT_TERM_REF ? "short-term" : "long-term");
         }
     }
 
-    fprintf(stderr, "\nref pic list 1:\n");
-    for (int i = 0; i < MAX_DPB_SIZE+1; i++) {
+    fprintf(stderr, "\nL1:\n");
+    for (int i = 0; i < dpb->effective_ref_idx_l1_active; i++) {
         Picture *ref = dpb->lists[L0][1+i];
         if (ref) {
-            fprintf(stderr, " ref poc : %d\n", ref->poc);
+            fprintf(stderr, " %d - POC:%3d  %s \n", i, ref->poc, ref->dpb_status == SHORT_TERM_REF ? "short-term" : "long-term");
         }
     }
-    fprintf(stderr, "\n\n\n");
+}
+
+static void print_dpb(DPB *dpb) {
+    printf("*** DPB ***\n");
+    // print stored pictures in ascending POC
+    int already_printed[MAX_DPB_SIZE] = {};
+    for (int i = 0; i < dpb->size; i++) {
+        int32_t min_poc = 0x7FFFFFFF;
+        int min_idx = -1;
+
+        for (int j = 0; j < dpb->size; j++) {
+            if (dpb->slots[j]) {
+                Picture *pic = dpb->slots[j];
+                if (pic->poc <= min_poc && !already_printed[j]) {
+                    min_poc = pic->poc;
+                    min_idx = j;
+                }
+            }
+        }
+
+        if (min_idx != -1) {
+            Picture *pic = dpb->slots[min_idx];
+            printf("(fn:%3d, POC:%3d) %s%s%s\n", pic->frame_num, pic->poc,
+                pic->dpb_status != UNUSED_REF ? "ref " : "",
+                pic->dpb_status == LONG_TERM_REF ? "lt " : "",
+                pic->non_existing ? "ne " : "");
+
+            already_printed[min_idx] = 1;
+        }
+    }
 }
 
 void derive_poc(DPB *dpb, Picture *pic) {
@@ -154,7 +184,7 @@ int output_oldest_pic(DPB *dpb) {
     int min_idx = -1;
     for (int i = 0; i < dpb->size; i++) {
         Picture *pic = dpb->slots[i];
-        if (pic != NULL && pic->poc < min_poc && !pic->is_output && !pic->non_existing) {
+        if (pic != NULL && pic->poc < min_poc && !pic->is_output) {
 
             min_poc = pic->poc;
             min_idx = i;
@@ -208,6 +238,7 @@ void store_picture(DPB *dpb, Picture *pic) {
     // derive_poc(dpb, pic);
     decode_pic_nums(dpb, pic->sh->frame_num);
 
+    dpb->mmco_5_prev_occured = false;
     if (pic->sh->idr_pic_flag) {
         for (int i = 0; i < dpb->size; i++) {
             output_oldest_pic(dpb);
@@ -239,6 +270,7 @@ void store_picture(DPB *dpb, Picture *pic) {
 
     if (pic->dpb_status != LONG_TERM_REF && pic->nal_ref_idc != 0) {
         pic->dpb_status = SHORT_TERM_REF;
+        pic->long_term_frame_idx = -1;
     }
 
 
@@ -270,7 +302,7 @@ void store_picture(DPB *dpb, Picture *pic) {
 
 
 void pad_list_with_empty(DPB *dpb, Picture **list) {
-    for (int i = 0; i < MAX_DPB_SIZE+1; i++) {
+    for (int i = 0; i < dpb->size; i++) {
         if (list[i] == NULL) {
             list[i] = &EMPTY_PICTURE;
         }
@@ -377,24 +409,34 @@ void init_ref_pic_lists(DPB *dpb, SliceHeader *sh) {
 
     pad_list_with_empty(dpb, dpb->lists[L0]);
     pad_list_with_empty(dpb, dpb->lists[L1]);
-
-
 }
 
 
 /* MMCOs */
 void mark_st_pic_unused(DPB *dpb, int picNum) {
     Picture *pic = findRefPic(dpb, returnPicNum, picNum);
-    pic->dpb_status = UNUSED_REF;
+    if (pic) {
+        pic->dpb_status = UNUSED_REF;
+    } else {
+        printf("warning: MMCO 1 tried to modify a non-existing picture, ignoring\n");
+    }
 }
 void mark_lt_pic_unused(DPB *dpb, int ltPicNum) {
     Picture *pic = findRefPic(dpb, returnLTPicNum, ltPicNum);
-    pic->dpb_status = UNUSED_REF;
+    if (pic) {
+        pic->dpb_status = UNUSED_REF;
+    } else {
+        printf("warning: MMCO 2 tried to modify a non-existing picture, ignoring\n");
+    }
 }
 void assign_lt_idx_to_st_pic(DPB *dpb, int picNum, int lt_frame_idx) {
     Picture *pic = findRefPic(dpb, returnPicNum, picNum);
-    pic->dpb_status = LONG_TERM_REF;
-    pic->long_term_frame_idx = lt_frame_idx;
+    if (pic) {
+        pic->dpb_status = LONG_TERM_REF;
+        pic->long_term_frame_idx = lt_frame_idx;
+    } else {
+        printf("warning: MMCO 3 tried to modify a non-existing picture, ignoring\n");
+    }
 }
 void decode_max_lt_frame_idx(DPB *dpb, int max_lt_frame_idx) {
     dpb->ctx->maxLongTermFrameIdx = max_lt_frame_idx;
@@ -466,10 +508,11 @@ void ref_pic_list_modification(uint8_t type, Slice *slice, int maxFrameNum, int 
         }
     }
 
-    // print_ref_lists(ctx->dpb, ctx->curr_pic);
+    print_ref_lists(ctx->dpb, ctx->curr_pic);
 
 }
 
+// puts a short-term ref picture at position refIdxLX (advancing 0..num_ref_idx_active-1)
 void ref_pic_list_modif_st(Slice *slice, bool is_l0, int *refIdxLX, int modif_idc, int abs_diff, int maxFrameNum, Undo264Context *ctx) {
     DPB *dpb = ctx->dpb;
 
@@ -519,7 +562,7 @@ void ref_pic_list_modif_st(Slice *slice, bool is_l0, int *refIdxLX, int modif_id
     }
 }
 
-
+// puts a long-term ref picture at position refIdxLX (advancing 0..num_ref_idx_active-1)
 void ref_pic_list_modif_lt(Slice *slice, bool is_l0,  int *refIdxLX, int modif_idc, int lt_pic_num, int *maxLtIdx, Undo264Context *ctx) {
     DPB *dpb = ctx->dpb;
 
@@ -531,7 +574,7 @@ void ref_pic_list_modif_lt(Slice *slice, bool is_l0,  int *refIdxLX, int modif_i
     for (int cIdx = num_ref_idx_lX_active; cIdx > *refIdxLX; cIdx--) {
         lX[1+cIdx] = lX[1+cIdx-1];
     }
-    lX[(*refIdxLX)++] = refpic;
+    lX[1+(*refIdxLX)++] = refpic;
     int nIdx = *refIdxLX;
     for (int cIdx = *refIdxLX; cIdx <= num_ref_idx_lX_active; cIdx++) {
         if (ltPicNum(dpb, lX, cIdx, *maxLtIdx) != lt_pic_num) {
@@ -545,6 +588,7 @@ void ref_pic_list_modif_lt(Slice *slice, bool is_l0,  int *refIdxLX, int modif_i
 void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
 
     SliceHeader *sh = slice->sh;
+    Picture *currPic = dpb->ctx->curr_pic;
 
     // gaps in frame_num
     if (dpb->prevPic
@@ -554,40 +598,43 @@ void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
 
         if (!sh->sps->gaps_in_frame_num_allowed_flag) {
             printf("warning: disallowed gap in frame_num detected\n");
+        } else {
+            printf("resolving gap in frame_num\n");
         }
 
         int curr_frame_num = dpb->prevPic->frame_num;
         do {
             curr_frame_num = (curr_frame_num + 1) % dpb->ctx->maxFrameNum;
 
-            int old_idx = -1;
-            do {
-                old_idx = output_oldest_pic(dpb);
-            } while (old_idx != -1);
-
             decode_pic_nums(dpb, curr_frame_num);
             int idx = sliding_window_marking(sh, dpb);
             if (idx != -1) {
+                // picture was marked unused
                 Picture *pic = dpb->slots[idx];
-                if (pic->non_existing || pic->poc <= slice->p_pic->poc || !pic->is_output) {
+                if (pic->non_existing) {
                     output_pic(idx, dpb);
+                } else {
+                    idx = -1;
                 }
             }
 
 
-            Picture *nonExistingPic = pic_pool_get(dpb->ctx->pool);
-            nonExistingPic->frame_num = curr_frame_num;
-            nonExistingPic->pic_num = curr_frame_num;
+            Picture *nonExistingPic        = pic_pool_get(dpb->ctx->pool);
+            nonExistingPic->frame_num      = curr_frame_num;
+            nonExistingPic->pic_num        = curr_frame_num;
             nonExistingPic->frame_num_wrap = curr_frame_num;
-            nonExistingPic->non_existing = true;
-            nonExistingPic->dpb_status = SHORT_TERM_REF;
-            nonExistingPic->is_output = false;
+            nonExistingPic->non_existing   = true;
+            nonExistingPic->dpb_status     = SHORT_TERM_REF;
+            nonExistingPic->is_output      = false;
+            nonExistingPic->sh             = sh;
+            nonExistingPic->nal_ref_idc    = currPic->nal_ref_idc;
+            nonExistingPic->long_term_frame_idx = -1;
+            derive_poc(dpb, nonExistingPic);
 
 
             if (idx == -1) {
                 idx = bump(dpb);
             }
-            // printf("%d\n", curr_frame_num);
 
             dpb->slots[idx] = nonExistingPic;
             dpb->prevPic = nonExistingPic;
@@ -610,6 +657,8 @@ void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
             uint32_t mmco = 0;
             do {
                 mmco = read_ue(br);
+                printf("mmco:%d\n", mmco);
+
                 if (mmco == 1 || mmco == 3) {
                     uint32_t diff_pic_nums = read_ue(br) + 1;
                 }
@@ -623,6 +672,8 @@ void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
                     uint32_t max_lt_frame_idx = read_ue(br) - 1;
                 }
             } while (mmco != 0);
+        } else {
+            printf("no MMCOs\n");
         }
     }
 }
@@ -638,7 +689,6 @@ void process_mmcos(Picture *pic, Undo264Context *ctx) {
         uint32_t mmco = 0;
         do {
             mmco = read_ue(&mmco_br);
-            printf("mmco:%d\n", mmco);
 
             if (mmco == 1) {
                 uint32_t diff_pic_nums = read_ue(&mmco_br) + 1;
@@ -659,6 +709,17 @@ void process_mmcos(Picture *pic, Undo264Context *ctx) {
             }
             if (mmco == 5) {
                 mark_all_unused(ctx->dpb);
+                ctx->dpb->mmco_5_prev_occured = true;
+                pic->frame_num = 0;
+                for (int i = 0; i < ctx->dpb->size; i++) {
+                    output_oldest_pic(ctx->dpb);
+                }
+                for (int i = 0; i < ctx->dpb->size; i++) {
+                    if (ctx->dpb->slots[i] && ctx->dpb->slots[i]->non_existing) {
+                        output_pic(i, ctx->dpb);
+                    }
+                }
+                ctx->curr_pic->poc = 0;
             }
             if (mmco == 6) {
                 uint32_t lt_frame_idx = read_ue(&mmco_br);
@@ -666,8 +727,6 @@ void process_mmcos(Picture *pic, Undo264Context *ctx) {
             }
         } while (mmco != 0);
 
-    } else {
-        printf("no MMCOs\n");
     }
 }
 
@@ -684,8 +743,8 @@ void dpb_empty_slots(DPB *dpb) {
     }
     dpb->lists[L0][1+dpb->size-1] = NULL;
     dpb->lists[L1][1+dpb->size-1] = NULL;
-    dpb->lists[L0][0] = NULL;
-    dpb->lists[L1][0] = NULL;
+    dpb->lists[L0][1+0] = NULL;
+    dpb->lists[L1][1+0] = NULL;
 }
 void dpb_empty_ref_lists(DPB *dpb) {
     for (int i = 0; i < dpb->size; i++) {
@@ -705,7 +764,7 @@ void dpb_empty_ref_lists(DPB *dpb) {
 
 
 void dpb_flush(DPB *dpb) {
-	while (dpb->fullness != 0) {
+	for (int i = 0; i < dpb->size; i++) {
 		output_oldest_pic(dpb);
 	}
 }

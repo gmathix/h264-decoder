@@ -16,7 +16,6 @@ enum DpbStatus {
     UNUSED_REF        = 0,
     SHORT_TERM_REF    = 1,
     LONG_TERM_REF     = 2,
-    NON_EXISTING_REF  = 3,
 };
 
 typedef struct DPB {
@@ -25,8 +24,6 @@ typedef struct DPB {
     size_t pictures_dumped;
 
     Picture *slots[MAX_DPB_SIZE];
-    // Picture *l0[1+MAX_DPB_SIZE+1]; // empty picture slot + pictures + safety extra slot at the end
-    // Picture *l1[1+MAX_DPB_SIZE+1];
     Picture *lists[2][1+MAX_DPB_SIZE+1];
     int effective_ref_idx_l0_active;
     int effective_ref_idx_l1_active;
@@ -151,7 +148,7 @@ static DPB *make_dbp(Undo264Context *ctx) {
     dpb->maxPocLsb = -1;
 
     dpb->curr_pic_dpb_id = 1;
-    for (int i = 0; i < MAX_DPB_SIZE+2; i++) {
+    for (int i = 0; i < dpb->size+2; i++) {
         dpb->lists[L0][i] = &EMPTY_PICTURE;
         dpb->lists[L1][i] = &EMPTY_PICTURE;
     }
@@ -180,7 +177,7 @@ static inline int ltPicNum(DPB *dpb, Picture **lX, int idx, int maxLtIdx) {
 void derive_poc(DPB *dpb, Picture *pic);
 void decode_pic_nums(DPB *dpb, int frame_num);
 int  bump(DPB *dpb);
-int  output_oldest_pic(DPB *dpb); // returns of output picture
+int  output_oldest_pic(DPB *dpb); // returns index of output picture
 void store_picture(DPB *dpb, Picture *pic);
 
 void init_ref_pic_lists(DPB *dpb, struct SliceHeader *sh);

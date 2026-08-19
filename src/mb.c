@@ -511,16 +511,6 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
             }
         }
 
-        // if (debugging) {
-        //     printf("l0 ref mb: \n");
-        //     print_macroblock(ctx->dpb->lists[L0][1], mb->mbAddr, 0);
-        //
-        //     printf("\nl1 ref mb: \n");
-        //     print_macroblock(ctx->dpb->lists[L1][1], mb->mbAddr, 0);
-        //
-        //     printf("\ndecoded mb: \n");
-        //     print_macroblock(ctx->curr_pic, mb->mbAddr, 0);
-        // }
 
 
 

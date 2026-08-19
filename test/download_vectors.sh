@@ -4,15 +4,22 @@
 # Download official ITU-T conformance vectors
 
 
-if [ -d "AVCv1" ]; then
-  rm -rf "AVCv1"
-fi
-if [ -d "FRExt" ]; then
-  rm -rf "FRExt"
+
+
+
+
+
+if [ ! -d "AVCv1" ]; then
+    wget "https://www.itu.int/wftp3/public/t/testsignal/SpeVideo/H264-1/v2016_02/ITU-T_H.264.1(2016-02)_AVCv1_bitstreams.zip" -O AVCv1.zip \
+       || { echo "AVCv1 download failed, please visit https://www.itu.int/myworkspace/t-signals/vectors?val=5 and download it manually"; exit 1; }
+    unzip "AVCv1.zip" 1> /dev/null
 fi
 
-wget "https://www.itu.int/wftp3/public/t/testsignal/SpeVideo/H264-1/v2016_02/ITU-T_H.264.1(2016-02)_AVCv1_bitstreams.zip" -O AVCv1.zip
-wget "https://www.itu.int/wftp3/public/t/testsignal/SpeVideo/H264-1/v2016_02/ITU-T_H.264.1(2016-02)_FRExt_bitstreams.zip" -O FRExt.zip
+if [ ! -d "FRExt" ]; then
+    wget "https://www.itu.int/wftp3/public/t/testsignal/SpeVideo/H264-1/v2016_02/ITU-T_H.264.1(2016-02)_FRExt_bitstreams.zip" -O FRExt.zip \
+        || { echo "FRExt download failed, please visit https://www.itu.int/myworkspace/t-signals/vectors?val=5 and download it manually"; exit 1; }
+    unzip "FRExt.zip" 1> /dev/null
+fi
 
 
 
@@ -31,9 +38,7 @@ unzip_subdirs() {
 
 
 echo "Decompressing AVCv1..."
-unzip "AVCv1.zip" 1> /dev/null
 unzip_subdirs AVCv1
 
 echo "Decompressing FRExt..."
-unzip "FRExt.zip" 1> /dev/null
 unzip_subdirs FRExt

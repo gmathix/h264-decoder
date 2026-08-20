@@ -11,7 +11,7 @@
 #include "util/sliceutil.h"
 
 
-int picture_to_find = -1;
+int picture_to_find = 17;
 
 static void print_ref_lists(DPB *dpb, Picture *pic) {
     fprintf(stdout, "L0:\n");
@@ -429,6 +429,13 @@ void mark_lt_pic_unused(DPB *dpb, int ltPicNum) {
 void assign_lt_idx_to_st_pic(DPB *dpb, int picNum, int lt_frame_idx) {
     Picture *pic = findRefPic(dpb, returnPicNum, picNum);
     if (pic) {
+        for (int i = 0; i < dpb->size; i++) {
+            Picture *pic = dpb->slots[i];
+            if (pic && pic->dpb_status == LONG_TERM_REF && pic->long_term_frame_idx == lt_frame_idx) {
+                pic->dpb_status = UNUSED_REF;
+                pic->long_term_frame_idx = -1;
+            }
+        }
         pic->dpb_status = LONG_TERM_REF;
         pic->long_term_frame_idx = lt_frame_idx;
     } else {
@@ -453,6 +460,13 @@ void mark_all_unused(DPB *dpb) {
     }
 }
 void mark_curr_pic_lt(DPB *dpb, int lt_frame_idx) {
+    for (int i = 0; i < dpb->size; i++) {
+        Picture *pic = dpb->slots[i];
+        if (pic && pic->dpb_status == LONG_TERM_REF && pic->long_term_frame_idx == lt_frame_idx) {
+            pic->dpb_status = UNUSED_REF;
+            pic->long_term_frame_idx = -1;
+        }
+    }
     dpb->ctx->curr_pic->dpb_status = LONG_TERM_REF;
     dpb->ctx->curr_pic->long_term_frame_idx = lt_frame_idx;
 }

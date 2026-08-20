@@ -238,6 +238,8 @@ void init_neighbor_tables(Undo264Context *ctx) {
 
 
 void decode_i_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
+    int chroma_at = slice->sh->sps->chroma_format_idc;
+
     if (IS_INTRA4x4(mb->mb_type)) {
         for (int i = 0; i < 16; i++) {
             int blkIdx = map_4x4[i];
@@ -246,15 +248,19 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
             transform_luma_4x4(mb, mb->QPY, blkIdx, ctx);
         }
 
-        intra_chroma_pred(mb, ctx);
-        transform_chroma(mb, ctx);
+        if (chroma_at != 0) {
+            intra_chroma_pred(mb, ctx);
+            transform_chroma(mb, ctx);
+        }
 
     } else if (IS_INTRA16x16(mb->mb_type)) {
         intra_pred_16x16(mb, ctx);
         transform_luma_16x16(mb, mb->QPY, ctx);
 
-        intra_chroma_pred(mb, ctx);
-        transform_chroma(mb, ctx);
+        if (chroma_at != 0) {
+            intra_chroma_pred(mb, ctx);
+            transform_chroma(mb, ctx);
+        }
 
     } else if (IS_INTRA8x8(mb->mb_type)) {
         for (int i8x8 = 0; i8x8 < 4; i8x8++) {
@@ -265,8 +271,10 @@ void decode_i_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
             }
         }
 
-        intra_chroma_pred(mb, ctx);
-        transform_chroma(mb, ctx);
+        if (chroma_at != 0) {
+            intra_chroma_pred(mb, ctx);
+            transform_chroma(mb, ctx);
+        }
     }
 
 
@@ -288,6 +296,7 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
     }
 
 
+    int chroma_at = slice->sh->sps->chroma_format_idc;
 
     if (IS_INTRA(mb->mb_type)) {
         decode_i_macroblock(mb, slice, ctx);
@@ -324,7 +333,8 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
                 derive_pred_weights(mv.ref_idx, 0, true, false, ctx);
 
                 inter_pred_single(mb, pos4x4, mv, L0, w, h, scratch_buf, ctx);
-                inter_pred_chroma_single(mb, pos4x4, mv, L0, w / 2, h / 2, scratch_buf_chroma, ctx);
+                if (chroma_at != 0)
+                    inter_pred_chroma_single(mb, pos4x4, mv, L0, w / 2, h / 2, scratch_buf_chroma, ctx);
             }
         } else {
             for (int part = 0; part < 4; part++) {
@@ -341,7 +351,8 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
                     derive_pred_weights(mv.ref_idx, 0, true, false, ctx);
 
                     inter_pred_single(mb, pos4x4, mv, L0, subW, subH, scratch_buf, ctx);
-                    inter_pred_chroma_single(mb, pos4x4, mv, L0, subW / 2, subH / 2, scratch_buf_chroma, ctx);
+                    if (chroma_at != 0)
+                        inter_pred_chroma_single(mb, pos4x4, mv, L0, subW / 2, subH / 2, scratch_buf_chroma, ctx);
                 }
             }
         }
@@ -363,7 +374,8 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
                     }
                 }
             }
-            transform_chroma(mb, ctx);
+            if (chroma_at != 0)
+                transform_chroma(mb, ctx);
         }
     }
 }
@@ -380,6 +392,7 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
     }
 
 
+    int chroma_at = slice->sh->sps->chroma_format_idc;
 
 
     if (IS_INTRA(mb->mb_type)) {
@@ -447,7 +460,8 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                     }
 
                     inter_pred_single(mb, pos4x4, mv, list, w, h, scratch_buf, ctx);
-                    inter_pred_chroma_single(mb, pos4x4, mv, list, w / 2, h / 2, scratch_buf_chroma, ctx);
+                    if (chroma_at != 0)
+                        inter_pred_chroma_single(mb, pos4x4, mv, list, w / 2, h / 2, scratch_buf_chroma, ctx);
                 } else if (l0 + l1 == 2) {
                     MotionVector mvL0 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
                     MotionVector mvL1 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L1];
@@ -459,7 +473,8 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                     derive_pred_weights(mvL0.ref_idx, mvL1.ref_idx, true, true, ctx);
 
                     inter_pred_bi(mb, pos4x4, mvL0, mvL1, w, h, scratch_buf, temp_bi_buf, ctx);
-                    inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, w / 2, h / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
+                    if (chroma_at != 0)
+                        inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, w / 2, h / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
                 }
             }
         } else {
@@ -489,7 +504,8 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                         }
 
                         inter_pred_single(mb, pos4x4, mv, list, subW, subH, scratch_buf, ctx);
-                        inter_pred_chroma_single(mb, pos4x4, mv, list, subW / 2, subH / 2, scratch_buf_chroma, ctx);
+                        if (chroma_at != 0)
+                            inter_pred_chroma_single(mb, pos4x4, mv, list, subW / 2, subH / 2, scratch_buf_chroma, ctx);
                     }
                 } else if (l0 + l1 == 2) {
                     for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
@@ -505,7 +521,8 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                         }
 
                         inter_pred_bi(mb, pos4x4, mvL0, mvL1, subW, subH, scratch_buf, temp_bi_buf, ctx);
-                        inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, subW / 2, subH / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
+                        if (chroma_at != 0)
+                            inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, subW / 2, subH / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
                     }
                 }
             }
@@ -524,7 +541,8 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                     transform_luma_4x4(mb, mb->QPY, map_4x4[i], ctx);
                 }
             }
-            transform_chroma(mb, ctx);
+            if (chroma_at != 0)
+                transform_chroma(mb, ctx);
         }
     }
 }

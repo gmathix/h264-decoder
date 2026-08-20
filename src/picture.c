@@ -104,6 +104,12 @@ void pic_pool_init(PicturePool *pool, Undo264Context *ctx) {
     for (int i = 0; i < pool->size; i++) {
         if (pool->slots[i]) picture_free(pool->slots[i]);
         pool->slots[i] = picture_alloc(sps, ctx);
+        if (sps->chroma_format_idc == 0) {
+            Picture *pic = pool->slots[i];
+            memset(pic->cb, 128u, pic->widthC * pic->heightC);
+            memset(pic->cr, 128u, pic->widthC * pic->heightC);
+        }
+
     }
     memset(pool->available, true, pool->size);
     pool->nb_available = pool->size;

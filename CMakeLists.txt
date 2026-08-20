@@ -20,7 +20,7 @@ option(USE_SANITIZERS "Build with ASan/UBSan" OFF)
 option(BUILD_TOOLS "Build gen_rgb_video / compare_streams helper tools" ON)
 
 set(UNDO264_SOURCES
-        src/main.c
+    src/main.c
     src/intra.c
     src/annexb.c
     src/ps.c

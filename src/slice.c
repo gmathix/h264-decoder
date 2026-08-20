@@ -540,7 +540,6 @@ int CAFUNC(read_intra_chroma_pred_mode,
 
 int CAFUNC(read_coded_block_pattern,
     Macroblock *mb, SliceHeader *sh, Undo264Context *ctx) {
-
     #if CABAC
         #if CABAC_LOG
             fprintf(ctx->log_file, "\nreading coded_block_pattern\n");
@@ -573,26 +572,28 @@ int CAFUNC(read_coded_block_pattern,
         int cbp_chroma = 0;
         long str = 0;
         static int ctxIdxInc[2];
-        inc = (mb->has_mb_a && IS_PCM(metaA.mb_type) ||
-              ((mb->has_mb_a && !IS_SKIP(metaA.mb_type) &&
-                metaA.cbp_chroma != 0)))
-             + 2 * (mb->has_mb_b && IS_PCM(metaB.mb_type) ||
-                   (mb->has_mb_b && !IS_SKIP(metaB.mb_type) &&
-                    metaB.cbp_chroma != 0));
-        ctxIdxInc[0] = inc;
-        inc = (mb->has_mb_a && IS_PCM(metaA.mb_type) ||
-              ((mb->has_mb_a && !IS_SKIP(metaA.mb_type) &&
-                metaA.cbp_chroma == 2)))
-             + 4 + 2 * (mb->has_mb_b && IS_PCM(metaB.mb_type) ||
-                   (mb->has_mb_b && !IS_SKIP(metaB.mb_type) &&
-                    metaB.cbp_chroma == 2));
-        ctxIdxInc[1] = inc;
+        if (sh->sps->chroma_format_idc != 0) {
+            inc = (mb->has_mb_a && IS_PCM(metaA.mb_type) ||
+                  ((mb->has_mb_a && !IS_SKIP(metaA.mb_type) &&
+                    metaA.cbp_chroma != 0)))
+                 + 2 * (mb->has_mb_b && IS_PCM(metaB.mb_type) ||
+                       (mb->has_mb_b && !IS_SKIP(metaB.mb_type) &&
+                        metaB.cbp_chroma != 0));
+            ctxIdxInc[0] = inc;
+            inc = (mb->has_mb_a && IS_PCM(metaA.mb_type) ||
+                  ((mb->has_mb_a && !IS_SKIP(metaA.mb_type) &&
+                    metaA.cbp_chroma == 2)))
+                 + 4 + 2 * (mb->has_mb_b && IS_PCM(metaB.mb_type) ||
+                       (mb->has_mb_b && !IS_SKIP(metaB.mb_type) &&
+                        metaB.cbp_chroma == 2));
+            ctxIdxInc[1] = inc;
 
-        while (str += str + cabac_get_bit(ctx, 77 + ctxIdxInc[cbp_chroma]),
-               (str & 1) && str != 3) {
-            cbp_chroma++;
+            while (str += str + cabac_get_bit(ctx, 77 + ctxIdxInc[cbp_chroma]),
+                   (str & 1) && str != 3) {
+                cbp_chroma++;
+                   }
+            if (str == 3) cbp_chroma = 2;
         }
-        if (str == 3) cbp_chroma = 2;
 
         return cbp_luma | (cbp_chroma << 4);
     #else

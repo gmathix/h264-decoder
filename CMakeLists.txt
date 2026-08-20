@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.20)
-project(h264_decoder
+project(undo264
         VERSION 1.0
         DESCRIPTION "A H.264 decoder written in C"
         LANGUAGES C

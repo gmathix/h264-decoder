@@ -2,8 +2,6 @@
 
 A H.264 decoder written in C
 
-## Current Status
-Fixing High profile bugs against FRExt suite
 
 ## Features and Scope
 Baseline profile, Main and High profile:
@@ -17,21 +15,21 @@ Baseline profile, Main and High profile:
 - Deblocking filter
 - Memory management control operations (MMCOs)
 - Long-term reference pictures
-- YUV 4:2:0 output
+- YUV 4:2:0 and monochrome output
 
 Does and will not support :
 - MBAFF/PAFF
 - Picture field coding
 - FMO (multiple slice groups)
 - ASO (arbitrary slice ordering)
-- Any format other than 4:2:0
+- Any format other than 4:2:0 or monochrome
 - Profiles: CAVLC 4:4:4, High 10-bit, High 4:2:2, High 4:4:4
 
 
 ## Correctness and Testing
 
-Undo264 gives bit-exact output on all official ITU-T conformance bitstreams for Baseline and Main (AVCv1 suite), 
-and 21/24 for High profile (FRExt suite), excluding bitstreams that are out of this decoder's scope. 
+Undo264 gives bit-exact output on all official ITU-T conformance bitstreams for Baseline, Main and High profiles
+(AVCv1 and FRExt suites), excluding bitstreams that are out of this decoder's scope. 
 
 A script for downloading the AVCv1 (Baseline, Main) and FRExt (High) suites is available in the test/ folder, 
 as well as an automated script to run those test suites 

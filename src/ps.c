@@ -25,6 +25,11 @@
 
 /* 7.3.2.1.1 */
 int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
+    #ifdef SLICES_LOG
+        printf("READING SPS\n");
+    #endif
+
+
     BitReader *br = ctx->br;
     ParamSets *ps = ctx->ps;
 
@@ -63,7 +68,7 @@ int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
     sps->profile_idc = profile_idc;
 
 
-    infer_flat_matrices(ctx);
+    infer_flat_matrices(true, ctx);
 
     /* not going to handle these for now. focusing on Baseline + Main profiles
      * probably won't even ever work on these */
@@ -89,15 +94,21 @@ int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
         uint32_t transform_bypass = read_u(br, 1);
 
         uint32_t scaling_matrix_present = read_u(br, 1);
-        ctx->seqScalingListPresent = scaling_matrix_present;
+        ctx->seqScalingMatrixPresent = scaling_matrix_present;
         if (scaling_matrix_present) {
             for (int i = 0; i < 8; i++) {
                 bool present = read_u(br, 1);
                 if (present) {
                     if (i < 6) {
-                        parse_scaling_list(ctx->scalingList4x4[i], 16, &ctx->useDefaultList4x4[i], br);
+                        parse_scaling_list(ctx->seqScalingList4x4[i], 16, &ctx->useDefaultList4x4[i], br);
+                        if (ctx->useDefaultList4x4[i]) {
+                            scaling_list_fallback(i, true, false, ctx);
+                        }
                     } else {
-                        parse_scaling_list(ctx->scalingList8x8[i-6], 64, &ctx->useDefaultList8x8[i-6], br);
+                        parse_scaling_list(ctx->seqScalingList8x8[i-6], 64, &ctx->useDefaultList8x8[i-6], br);
+                        if (ctx->useDefaultList8x8[i-6]) {
+                            scaling_list_fallback(i, false, false, ctx);
+                        }
                     }
                 } else {
                     scaling_list_fallback(i, i < 6, false, ctx);
@@ -111,8 +122,8 @@ int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
         sps->bit_depth_chroma = 8;
     }
 
-    precompute_4x4_scales(ctx);
-    precompute_8x8_scales(ctx);
+    precompute_4x4_scales(ctx->seqScalingList4x4, ctx);
+    precompute_8x8_scales(ctx->seqScalingList8x8, ctx);
 
 
     sps->log2_max_frame_num_minus4 =read_ue(br);
@@ -229,6 +240,10 @@ int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
 
 /* 7.3.2.2 */
 int decode_pps(size_t global_bit_offset, Undo264Context *ctx) {
+    #ifdef SLICES_LOG
+        printf("READING PPS\n");
+    #endif
+
     BitReader *br = ctx->br;
     ParamSets *ps = ctx->ps;
 
@@ -271,6 +286,13 @@ int decode_pps(size_t global_bit_offset, Undo264Context *ctx) {
     pps->redundant_pic_cnt_present_flag            = read_u(br, 1);
 
 
+    for (int i = 0; i < 6; i++) {
+        memcpy(ctx->scalingList4x4[i], ctx->seqScalingList4x4[i], 16 * sizeof(int16_t));
+    }
+    for (int i = 0; i < 2; i++) {
+        memcpy(ctx->scalingList8x8[i], ctx->seqScalingList8x8[i], 64 * sizeof(int16_t));
+    }
+
     if (more_rbsp_data(br)) {
         pps->transform_8x8_mode_flag = read_u(br, 1);
         bool pic_scaling_matrix_present = read_u(br, 1);
@@ -280,8 +302,14 @@ int decode_pps(size_t global_bit_offset, Undo264Context *ctx) {
                 if (present) {
                     if (i < 6) {
                         parse_scaling_list(ctx->scalingList4x4[i], 16, &ctx->useDefaultList4x4[i], br);
+                        if (ctx->useDefaultList4x4[i]) {
+                            scaling_list_fallback(i, true, true, ctx);
+                        }
                     } else {
                         parse_scaling_list(ctx->scalingList8x8[i-6], 64, &ctx->useDefaultList8x8[i-6], br);
+                        if (ctx->useDefaultList8x8[i-6]) {
+                            scaling_list_fallback(i, false, true, ctx);
+                        }
                     }
                 } else {
                     scaling_list_fallback(i, i < 6, true, ctx);
@@ -294,8 +322,8 @@ int decode_pps(size_t global_bit_offset, Undo264Context *ctx) {
         pps->second_chroma_qp_index_offset = pps->chroma_qp_index_offset;
     }
 
-    precompute_4x4_scales(ctx);
-    precompute_8x8_scales(ctx);
+    precompute_4x4_scales(ctx->scalingList4x4, ctx);
+    precompute_8x8_scales(ctx->scalingList8x8, ctx);
 
 
     /* derive */

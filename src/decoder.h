@@ -34,12 +34,18 @@ typedef struct Undo264Context {
     bool pic_pool_initialized;
 
 
-    int *seq_scaling_lists[8];
-    int scalingList4x4[6][16];
-    int scalingList8x8[2][64];
-    bool seqScalingListPresent;
+    // scaling lists and levelScale tables
+    bool seqScalingMatrixPresent;
     bool useDefaultList4x4[6];
     bool useDefaultList8x8[2];
+
+    // sequence-level scaling lists
+    int16_t seqScalingList4x4[6][16];
+    int16_t seqScalingList8x8[2][64];
+
+    int16_t scalingList4x4[6][16];
+    int16_t scalingList8x8[2][64];
+
     int16_t (*levelScale4x4) [52][4][4];
     int16_t (*levelScale8x8) [52][8][8];
 

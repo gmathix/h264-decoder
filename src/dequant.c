@@ -10,28 +10,28 @@
 
 /* default scaling lists */
 
-const int flat_4x4_16[16] = {
+const int16_t flat_4x4_16[16] = {
     16, 16, 16, 16,
     16, 16, 16, 16,
     16, 16, 16, 16,
     16, 16, 16, 16
 };
 
-const int default_4x4_intra[16] = {
+const int16_t default_4x4_intra[16] = {
      6, 13, 13, 20,
     20, 20, 28, 28,
     28, 28, 32, 32,
     32, 37, 37, 42
 };
 
-const int default_4x4_inter[16] = {
+const int16_t default_4x4_inter[16] = {
     10, 14, 14, 20,
     20, 20, 24, 24,
     24, 24, 27, 27,
     27, 30, 30, 34,
 };
 
-const int flat_8x8_16[64] = {
+const int16_t flat_8x8_16[64] = {
     16, 16, 16, 16, 16, 16, 16, 16,
     16, 16, 16, 16, 16, 16, 16, 16,
     16, 16, 16, 16, 16, 16, 16, 16,
@@ -42,7 +42,7 @@ const int flat_8x8_16[64] = {
     16, 16, 16, 16, 16, 16, 16, 16,
 };
 
-const int default_8x8_intra[64] = {
+const int16_t default_8x8_intra[64] = {
      6, 10, 10, 13, 11, 13, 16, 16,
     16, 16, 18, 18, 18, 18, 18, 23,
     23, 23, 23, 23, 23, 25, 25, 25,
@@ -53,7 +53,7 @@ const int default_8x8_intra[64] = {
     36, 36, 38, 38, 38, 40, 40, 42
 };
 
-const int default_8x8_inter[64] = {
+const int16_t default_8x8_inter[64] = {
      9, 13, 13, 15, 13, 15, 17, 17,
     17, 17, 19, 19, 19, 19, 19, 21,
     21, 21, 21, 21, 21, 22, 22, 22,
@@ -111,17 +111,7 @@ const int matrix_scan_8x8[64] = {
 
 
 
-void copy_scaling_list(int *list, int size, int index, bool is4x4, Undo264Context *ctx) {
-    for (int i = 0; i < size; i++) {
-        if (is4x4) {
-            ctx->scalingList4x4[index][i] = list[i];
-        } else {
-            ctx->scalingList8x8[index-6][i] = list[i];
-        }
-    }
-}
-
-void parse_scaling_list(int *scaling_list, int size, bool *useDefault, BitReader *br) {
+void parse_scaling_list(int16_t *scaling_list, int size, bool *useDefault, BitReader *br) {
     int lastScale = 8;
     int nextScale = 8;
     for (int i = 0; i < size; i++) {
@@ -137,56 +127,58 @@ void parse_scaling_list(int *scaling_list, int size, bool *useDefault, BitReader
 
 void scaling_list_fallback(int index, bool is4x4, bool isPPS, Undo264Context *ctx) {
     bool useDefault = is4x4 ? ctx->useDefaultList4x4[index] : ctx->useDefaultList8x8[index-6];
-    bool fallbackB = isPPS && ctx->seqScalingListPresent;
+    bool fallbackB = isPPS && ctx->seqScalingMatrixPresent;
+
+    int16_t (*scalingList4x4)[16] = isPPS ? ctx->scalingList4x4 : ctx->seqScalingList4x4;
+    int16_t (*scalingList8x8)[64] = isPPS ? ctx->scalingList8x8 : ctx->seqScalingList8x8;
 
     if (index == 0) {
-        if (useDefault)      copy_scaling_list(default_4x4_intra, 16, 0, true, ctx);
-        else if (!fallbackB) copy_scaling_list(default_4x4_intra, 16, 0, true, ctx);
-        else                 copy_scaling_list(ctx->scalingList4x4[0], 16, 0, true, ctx);
+        if (useDefault
+            || !fallbackB) memcpy(scalingList4x4[0], default_4x4_intra, 16 * sizeof(int16_t));
+        else               memcpy(scalingList4x4[0], ctx->seqScalingList4x4[0], 16 * sizeof(int16_t));
     } else if (index == 1) {
-        if (useDefault)      copy_scaling_list(default_4x4_intra, 16, 1, true, ctx);
-        else if (!fallbackB) copy_scaling_list(ctx->scalingList4x4[0], 16, 1, true, ctx);
-        else                 copy_scaling_list(ctx->scalingList4x4[0], 16, 1, true, ctx);
+        if (useDefault)    memcpy(scalingList4x4[1], default_4x4_intra, 16 * sizeof(int16_t));
+        else               memcpy(scalingList4x4[1], scalingList4x4[0], 16 * sizeof(int16_t));
     } else if (index == 2) {
-        if (useDefault)      copy_scaling_list(default_4x4_intra, 16, 2, true, ctx);
-        else if (!fallbackB) copy_scaling_list(ctx->scalingList4x4[1], 16, 2, true, ctx);
-        else                 copy_scaling_list(ctx->scalingList4x4[1], 16, 2, true, ctx);
+        if (useDefault)    memcpy(scalingList4x4[2], default_4x4_intra, 16 * sizeof(int16_t));
+        else               memcpy(scalingList4x4[2], scalingList4x4[1], 16 * sizeof(int16_t));
     } else if (index == 3) {
-        if (useDefault)      copy_scaling_list(default_4x4_inter, 16, 3, true, ctx);
-        else if (!fallbackB) copy_scaling_list(default_4x4_inter, 16, 3, true, ctx);
-        else                 copy_scaling_list(ctx->scalingList4x4[3], 16, 3, true, ctx);
+        if (useDefault
+            || !fallbackB) memcpy(scalingList4x4[3], default_4x4_inter, 16 * sizeof(int16_t));
+        else               memcpy(scalingList4x4[3], ctx->seqScalingList4x4[3], 16 * sizeof(int16_t));
     } else if (index == 4) {
-        if (useDefault)      copy_scaling_list(default_4x4_inter, 16, 4, true, ctx);
-        else if (!fallbackB) copy_scaling_list(ctx->scalingList4x4[3], 16, 4, true, ctx);
-        else                 copy_scaling_list(ctx->scalingList4x4[3], 16, 4, true, ctx);
+        if (useDefault)    memcpy(scalingList4x4[4], default_4x4_inter, 16 * sizeof(int16_t));
+        else               memcpy(scalingList4x4[4], scalingList4x4[3], 16 * sizeof(int16_t));
     } else if (index == 5) {
-        if (useDefault)      copy_scaling_list(default_4x4_inter, 16, 4, true, ctx);
-        else if (!fallbackB) copy_scaling_list(ctx->scalingList4x4[4], 16, 5, true, ctx);
-        else                 copy_scaling_list(ctx->scalingList4x4[4], 16, 5, true, ctx);
+        if (useDefault)    memcpy(scalingList4x4[5], default_4x4_inter, 16 * sizeof(int16_t));
+        else               memcpy(scalingList4x4[5], scalingList4x4[4], 16 * sizeof(int16_t));
     } else if (index == 6) {
-        if (useDefault)      copy_scaling_list(default_8x8_intra, 64, 6, false, ctx);
-        else if (!fallbackB) copy_scaling_list(default_8x8_intra, 64, 6, false, ctx);
-        else                 copy_scaling_list(ctx->scalingList8x8[0], 64, 6, false, ctx);
+        if (useDefault
+            || !fallbackB) memcpy(scalingList8x8[0], default_8x8_intra, 64 * sizeof(int16_t));
+        else               memcpy(scalingList8x8[0], ctx->seqScalingList8x8[0], 64 * sizeof(int16_t));
     } else if (index == 7) {
-        if (useDefault)      copy_scaling_list(default_8x8_inter, 64, 7, false, ctx);
-        else if (!fallbackB) copy_scaling_list(default_8x8_inter, 64, 7, false, ctx);
-        else                 copy_scaling_list(ctx->scalingList8x8[1], 64, 7, false, ctx);
+        if (useDefault
+            || !fallbackB) memcpy(scalingList8x8[1], default_8x8_inter, 64 * sizeof(int16_t));
+        else               memcpy(scalingList8x8[1], ctx->seqScalingList8x8[1], 64 * sizeof(int16_t));
     }
 }
 
-void infer_flat_matrices(Undo264Context *ctx) {
+void infer_flat_matrices(bool seq, Undo264Context *ctx) {
+    int16_t (*scalingList4x4)[16] = seq ? ctx->seqScalingList4x4 : ctx->scalingList4x4;
+    int16_t (*scalingList8x8)[64] = seq ? ctx->seqScalingList8x8 : ctx->scalingList8x8;
+
     for (int i = 0; i < 6; i++) {
-        copy_scaling_list(flat_4x4_16, 16, i, true, ctx);
+        memcpy(scalingList4x4[i], flat_4x4_16, 16 * sizeof(int16_t));
     }
-    for (int i = 6; i < 8; i++) {
-        copy_scaling_list(flat_8x8_16, 64, i, false, ctx);
+    for (int i = 0; i < 2; i++) {
+        memcpy(scalingList8x8[i], flat_8x8_16, 64 * sizeof(int16_t));
     }
 }
 
 
 
 static ALWAYS_INLINE void inverse_matrix_scan(
-    int size, int scan[static size], int in[static size], int out[static size]) {
+    int size, int scan[static size], int16_t in[static size], int16_t out[static size]) {
 
    for (int i = 0; i < size; i++) {
        out[i] = in[scan[i]];
@@ -194,12 +186,12 @@ static ALWAYS_INLINE void inverse_matrix_scan(
 }
 
 
-void precompute_4x4_scales(Undo264Context *ctx) {
-    int matrix[16];
+void precompute_4x4_scales(int16_t (*scalinglist4x4)[16], Undo264Context *ctx) {
+    int16_t matrix[16];
 
     for (int n = 0; n < 6; n++) {
 
-        inverse_matrix_scan(16, matrix_scan_4x4, ctx->scalingList4x4[n], matrix);
+        inverse_matrix_scan(16, matrix_scan_4x4, scalinglist4x4[n], matrix);
 
         for (int qp = 0; qp <= 51; qp++) {
             for (int i = 0; i < 4; i++) {
@@ -212,12 +204,12 @@ void precompute_4x4_scales(Undo264Context *ctx) {
 }
 
 
-void precompute_8x8_scales(Undo264Context *ctx) {
-    int matrix[64];
+void precompute_8x8_scales(int16_t (*scalingList8x8)[64], Undo264Context *ctx) {
+    int16_t matrix[64];
 
     for (int n = 0; n < 2; n++) {
 
-        inverse_matrix_scan(64, matrix_scan_8x8, ctx->scalingList8x8[n], matrix);
+        inverse_matrix_scan(64, matrix_scan_8x8, scalingList8x8[n], matrix);
 
         for (int qp = 0; qp <= 51; qp++) {
             for (int i = 0; i < 8; i++) {

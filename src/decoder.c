@@ -164,6 +164,9 @@ int dispatch_nal_unit(NalUnit *nal_unit, Undo264Context *ctx) {
                 printf("done slice %lu %s(frame_num %d, pic %lu)\n\n",
                     ctx->prf->total_frames, slice->p_pic->sh->idr_pic_flag ? "(IDR) " : "", sh->frame_num, ctx->prf->total_frames);
             #endif
+            if (ctx->prf->total_frames % 100 == 0 && ctx->prf->total_frames > 0) {
+                printf("Progress: finished picture #%lu\n", ctx->prf->total_frames);
+            }
 
             if (slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs ||
                 slice->num_mbs + sh->first_mb == slice->p_pic->num_mbs+1) { // end of picture

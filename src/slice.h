@@ -245,7 +245,6 @@ static SliceHeader *read_slice_header(NalUnit *nal_unit, Undo264Context *ctx) {
 
     if (sh->first_mb == 0) {
         ctx->curr_pic = pic_pool_get(ctx->pool);
-        if (ctx->curr_pic->sh && !ctx->curr_pic->non_existing) free(ctx->curr_pic->sh);
         picture_reset(ctx->curr_pic);
         // ctx->curr_pic = picture_alloc(sh, ctx);
         ctx->curr_pic->sh = sh;

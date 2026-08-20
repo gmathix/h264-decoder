@@ -71,7 +71,8 @@ int main(int argc, char *argv[]) {
     size_t total_frames = context->prf->total_frames;
     size_t total_mbs = context->prf->total_mbs;
 
-    printf("avg : %.3fms per frame (%.3ffps) ; %.3fus per macroblock\n",
+    printf("Done, decoded %lu frames, avg : %.3fms per frame (%.3ffps) ; %.3fus per macroblock\n",
+        context->prf->total_frames,
         (double)total_frames_us / (double)total_frames / 1000,
         (double)((double)total_frames / ((double)total_frames_us/1000000)),
         (double)total_mb_us / (double)total_mbs

@@ -547,9 +547,6 @@ int CAFUNC(read_coded_block_pattern,
         #endif
         // prefix : maxBinIdxCtx=3 ctxIdxOffset=73
         // suffix : maxBinIdxCtx=1 ctxIdxOffset=77
-        if (ctx->prf->total_frames == 6 && mb->mbAddr == 3900) {
-            printf("%d %d %d %d\n", p_state_idx[73], p_state_idx[74], p_state_idx[75], p_state_idx[76]);
-        }
         int cbp_luma = 0, inc = 0;
         MacroblockMetadata metaA = mb->has_mb_a ? ctx->mb_metadata[mb->mbAddr - 1] :(MacroblockMetadata) {};
         MacroblockMetadata metaB = mb->has_mb_b ? ctx->mb_metadata[mb->mbAddr + mb->mb_b_off] : (MacroblockMetadata) {};

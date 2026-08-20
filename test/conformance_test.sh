@@ -19,7 +19,7 @@
 
 
 
-DECODER="../cmake-build-debug/h264_decoder"
+DECODER="../build/release/undo264"
 INPUT_DIR="$1"
 
 if [[ $# -ne 1 ]]; then

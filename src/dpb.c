@@ -11,7 +11,7 @@
 #include "util/sliceutil.h"
 
 
-int picture_to_find = 17;
+int picture_to_find = -1;
 
 static void print_ref_lists(DPB *dpb, Picture *pic) {
     fprintf(stdout, "L0:\n");
@@ -169,6 +169,7 @@ void output_pic(int idx, DPB *dpb) {
     if (!pic->non_existing)
         dump_picture(pic, dpb->ctx);
     pic->is_output = true;
+    free(pic->sh);
 
     pic_pool_getback(pic, dpb->ctx->pool);
     dpb->slots[idx] = NULL;
@@ -648,9 +649,13 @@ void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
             nonExistingPic->non_existing   = true;
             nonExistingPic->dpb_status     = SHORT_TERM_REF;
             nonExistingPic->is_output      = false;
-            nonExistingPic->sh             = sh;
             nonExistingPic->nal_ref_idc    = currPic->nal_ref_idc;
             nonExistingPic->long_term_frame_idx = -1;
+
+            nonExistingPic->sh = calloc(1, sizeof(SliceHeader));
+            memcpy(nonExistingPic->sh, currPic->sh, sizeof(SliceHeader));
+
+
             derive_poc(dpb, nonExistingPic);
 
 

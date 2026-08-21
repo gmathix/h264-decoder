@@ -208,6 +208,67 @@ int8_t blk_2x2_neighbor_coords[4][4][2] = {
 
 
 
+// time for some well-earned shit now
+
+#define WIDTH 16
+#define HEIGHT 16
+#include "inter_template.c"        // 16x16
+#undef HEIGHT
+#define HEIGHT 8
+#include "inter_template.c"        // 16x8
+#undef WIDTH
+#define WIDTH 8
+#include "inter_template.c"        // 8x8
+#include "inter_chroma_template.c"
+#undef HEIGHT
+#define HEIGHT 16
+#include "inter_template.c"        // 8x16
+#undef HEIGHT
+#define HEIGHT 4
+#include "inter_template.c"        // 8x4
+#include "inter_chroma_template.c"
+#undef WIDTH
+#define WIDTH 4
+#include "inter_template.c"        // 4x4
+#include "inter_chroma_template.c"
+#undef HEIGHT
+#define HEIGHT 8
+#include "inter_template.c"        // 4x8
+#include "inter_chroma_template.c"
+#undef HEIGHT
+#define HEIGHT 2
+#include "inter_chroma_template.c" // 4x2
+#undef WIDTH
+#define WIDTH 2
+#include "inter_chroma_template.c" // 2x2
+#undef HEIGHT
+#define HEIGHT 4
+#include "inter_chroma_template.c" // 2x4
+
+#undef HEIGHT
+#undef WIDTH
+
+#define DISPATCH_PART_LUMA(func, w, h, ...) \
+    switch (((w) << 8) | (h)) { \
+        case (16<<8)|16: func ## _16x16(__VA_ARGS__); break; \
+        case (16<<8)|8:  func ## _16x8(__VA_ARGS__);  break; \
+        case ( 8<<8)|16: func ## _8x16(__VA_ARGS__);  break; \
+        case ( 8<<8)|8:  func ## _8x8(__VA_ARGS__);   break; \
+        case ( 8<<8)|4:  func ## _8x4(__VA_ARGS__);   break; \
+        case ( 4<<8)|8:  func ## _4x8(__VA_ARGS__);   break; \
+        case ( 4<<8)|4:  func ## _4x4(__VA_ARGS__);   break; \
+    } \
+
+#define DISPATCH_PART_CHROMA(func, w, h, ...) \
+    switch (((w) << 8) | (h)) { \
+        case ( 8<<8)|8:  func ## _8x8(__VA_ARGS__);   break; \
+        case ( 8<<8)|4:  func ## _8x4(__VA_ARGS__);   break; \
+        case ( 4<<8)|8:  func ## _4x8(__VA_ARGS__);   break; \
+        case ( 4<<8)|4:  func ## _4x4(__VA_ARGS__);   break; \
+        case ( 4<<8)|2:  func ## _4x2(__VA_ARGS__);   break; \
+        case ( 2<<8)|4:  func ## _2x4(__VA_ARGS__);   break; \
+        case ( 2<<8)|2:  func ## _2x2(__VA_ARGS__);   break; \
+    } \
 
 
 int neighbor_tables_initialized = 0;
@@ -324,9 +385,12 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
                 MotionVector mv = pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
                 derive_pred_weights(mv.ref_idx, 0, true, false, ctx);
 
-                inter_pred_single(mb, pos4x4, mv, L0, w, h, scratch_buf, ctx);
-                if (chroma_at != 0)
-                    inter_pred_chroma_single(mb, pos4x4, mv, L0, w / 2, h / 2, scratch_buf_chroma, ctx);
+                // inter_pred_single(mb, pos4x4, mv, L0, w, h, scratch_buf, ctx);
+                DISPATCH_PART_LUMA(inter_pred_single, w, h, mb, pos4x4, mv, L0, scratch_buf, ctx);
+                if (chroma_at != 0) {
+                    DISPATCH_PART_CHROMA(inter_pred_chroma_single, w / 2, h / 2, mb, pos4x4, mv, L0, scratch_buf_chroma, ctx);
+                    // inter_pred_chroma_single(mb, pos4x4, mv, L0, w / 2, h / 2, scratch_buf_chroma, ctx);
+                }
             }
         } else {
             for (int part = 0; part < 4; part++) {
@@ -342,9 +406,12 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
                     MotionVector mv = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
                     derive_pred_weights(mv.ref_idx, 0, true, false, ctx);
 
-                    inter_pred_single(mb, pos4x4, mv, L0, subW, subH, scratch_buf, ctx);
-                    if (chroma_at != 0)
-                        inter_pred_chroma_single(mb, pos4x4, mv, L0, subW / 2, subH / 2, scratch_buf_chroma, ctx);
+                    // inter_pred_single(mb, pos4x4, mv, L0, subW, subH, scratch_buf, ctx);
+                    DISPATCH_PART_LUMA(inter_pred_single, subW, subH, mb, pos4x4, mv, L0, scratch_buf, ctx);
+                    if (chroma_at != 0) {
+                        DISPATCH_PART_CHROMA(inter_pred_chroma_single, subW / 2, subH / 2, mb, pos4x4, mv, L0, scratch_buf_chroma, ctx);
+                        // inter_pred_chroma_single(mb, pos4x4, mv, L0, subW / 2, subH / 2, scratch_buf_chroma, ctx);
+                    }
                 }
             }
         }
@@ -441,18 +508,24 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                     derive_pred_weights(mv.ref_idx, mv.ref_idx, l0, l1, ctx);
 
 
-                    inter_pred_single(mb, pos4x4, mv, list, w, h, scratch_buf, ctx);
-                    if (chroma_at != 0)
-                        inter_pred_chroma_single(mb, pos4x4, mv, list, w / 2, h / 2, scratch_buf_chroma, ctx);
+                    // inter_pred_single(mb, pos4x4, mv, list, w, h, scratch_buf, ctx);
+                    DISPATCH_PART_LUMA(inter_pred_single, w, h, mb, pos4x4, mv, list, scratch_buf, ctx);
+                    if (chroma_at != 0) {
+                        DISPATCH_PART_CHROMA(inter_pred_chroma_single, w / 2, h / 2, mb, pos4x4, mv, list, scratch_buf_chroma, ctx);
+                        // inter_pred_chroma_single(mb, pos4x4, mv, list, w / 2, h / 2, scratch_buf_chroma, ctx);
+                    }
                 } else if (l0 + l1 == 2) {
                     MotionVector mvL0 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
                     MotionVector mvL1 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L1];
 
                     derive_pred_weights(mvL0.ref_idx, mvL1.ref_idx, true, true, ctx);
 
-                    inter_pred_bi(mb, pos4x4, mvL0, mvL1, w, h, scratch_buf, temp_bi_buf, ctx);
-                    if (chroma_at != 0)
-                        inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, w / 2, h / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
+                    // inter_pred_bi(mb, pos4x4, mvL0, mvL1, w, h, scratch_buf, temp_bi_buf, ctx);
+                    DISPATCH_PART_LUMA(inter_pred_bi, w, h, mb, pos4x4, mvL0, mvL1, scratch_buf, temp_bi_buf, ctx);
+                    if (chroma_at != 0) {
+                        DISPATCH_PART_CHROMA(inter_pred_chroma_bi, w / 2, h / 2, mb, pos4x4, mvL0, mvL1, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
+                        // inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, w / 2, h / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
+                    }
                 }
             }
         } else {
@@ -478,9 +551,12 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                         MotionVector mv = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[list];
                         derive_pred_weights(mv.ref_idx, mv.ref_idx, l0, l1, ctx);
 
-                        inter_pred_single(mb, pos4x4, mv, list, subW, subH, scratch_buf, ctx);
-                        if (chroma_at != 0)
-                            inter_pred_chroma_single(mb, pos4x4, mv, list, subW / 2, subH / 2, scratch_buf_chroma, ctx);
+                        // inter_pred_single(mb, pos4x4, mv, list, subW, subH, scratch_buf, ctx);
+                        DISPATCH_PART_LUMA(inter_pred_single, subW, subH, mb, pos4x4, mv, list, scratch_buf, ctx);
+                        if (chroma_at != 0) {
+                            DISPATCH_PART_CHROMA(inter_pred_chroma_single, subW / 2, subH / 2, mb, pos4x4, mv, list, scratch_buf_chroma, ctx);
+                            // inter_pred_chroma_single(mb, pos4x4, mv, list, subW / 2, subH / 2, scratch_buf_chroma, ctx);
+                        }
                     }
                 } else if (l0 + l1 == 2) {
                     for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
@@ -491,9 +567,12 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                         MotionVector mvL1 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L1];
                         derive_pred_weights(mvL0.ref_idx, mvL1.ref_idx, true, true, ctx);
 
-                        inter_pred_bi(mb, pos4x4, mvL0, mvL1, subW, subH, scratch_buf, temp_bi_buf, ctx);
-                        if (chroma_at != 0)
-                            inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, subW / 2, subH / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
+                        // inter_pred_bi(mb, pos4x4, mvL0, mvL1, subW, subH, scratch_buf, temp_bi_buf, ctx);
+                        DISPATCH_PART_LUMA(inter_pred_bi, subW, subH, mb, pos4x4, mvL0, mvL1, scratch_buf, temp_bi_buf, ctx);
+                        if (chroma_at != 0) {
+                            DISPATCH_PART_CHROMA(inter_pred_chroma_bi, subW / 2, subH / 2, mb, pos4x4, mvL0, mvL1, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
+                            // inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, subW / 2, subH / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
+                        }
                     }
                 }
             }

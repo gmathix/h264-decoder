@@ -47,15 +47,15 @@ chmod +x download_vectors.sh && chmod +d conformance_test.sh
 
 ## Performance
 Not great for now.  
-It can reach ~20fps on a single thread on my Intel I5-10300H, on 1080p streams, without dumping the frames. When writing to the output YUV file, it's slowly lurking around at ~17fps.  
+It can reach ~32fps on a single thread on my Intel I5-10300H, on 1080p streams, without dumping the frames. 
 Compiler optimizations help a lot : without -O3, it : 
-  - runs at ~5fps (feel free to laugh at me)    
+  - runs at ~6fps (feel free to laugh at me)    
   - looks like color planes are corrupted (feel free to laugh at me harder)  
-
-But, correctness and robustness first, performance second.
-
-I'd like to understand how the GCC managed to achieve that 5 -> 20 jump, but I'd have to learn assembly and that's a different learning path which I will eventually take when this project is finished. 
-
+  
+With the optimizations on, the compiler efficiently vectorizes qpel and inter prediction functions 
+which are templated for this purpose.  
+CPU and memory profiling is work in progress, which does not include handwritten SIMD for now, 
+but rather architectural work to maximize the compiler optimization potential before touching SIMD manually.
 
 
 ## Building

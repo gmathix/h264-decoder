@@ -41,7 +41,7 @@ int frame_debug = -1;
 int frame_num_debug = -1;
 int poc_debug = 60;
 int mb_debug = 395;
-int nb_frames_before_stop = -1;
+int nb_frames_before_stop = 100;
 
 
 Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome) {
@@ -113,6 +113,10 @@ Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, c
     ctx->mc_temp_bi_buffers[( 4 *  2) / 4 - 1] = ctx->temp_bi_buf_4x2;
     ctx->mc_temp_bi_buffers[( 2 *  2) / 4 - 1] = ctx->temp_bi_buf_2x2;
 
+    ctx->qpel_pass_buffers[16 / 4 - 1] = ctx->qpel_pass_buf_16;
+    ctx->qpel_pass_buffers[ 8 / 4 - 1] = ctx->qpel_pass_buf_8;
+    ctx->qpel_pass_buffers[ 4 / 4 - 1] = ctx->qpel_pass_buf_4;
+
     ctx->initialized = true;
 
     return ctx;
@@ -158,7 +162,7 @@ int dispatch_nal_unit(NalUnit *nal_unit, Undo264Context *ctx) {
             }
 
             Slice *slice = ctx->current_slice;
-            deblock_slice(ctx->curr_pic, sh, ctx);
+            // deblock_slice(ctx->curr_pic, sh, ctx);
 
             #ifdef SLICES_LOG
                 printf("done slice %lu %s(frame_num %d, pic %lu)\n\n",

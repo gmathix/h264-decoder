@@ -377,8 +377,9 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
         int h = mb->u.pb.mb_info.mb_part_height;
 
         if (w == 16 || h == 16) {
-            uint8_t *scratch_buf = ctx->mc_scratch_buffers[(w * h) / 4 - 1];
+            uint8_t *scratch_buf        = ctx->mc_scratch_buffers[(w * h) / 4 - 1];
             uint8_t *scratch_buf_chroma = ctx->mc_scratch_buffers[(w * h) / 8 - 1];
+            int16_t *qpel_pass_buf      = ctx->qpel_pass_buffers[w / 4 - 1];
 
             for (int part = 0; part < mb->u.pb.mb_info.part_count; part++) {
                 int pos4x4 = part * ((w == 8) * 2 + (h == 8) * 8);
@@ -386,7 +387,7 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
                 derive_pred_weights(mv.ref_idx, 0, true, false, ctx);
 
                 // inter_pred_single(mb, pos4x4, mv, L0, w, h, scratch_buf, ctx);
-                DISPATCH_PART_LUMA(inter_pred_single, w, h, mb, pos4x4, mv, L0, scratch_buf, ctx);
+                DISPATCH_PART_LUMA(inter_pred_single, w, h, mb, pos4x4, mv, L0, scratch_buf, qpel_pass_buf, ctx);
                 if (chroma_at != 0) {
                     DISPATCH_PART_CHROMA(inter_pred_chroma_single, w / 2, h / 2, mb, pos4x4, mv, L0, scratch_buf_chroma, ctx);
                     // inter_pred_chroma_single(mb, pos4x4, mv, L0, w / 2, h / 2, scratch_buf_chroma, ctx);
@@ -396,8 +397,9 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
             for (int part = 0; part < 4; part++) {
                 int subW = mb->u.pb.sub_mb_info[part].mb_part_width;
                 int subH = mb->u.pb.sub_mb_info[part].mb_part_height;
-                uint8_t *scratch_buf = ctx->mc_scratch_buffers[(subW * subH) / 4 - 1];
+                uint8_t *scratch_buf        = ctx->mc_scratch_buffers[(subW * subH) / 4 - 1];
                 uint8_t *scratch_buf_chroma = ctx->mc_scratch_buffers[(subW * subH) / 16 - 1];
+                int16_t *qpel_pass_buf      = ctx->qpel_pass_buffers[subW / 4 - 1];
 
                 for (int subPart = 0; subPart < mb->u.pb.sub_mb_info[part].part_count; subPart++) {
                     int pos4x4 = map_4x4[part*4] + (subW == 8 && subH == 4) * (subPart * 4) +
@@ -407,7 +409,7 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
                     derive_pred_weights(mv.ref_idx, 0, true, false, ctx);
 
                     // inter_pred_single(mb, pos4x4, mv, L0, subW, subH, scratch_buf, ctx);
-                    DISPATCH_PART_LUMA(inter_pred_single, subW, subH, mb, pos4x4, mv, L0, scratch_buf, ctx);
+                    DISPATCH_PART_LUMA(inter_pred_single, subW, subH, mb, pos4x4, mv, L0, scratch_buf, qpel_pass_buf, ctx);
                     if (chroma_at != 0) {
                         DISPATCH_PART_CHROMA(inter_pred_chroma_single, subW / 2, subH / 2, mb, pos4x4, mv, L0, scratch_buf_chroma, ctx);
                         // inter_pred_chroma_single(mb, pos4x4, mv, L0, subW / 2, subH / 2, scratch_buf_chroma, ctx);
@@ -489,8 +491,9 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
 
 
         if (w == 16 || h == 16) {
-            uint8_t *scratch_buf = ctx->mc_scratch_buffers[(w * h) / 4 - 1];
+            uint8_t *scratch_buf        = ctx->mc_scratch_buffers[(w * h) / 4 - 1];
             uint8_t *scratch_buf_chroma = ctx->mc_scratch_buffers[(w * h) / 8 - 1];
+            int16_t *qpel_pass_buf      = ctx->qpel_pass_buffers[w / 4 - 1];
 
             uint8_t *temp_bi_buf = ctx->mc_temp_bi_buffers[(w * h) / 4 - 1];
             uint8_t *temp_bi_buf_chroma = ctx->mc_temp_bi_buffers[(w * h) / 8 - 1];
@@ -509,7 +512,7 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
 
 
                     // inter_pred_single(mb, pos4x4, mv, list, w, h, scratch_buf, ctx);
-                    DISPATCH_PART_LUMA(inter_pred_single, w, h, mb, pos4x4, mv, list, scratch_buf, ctx);
+                    DISPATCH_PART_LUMA(inter_pred_single, w, h, mb, pos4x4, mv, list, scratch_buf, qpel_pass_buf, ctx);
                     if (chroma_at != 0) {
                         DISPATCH_PART_CHROMA(inter_pred_chroma_single, w / 2, h / 2, mb, pos4x4, mv, list, scratch_buf_chroma, ctx);
                         // inter_pred_chroma_single(mb, pos4x4, mv, list, w / 2, h / 2, scratch_buf_chroma, ctx);
@@ -521,7 +524,7 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                     derive_pred_weights(mvL0.ref_idx, mvL1.ref_idx, true, true, ctx);
 
                     // inter_pred_bi(mb, pos4x4, mvL0, mvL1, w, h, scratch_buf, temp_bi_buf, ctx);
-                    DISPATCH_PART_LUMA(inter_pred_bi, w, h, mb, pos4x4, mvL0, mvL1, scratch_buf, temp_bi_buf, ctx);
+                    DISPATCH_PART_LUMA(inter_pred_bi, w, h, mb, pos4x4, mvL0, mvL1, scratch_buf, temp_bi_buf, qpel_pass_buf, ctx);
                     if (chroma_at != 0) {
                         DISPATCH_PART_CHROMA(inter_pred_chroma_bi, w / 2, h / 2, mb, pos4x4, mvL0, mvL1, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
                         // inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, w / 2, h / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
@@ -533,8 +536,9 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                 int subW = mb->u.pb.sub_mb_info[part].mb_part_width;
                 int subH = mb->u.pb.sub_mb_info[part].mb_part_height;
 
-                uint8_t *scratch_buf = ctx->mc_scratch_buffers[(subW * subH) / 4 - 1];
+                uint8_t *scratch_buf        = ctx->mc_scratch_buffers[(subW * subH) / 4 - 1];
                 uint8_t *scratch_buf_chroma = ctx->mc_scratch_buffers[(subW * subH) / 8 - 1];
+                int16_t *qpel_pass_buf      = ctx->qpel_pass_buffers[subW / 4 - 1];
 
                 uint8_t *temp_bi_buf = ctx->mc_temp_bi_buffers[(subW * subH) / 4 - 1];
                 uint8_t *temp_bi_buf_chroma = ctx->mc_temp_bi_buffers[(subW * subH) / 8 - 1];
@@ -552,7 +556,7 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                         derive_pred_weights(mv.ref_idx, mv.ref_idx, l0, l1, ctx);
 
                         // inter_pred_single(mb, pos4x4, mv, list, subW, subH, scratch_buf, ctx);
-                        DISPATCH_PART_LUMA(inter_pred_single, subW, subH, mb, pos4x4, mv, list, scratch_buf, ctx);
+                        DISPATCH_PART_LUMA(inter_pred_single, subW, subH, mb, pos4x4, mv, list, scratch_buf, qpel_pass_buf, ctx);
                         if (chroma_at != 0) {
                             DISPATCH_PART_CHROMA(inter_pred_chroma_single, subW / 2, subH / 2, mb, pos4x4, mv, list, scratch_buf_chroma, ctx);
                             // inter_pred_chroma_single(mb, pos4x4, mv, list, subW / 2, subH / 2, scratch_buf_chroma, ctx);
@@ -568,7 +572,7 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                         derive_pred_weights(mvL0.ref_idx, mvL1.ref_idx, true, true, ctx);
 
                         // inter_pred_bi(mb, pos4x4, mvL0, mvL1, subW, subH, scratch_buf, temp_bi_buf, ctx);
-                        DISPATCH_PART_LUMA(inter_pred_bi, subW, subH, mb, pos4x4, mvL0, mvL1, scratch_buf, temp_bi_buf, ctx);
+                        DISPATCH_PART_LUMA(inter_pred_bi, subW, subH, mb, pos4x4, mvL0, mvL1, scratch_buf, temp_bi_buf, qpel_pass_buf, ctx);
                         if (chroma_at != 0) {
                             DISPATCH_PART_CHROMA(inter_pred_chroma_bi, subW / 2, subH / 2, mb, pos4x4, mvL0, mvL1, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
                             // inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, subW / 2, subH / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);

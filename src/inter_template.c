@@ -31,7 +31,7 @@
 
 void INTER_FUNC(inter_pred_single,
                 Macroblock *mb, int pos4x4, MotionVector mv, int list,
-                uint8_t * restrict scratch_buf, Undo264Context *ctx) {
+                uint8_t *restrict scratch_buf, int16_t *restrict qpel_pass_buf, Undo264Context *ctx) {
 
     Picture *currPic = mb->p_pic;
     Picture *refPic = ctx->dpb->lists[list][1+mv.ref_idx];
@@ -51,7 +51,7 @@ void INTER_FUNC(inter_pred_single,
 
     fetch_ref_block(refPic->luma, scratch_buf, refPic->widthY, refPic->heightY, yBase + yOffInt, xBase + xOffInt, WIDTH, HEIGHT);
 
-    QPEL_FUNCS_ARRAY[(yFrac<<2) | xFrac] (scratch_buf, dst, stride);
+    QPEL_FUNCS_ARRAY[(yFrac<<2) | xFrac] (scratch_buf, dst, qpel_pass_buf, stride);
 
     if (weighted) {
         int logWD = ctx->wpred.logWD[0];
@@ -73,7 +73,8 @@ void INTER_FUNC(inter_pred_single,
 
 void INTER_FUNC(inter_pred_bi,
                 Macroblock *mb, int pos4x4, MotionVector mvL0, MotionVector mvL1,
-                uint8_t *scratch_buf, uint8_t *temp_bi_buf, Undo264Context *ctx) {
+                uint8_t *restrict scratch_buf, uint8_t *restrict temp_bi_buf, int16_t *restrict qpel_pass_buf,
+                Undo264Context *ctx) {
 
     Picture *currPic = mb->p_pic;
     Picture *picL0 = ctx->dpb->lists[L0][1+mvL0.ref_idx];
@@ -96,10 +97,10 @@ void INTER_FUNC(inter_pred_bi,
     int yFrac1    = mvL1.y & 3;
 
     fetch_ref_block(picL0->luma, scratch_buf, picL0->widthY, picL0->heightY, yBase + yOffInt0, xBase + xOffInt0, WIDTH, HEIGHT);
-    QPEL_FUNCS_ARRAY[(yFrac0 << 2) | xFrac0] (scratch_buf, &temp_bi_buf[0], WIDTH);
+    QPEL_FUNCS_ARRAY[(yFrac0 << 2) | xFrac0] (scratch_buf, &temp_bi_buf[0], qpel_pass_buf, WIDTH);
 
     fetch_ref_block(picL1->luma, scratch_buf, picL1->widthY, picL1->heightY, yBase + yOffInt1, xBase + xOffInt1, WIDTH, HEIGHT);
-    QPEL_FUNCS_ARRAY[(yFrac1 << 2) | xFrac1] (scratch_buf, &temp_bi_buf[dimension], WIDTH);
+    QPEL_FUNCS_ARRAY[(yFrac1 << 2) | xFrac1] (scratch_buf, &temp_bi_buf[dimension], qpel_pass_buf, WIDTH);
 
 
 

@@ -28,6 +28,39 @@
 #include "qpel_template.c"
 
 
+void INTER_FUNC(luma_weigh_single_nolog,
+                uint8_t *dst, int stride, int w, int o) {
+    for (int y = 0; y < HEIGHT; y++) {
+        for (int x = 0; x < WIDTH; x++) {
+            dst[x] = _clip1y(dst[x] * w + o, MAX_U8);
+        }
+        dst += stride;
+    }
+}
+void INTER_FUNC(luma_weigh_single,
+                uint8_t *dst, int stride, int logWD, int w, int o) {
+    for (int y = 0; y < HEIGHT; y++) {
+        for (int x = 0; x < WIDTH; x++) {
+            dst[x] = _clip1y(((dst[x] * w + (1 << (logWD-1))) >> logWD) + o, MAX_U8);
+        }
+        dst += stride;
+    }
+}
+
+void INTER_FUNC(luma_weigh_bi,
+                const uint8_t *restrict temp_bi_buf, uint8_t *restrict dst, int stride,
+                int logWD, int w0, int w1, int o0, int o1) {
+    for (int y = 0; y < HEIGHT; y++) {
+        for (int x = 0; x < WIDTH; x++) {
+            int t0 = temp_bi_buf[y*WIDTH + x];
+            int t1 = temp_bi_buf[WIDTH*HEIGHT + y*WIDTH + x];
+            dst[x] = (uint8_t) _clip1y(((t0 * w0 + t1 * w1 + (1<<logWD)) >>
+                                          (logWD + 1)) + ((o0 + o1 + 1) >> 1), MAX_U8);
+        }
+        dst += stride;
+    }
+}
+
 void INTER_FUNC(fetch_ref_block_luma,
                 const uint8_t * restrict ref, uint8_t * restrict scratch_buf,
                 int picW, int picH, int y, int x) {
@@ -84,14 +117,8 @@ void INTER_FUNC(inter_pred_single,
         int o = ctx->wpred.offset[list][0];
 
         dst = &currPic->luma[yBase*stride + xBase];
-        for (int y = 0; y < HEIGHT; y++) {
-            for (int x = 0; x < WIDTH; x++) {
-                int t0 = dst[x];
-                if (logWD >= 1) dst[x] = _clip1y(((t0 * w + (1 << (logWD-1))) >> logWD) + o, 8);
-                else            dst[x] = _clip1y(t0 * w + o, 8);
-            }
-            dst += stride;
-        }
+        if (logWD >= 1) INTER_FUNC(luma_weigh_single, dst, stride, logWD, w, o);
+        else            INTER_FUNC(luma_weigh_single_nolog, dst, stride, w, o);
     }
 }
 
@@ -146,15 +173,9 @@ void INTER_FUNC(inter_pred_bi,
             dst += stride;
         }
     } else {
-        for (int y = 0; y < HEIGHT; y++) {
-            for (int x = 0; x < WIDTH; x++) {
-                int t0 = temp_bi_buf[y*WIDTH + x];
-                int t1 = temp_bi_buf[dimension + y*WIDTH + x];
-                dst[x] = (uint8_t) _clip1y(((t0 * w0 + t1 * w1 + (1<<logWD)) >>
-                                              (logWD + 1)) + ((o0 + o1 + 1) >> 1), 8);
-            }
-            dst += stride;
-        }
+        // INTER_FUNC(luma_weigh_bi, temp_bi_buf, dst, stride, logWD, w0, w1, o0, o1);
+        // in x86_64/weighted_pred_sse4.c, will get resolved from including in mb.c
+        WEIGHTED_SSE_FUNC2(luma_weigh_bi_sse, WIDTH, HEIGHT, temp_bi_buf, dst, stride, logWD, w0, w1, o0, o1);
     }
 }
 

@@ -210,6 +210,20 @@ int8_t blk_2x2_neighbor_coords[4][4][2] = {
 
 // time for some well-earned shit now
 
+
+// first, include the sse version of weighted pred
+#define HEIGHT 16
+#include "x86_64/weighted_pred_sse4_template.c"
+#undef HEIGHT
+#define HEIGHT 8
+#include "x86_64/weighted_pred_sse4_template.c"
+#undef HEIGHT
+#define HEIGHT 4
+#include "x86_64/weighted_pred_sse4_template.c"
+#undef HEIGHT
+
+
+// then include qpel and inter templates
 #define WIDTH 16
 #define HEIGHT 16
 #include "inter_template.c"        // 16x16
@@ -369,7 +383,6 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
                 derive_8x8_mv(mb, ctx);
             }
         }
-
 
         Picture *pic = mb->p_pic;
 

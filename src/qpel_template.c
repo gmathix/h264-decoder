@@ -71,13 +71,13 @@ static ALWAYS_INLINE int32_t QPEL_HELPER(horizontal_pass_unclipped, const uint8_
 static ALWAYS_INLINE uint8_t QPEL_HELPER(vertical_pass, const uint8_t *ref, int y, int x) {
     return _clip1y(
         (QPEL_HELPER(vertical_pass_unclipped, ref, y, x) + 16) >> 5,
-            8);
+            MAX_U8);
 }
 
 static ALWAYS_INLINE uint8_t QPEL_HELPER(horizontal_pass, const uint8_t *ref, int y, int x) {
     return _clip1y(
         (QPEL_HELPER(horizontal_pass_unclipped, ref, y, x) + 16) >> 5,
-            8);
+            MAX_U8);
 }
 
 static ALWAYS_INLINE void QPEL_HELPER(precompute_vertical_passes,
@@ -96,7 +96,7 @@ static ALWAYS_INLINE uint8_t QPEL_HELPER(horizontal_filter, int16_t *qpel_pass_b
             + 20 * qpel_pass_buf[x+1]
             -  5 * qpel_pass_buf[x+2]
             +  1 * qpel_pass_buf[x+3] + 512) >> 10,
-            8);
+            MAX_U8);
 }
 
 
@@ -198,7 +198,7 @@ void QPEL_FUNC(2, 1, const uint8_t *restrict ref, uint8_t *restrict dst, int16_t
     for (int y = 0; y < HEIGHT; y++) {
         QPEL_HELPER(precompute_vertical_passes, ref, qpel_pass_buf, 2+y);
         for (int x = 0; x < WIDTH; x++) {
-            int h = (qpel_pass_buf[2+x] + 16) >> 5;
+            int h = _clip1y((qpel_pass_buf[2+x] + 16) >> 5, MAX_U8);
             int j = QPEL_HELPER(horizontal_filter, qpel_pass_buf, 2+x);
             dst[x] = (h + j + 1) >> 1;
         }
@@ -221,7 +221,7 @@ void QPEL_FUNC(2, 3, const uint8_t *restrict ref, uint8_t *restrict dst, int16_t
         QPEL_HELPER(precompute_vertical_passes, ref, qpel_pass_buf, 2+y);
         for (int x = 0; x < WIDTH; x++) {
             int j = QPEL_HELPER(horizontal_filter, qpel_pass_buf, 2+x);
-            int m = (qpel_pass_buf[2+x+1] + 16) >> 5;
+            int m = _clip1y((qpel_pass_buf[2+x+1] + 16) >> 5, MAX_U8);
             dst[x] = (j + m + 1) >> 1;
         }
         dst += stride;
@@ -279,3 +279,17 @@ void (*QPEL_FUNCS_ARRAY[16])(const uint8_t*, uint8_t*, int16_t*, int) = {
     QPEL_FUNC_NAME(2, 0), QPEL_FUNC_NAME(2, 1), QPEL_FUNC_NAME(2, 2), QPEL_FUNC_NAME(2, 3),
     QPEL_FUNC_NAME(3, 0), QPEL_FUNC_NAME(3, 1), QPEL_FUNC_NAME(3, 2), QPEL_FUNC_NAME(3, 3),
 };
+
+
+
+
+#undef QPEL_FUNC_NAME3
+#undef QPEL_FUNC_NAME2
+#undef QPEL_FUNC_NAME
+
+#undef QPEL_FUNC2
+#undef QPEL_FUNC
+
+#undef QPEL_HELPER3
+#undef QPEL_HELPER2
+#undef QPEL_HELPER

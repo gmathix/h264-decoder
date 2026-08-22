@@ -40,6 +40,8 @@
 #define L0  0
 #define L1  1
 
+#define MAX_U8 255
+
 
 
 extern int debugging;

@@ -73,8 +73,8 @@ void INTER_CHROMA_FUNC(chroma_weigh,
         for (int x = 0; x < WIDTH; x++) {
             int t = dst[x];
             dst[x] = logWD >= 1
-                    ? (uint8_t) _clip1c(((t * w + (1 << (logWD-1))) >> logWD) + o, 8)
-                    : (uint8_t) _clip1c(t * w + o, 8);
+                    ? (uint8_t) _clip1c(((t * w + (1 << (logWD-1))) >> logWD) + o, MAX_U8)
+                    : (uint8_t) _clip1c(t * w + o, MAX_U8);
         }
         dst += stride;
     }
@@ -88,7 +88,7 @@ void INTER_CHROMA_FUNC(chroma_weigh_bi,
             int t0 = temp_bi_buf[y*WIDTH + x];
             int t1 = temp_bi_buf[HEIGHT*WIDTH + y*WIDTH + x];
             dst[x] = (uint8_t) _clip1c(((t0 * w0 + t1 * w1 + (1 << logWD)) >>
-                                    (logWD + 1)) + ((o0 + o1 + 1) >> 1), 8);
+                                    (logWD + 1)) + ((o0 + o1 + 1) >> 1), MAX_U8);
         }
         dst += stride;
     }

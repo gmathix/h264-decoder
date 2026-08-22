@@ -28,6 +28,31 @@
 #include "qpel_template.c"
 
 
+void INTER_FUNC(fetch_ref_block_luma,
+                const uint8_t * restrict ref, uint8_t * restrict scratch_buf,
+                int picW, int picH, int y, int x) {
+    int height = HEIGHT+5;
+    int width = WIDTH+5;
+    // fast path: entire fetch window is inside the picture
+    if (y - 2 >= 0 && y + height-2 < picH && x - 2 >= 0 && x + width-2 < picW) {
+        for (int i = 0; i < height; i++) {
+            memcpy(&scratch_buf[i*width], &ref[(y-2+i)*picW + (x-2)], width);
+        }
+        return;
+    }
+
+    // slow path: border mb
+    int yc, xc;
+    for (int i = 0; i < height; i++) {
+        yc = _clip3(0, picH - 1, y-2+i);
+        const uint8_t *row = &ref[yc*picW];
+        for (int j = 0; j < width; j++) {
+            xc = _clip3(0, picW - 1, x-2+j);
+            uint8_t s = row[xc];
+            scratch_buf[i*width + j] = s;
+        }
+    }
+}
 
 void INTER_FUNC(inter_pred_single,
                 Macroblock *mb, int pos4x4, MotionVector mv, int list,
@@ -49,7 +74,7 @@ void INTER_FUNC(inter_pred_single,
     int xFrac    = mv.x & 3;
     int yFrac    = mv.y & 3;
 
-    fetch_ref_block(refPic->luma, scratch_buf, refPic->widthY, refPic->heightY, yBase + yOffInt, xBase + xOffInt, WIDTH, HEIGHT);
+    INTER_FUNC(fetch_ref_block_luma, refPic->luma, scratch_buf, refPic->widthY, refPic->heightY, yBase + yOffInt, xBase + xOffInt);
 
     QPEL_FUNCS_ARRAY[(yFrac<<2) | xFrac] (scratch_buf, dst, qpel_pass_buf, stride);
 
@@ -96,10 +121,10 @@ void INTER_FUNC(inter_pred_bi,
     int xFrac1    = mvL1.x & 3;
     int yFrac1    = mvL1.y & 3;
 
-    fetch_ref_block(picL0->luma, scratch_buf, picL0->widthY, picL0->heightY, yBase + yOffInt0, xBase + xOffInt0, WIDTH, HEIGHT);
+    INTER_FUNC(fetch_ref_block_luma, picL0->luma, scratch_buf, picL0->widthY, picL0->heightY, yBase + yOffInt0, xBase + xOffInt0);
     QPEL_FUNCS_ARRAY[(yFrac0 << 2) | xFrac0] (scratch_buf, &temp_bi_buf[0], qpel_pass_buf, WIDTH);
 
-    fetch_ref_block(picL1->luma, scratch_buf, picL1->widthY, picL1->heightY, yBase + yOffInt1, xBase + xOffInt1, WIDTH, HEIGHT);
+    INTER_FUNC(fetch_ref_block_luma, picL1->luma, scratch_buf, picL1->widthY, picL1->heightY, yBase + yOffInt1, xBase + xOffInt1);
     QPEL_FUNCS_ARRAY[(yFrac1 << 2) | xFrac1] (scratch_buf, &temp_bi_buf[dimension], qpel_pass_buf, WIDTH);
 
 

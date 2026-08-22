@@ -26,6 +26,33 @@
 
 
 
+void INTER_CHROMA_FUNC(fetch_ref_block_chroma,
+                       const uint8_t * restrict ref, uint8_t * restrict scratch_buf,
+                       int picW, int picH, int y, int x) {
+    int height = HEIGHT+5;
+    int width = WIDTH+5;
+    // fast path: entire fetch window is inside the picture
+    if (y - 2 >= 0 && y + height-2 < picH && x - 2 >= 0 && x + width-2 < picW) {
+        for (int i = 0; i < height; i++) {
+            memcpy(&scratch_buf[i*width], &ref[(y-2+i)*picW + (x-2)], width);
+        }
+        return;
+    }
+
+    // slow path: border mb
+    int yc, xc;
+    for (int i = 0; i < height; i++) {
+        yc = _clip3(0, picH - 1, y-2+i);
+        const uint8_t *row = &ref[yc*picW];
+        for (int j = 0; j < width; j++) {
+            xc = _clip3(0, picW - 1, x-2+j);
+            uint8_t s = row[xc];
+            scratch_buf[i*width + j] = s;
+        }
+    }
+}
+
+
 void INTER_CHROMA_FUNC(chroma_interpolation,
                        int xFrac, int yFrac, int stride,
                        const uint8_t * restrict temp_buf, uint8_t * restrict dst) {
@@ -103,10 +130,10 @@ void INTER_CHROMA_FUNC(inter_pred_chroma_single,
     INTER_CHROMA_FUNC(derive_offsets, mv, &yOffInt, &xOffInt, &yFrac, &xFrac);
 
 
-    fetch_ref_block(refPic->cb, scratch_buf, refPic->widthC, refPic->heightC, yBase + yOffInt, xBase + xOffInt, WIDTH, HEIGHT);
+    INTER_CHROMA_FUNC(fetch_ref_block_chroma, refPic->cb, scratch_buf, refPic->widthC, refPic->heightC, yBase + yOffInt, xBase + xOffInt);
     INTER_CHROMA_FUNC(chroma_interpolation, xFrac, yFrac, stride, scratch_buf, dstCb);
 
-    fetch_ref_block(refPic->cr, scratch_buf, refPic->widthC, refPic->heightC, yBase + yOffInt, xBase + xOffInt, WIDTH, HEIGHT);
+    INTER_CHROMA_FUNC(fetch_ref_block_chroma, refPic->cr, scratch_buf, refPic->widthC, refPic->heightC, yBase + yOffInt, xBase + xOffInt);
     INTER_CHROMA_FUNC(chroma_interpolation, xFrac, yFrac, stride, scratch_buf, dstCr);
 
 
@@ -142,11 +169,11 @@ void INTER_CHROMA_FUNC(inter_pred_chroma_bi,
     // Cb / U
 
     INTER_CHROMA_FUNC(derive_offsets, mvL0, &yOffInt, &xOffInt, &yFrac, &xFrac);
-    fetch_ref_block(ref0->cb, scratch_buf, ref0->widthC, ref0->heightC, yBase + yOffInt, xBase + xOffInt, WIDTH, HEIGHT);
+    INTER_CHROMA_FUNC(fetch_ref_block_chroma, ref0->cb, scratch_buf, ref0->widthC, ref0->heightC, yBase + yOffInt, xBase + xOffInt);
     INTER_CHROMA_FUNC(chroma_interpolation, xFrac, yFrac, WIDTH, scratch_buf, &temp_bi_buf[0]);
 
     INTER_CHROMA_FUNC(derive_offsets, mvL1, &yOffInt, &xOffInt, &yFrac, &xFrac);
-    fetch_ref_block(ref1->cb, scratch_buf, ref1->widthC, ref1->heightC, yBase + yOffInt, xBase + xOffInt, WIDTH, HEIGHT);
+    INTER_CHROMA_FUNC(fetch_ref_block_chroma, ref1->cb, scratch_buf, ref1->widthC, ref1->heightC, yBase + yOffInt, xBase + xOffInt);
     INTER_CHROMA_FUNC(chroma_interpolation, xFrac, yFrac, WIDTH, scratch_buf, &temp_bi_buf[WIDTH*HEIGHT]);
 
     if (!weighted) {
@@ -160,11 +187,11 @@ void INTER_CHROMA_FUNC(inter_pred_chroma_bi,
 
     // Cr / V
     INTER_CHROMA_FUNC(derive_offsets, mvL0, &yOffInt, &xOffInt, &yFrac, &xFrac);
-    fetch_ref_block(ref0->cr, scratch_buf, ref0->widthC, ref0->heightC, yBase + yOffInt, xBase + xOffInt, WIDTH, HEIGHT);
+    INTER_CHROMA_FUNC(fetch_ref_block_chroma, ref0->cr, scratch_buf, ref0->widthC, ref0->heightC, yBase + yOffInt, xBase + xOffInt);
     INTER_CHROMA_FUNC(chroma_interpolation, xFrac, yFrac, WIDTH, scratch_buf, &temp_bi_buf[0]);
 
     INTER_CHROMA_FUNC(derive_offsets, mvL1, &yOffInt, &xOffInt, &yFrac, &xFrac);
-    fetch_ref_block(ref1->cr, scratch_buf, ref1->widthC, ref1->heightC, yBase + yOffInt, xBase + xOffInt, WIDTH, HEIGHT);
+    INTER_CHROMA_FUNC(fetch_ref_block_chroma, ref1->cr, scratch_buf, ref1->widthC, ref1->heightC, yBase + yOffInt, xBase + xOffInt);
     INTER_CHROMA_FUNC(chroma_interpolation, xFrac, yFrac, WIDTH, scratch_buf, &temp_bi_buf[WIDTH*HEIGHT]);
 
     if (!weighted) {

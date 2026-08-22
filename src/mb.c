@@ -386,11 +386,9 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
                 MotionVector mv = pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
                 derive_pred_weights(mv.ref_idx, 0, true, false, ctx);
 
-                // inter_pred_single(mb, pos4x4, mv, L0, w, h, scratch_buf, ctx);
                 DISPATCH_PART_LUMA(inter_pred_single, w, h, mb, pos4x4, mv, L0, scratch_buf, qpel_pass_buf, ctx);
                 if (chroma_at != 0) {
                     DISPATCH_PART_CHROMA(inter_pred_chroma_single, w / 2, h / 2, mb, pos4x4, mv, L0, scratch_buf_chroma, ctx);
-                    // inter_pred_chroma_single(mb, pos4x4, mv, L0, w / 2, h / 2, scratch_buf_chroma, ctx);
                 }
             }
         } else {
@@ -408,11 +406,9 @@ void decode_p_macroblock(Macroblock *mb, Slice *slice, Undo264Context *ctx) {
                     MotionVector mv = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
                     derive_pred_weights(mv.ref_idx, 0, true, false, ctx);
 
-                    // inter_pred_single(mb, pos4x4, mv, L0, subW, subH, scratch_buf, ctx);
                     DISPATCH_PART_LUMA(inter_pred_single, subW, subH, mb, pos4x4, mv, L0, scratch_buf, qpel_pass_buf, ctx);
                     if (chroma_at != 0) {
                         DISPATCH_PART_CHROMA(inter_pred_chroma_single, subW / 2, subH / 2, mb, pos4x4, mv, L0, scratch_buf_chroma, ctx);
-                        // inter_pred_chroma_single(mb, pos4x4, mv, L0, subW / 2, subH / 2, scratch_buf_chroma, ctx);
                     }
                 }
             }
@@ -511,11 +507,9 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                     derive_pred_weights(mv.ref_idx, mv.ref_idx, l0, l1, ctx);
 
 
-                    // inter_pred_single(mb, pos4x4, mv, list, w, h, scratch_buf, ctx);
                     DISPATCH_PART_LUMA(inter_pred_single, w, h, mb, pos4x4, mv, list, scratch_buf, qpel_pass_buf, ctx);
                     if (chroma_at != 0) {
                         DISPATCH_PART_CHROMA(inter_pred_chroma_single, w / 2, h / 2, mb, pos4x4, mv, list, scratch_buf_chroma, ctx);
-                        // inter_pred_chroma_single(mb, pos4x4, mv, list, w / 2, h / 2, scratch_buf_chroma, ctx);
                     }
                 } else if (l0 + l1 == 2) {
                     MotionVector mvL0 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L0];
@@ -523,11 +517,9 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
 
                     derive_pred_weights(mvL0.ref_idx, mvL1.ref_idx, true, true, ctx);
 
-                    // inter_pred_bi(mb, pos4x4, mvL0, mvL1, w, h, scratch_buf, temp_bi_buf, ctx);
                     DISPATCH_PART_LUMA(inter_pred_bi, w, h, mb, pos4x4, mvL0, mvL1, scratch_buf, temp_bi_buf, qpel_pass_buf, ctx);
                     if (chroma_at != 0) {
                         DISPATCH_PART_CHROMA(inter_pred_chroma_bi, w / 2, h / 2, mb, pos4x4, mvL0, mvL1, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
-                        // inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, w / 2, h / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
                     }
                 }
             }
@@ -555,11 +547,9 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                         MotionVector mv = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[list];
                         derive_pred_weights(mv.ref_idx, mv.ref_idx, l0, l1, ctx);
 
-                        // inter_pred_single(mb, pos4x4, mv, list, subW, subH, scratch_buf, ctx);
                         DISPATCH_PART_LUMA(inter_pred_single, subW, subH, mb, pos4x4, mv, list, scratch_buf, qpel_pass_buf, ctx);
                         if (chroma_at != 0) {
                             DISPATCH_PART_CHROMA(inter_pred_chroma_single, subW / 2, subH / 2, mb, pos4x4, mv, list, scratch_buf_chroma, ctx);
-                            // inter_pred_chroma_single(mb, pos4x4, mv, list, subW / 2, subH / 2, scratch_buf_chroma, ctx);
                         }
                     }
                 } else if (l0 + l1 == 2) {
@@ -571,11 +561,9 @@ void decode_b_macroblock(Macroblock *mb,  Slice *slice, Undo264Context *ctx) {
                         MotionVector mvL1 = ctx->curr_pic->motion_info[mb->mbAddr][pos4x4].mvs[L1];
                         derive_pred_weights(mvL0.ref_idx, mvL1.ref_idx, true, true, ctx);
 
-                        // inter_pred_bi(mb, pos4x4, mvL0, mvL1, subW, subH, scratch_buf, temp_bi_buf, ctx);
                         DISPATCH_PART_LUMA(inter_pred_bi, subW, subH, mb, pos4x4, mvL0, mvL1, scratch_buf, temp_bi_buf, qpel_pass_buf, ctx);
                         if (chroma_at != 0) {
                             DISPATCH_PART_CHROMA(inter_pred_chroma_bi, subW / 2, subH / 2, mb, pos4x4, mvL0, mvL1, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
-                            // inter_pred_chroma_bi(mb, pos4x4, mvL0, mvL1, subW / 2, subH / 2, scratch_buf_chroma, temp_bi_buf_chroma, ctx);
                         }
                     }
                 }

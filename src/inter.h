@@ -77,32 +77,7 @@ static void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool pred
     }
 }
 
-static ALWAYS_INLINE void fetch_ref_block(const uint8_t * restrict ref, uint8_t * restrict scratch_buf,
-    int picW, int picH, int y, int x, int width, int height) {
 
-    width += 5;
-    height += 5;
-
-    // fast path: entire fetch window is inside the picture
-    if (y - 2 >= 0 && y + height-2 < picH && x - 2 >= 0 && x + width-2 < picW) {
-        for (int i = 0; i < height; i++) {
-            memcpy(&scratch_buf[i*width], &ref[(y-2+i)*picW + (x-2)], width);
-        }
-        return;
-    }
-
-    // slow path: border mb
-    int yc, xc;
-    for (int i = 0; i < height; i++) {
-        yc = _clip3(0, picH - 1, y-2+i);
-        const uint8_t *row = &ref[yc*picW];
-        for (int j = 0; j < width; j++) {
-            xc = _clip3(0, picW - 1, x-2+j);
-            uint8_t s = row[xc];
-            scratch_buf[i*width + j] = s;
-        }
-    }
-}
 
 
 

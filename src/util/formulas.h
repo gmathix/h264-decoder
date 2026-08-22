@@ -49,21 +49,21 @@ static void binprintf(int v, int length)
 
 
 static ALWAYS_INLINE int32_t _clip3(int32_t x, int32_t y, int32_t z) {
-    if (z < x) return x;
-    if (z > y) return y;
-    return z;
+    return z > y ? y : (z < x ? x : z);
 }
 
 static ALWAYS_INLINE int32_t _clip2(int32_t x, int32_t y) {
     return y > x ? y : x;
 }
 
-static ALWAYS_INLINE uint32_t _clip1y(int32_t x, int bit_depth) {
-    return (uint32_t) _clip3(0, (1 << bit_depth) - 1, x);
+static ALWAYS_INLINE uint32_t _clip1y(int x, int max) {
+    if ((unsigned)x > (unsigned)max) x = x < 0 ? 0 : max;
+    return x;
 }
 
-static ALWAYS_INLINE uint32_t _clip1c(int32_t x, int bit_depth) {
-    return (uint32_t) _clip3(0, (1 << bit_depth) - 1, x);
+static ALWAYS_INLINE uint32_t _clip1c(int x, int max) {
+    if ((unsigned)x > (unsigned)max) x = x < 0 ? 0 : max;
+    return x;
 }
 
 static ALWAYS_INLINE int32_t _inverse_raster_scan(int32_t a, int32_t b, int32_t c, int32_t d, int32_t e) {

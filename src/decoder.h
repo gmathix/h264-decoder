@@ -106,6 +106,12 @@ typedef struct Undo264Context {
     uint8_t temp_bi_buf_2x2   [2 *   2];
     uint8_t *mc_temp_bi_buffers[64]; // same idea as mc_scratch_buffers
 
+    /* temp buffers for qpel horizontal/vertical pass pre-computation */
+    int16_t qpel_pass_buf_16 [16+5];
+    int16_t qpel_pass_buf_8  [ 8+5];
+    int16_t qpel_pass_buf_4  [ 4+5];
+    int16_t *qpel_pass_buffers[4];
+
 
     struct Macroblock *prevMb;
     struct Macroblock *currMb;

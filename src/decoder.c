@@ -113,6 +113,10 @@ Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, c
     ctx->mc_temp_bi_buffers[( 4 *  2) / 4 - 1] = ctx->temp_bi_buf_4x2;
     ctx->mc_temp_bi_buffers[( 2 *  2) / 4 - 1] = ctx->temp_bi_buf_2x2;
 
+    ctx->qpel_pass_buffers[16 / 4 - 1] = ctx->qpel_pass_buf_16;
+    ctx->qpel_pass_buffers[ 8 / 4 - 1] = ctx->qpel_pass_buf_8;
+    ctx->qpel_pass_buffers[ 4 / 4 - 1] = ctx->qpel_pass_buf_4;
+
     ctx->initialized = true;
 
     return ctx;

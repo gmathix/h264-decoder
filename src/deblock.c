@@ -273,9 +273,9 @@ void filter_4p_vert_edge_low_bS_luma(int y, int x, const int filter_flags[4],
 
             /*p1*/ samples[y][x-2] += (aP < beta) * _clip3(-treshold, treshold,
                   (p2 + ((p0 + q0 + 1) >> 1) - (p1 << 1)) >> 1);
-            /*p0*/ samples[y][x-1] = _clip1y(p0 + delta, 8);
+            /*p0*/ samples[y][x-1] = _clip1y(p0 + delta, MAX_U8);
 
-            /*q0*/ samples[y][x]   = _clip1y(q0 - delta, 8);
+            /*q0*/ samples[y][x]   = _clip1y(q0 - delta, MAX_U8);
             /*q1*/ samples[y][x+1] += (aQ < beta) * _clip3(-treshold, treshold,
                   (q2 + ((p0 + q0 + 1) >> 1) - (q1 << 1)) >> 1);
         }
@@ -309,9 +309,9 @@ void filter_4p_hor_edge_low_bS_luma(int y, int x, const int filter_flags[4],
 
             /*p1*/ samples[y-2][x] += (aP < beta) * _clip3(-treshold, treshold,
                   (p2 + ((p0 + q0 + 1) >> 1) - (p1 << 1)) >> 1);
-            /*p0*/ samples[y-1][x] = _clip1y(p0 + delta, 8);
+            /*p0*/ samples[y-1][x] = _clip1y(p0 + delta, MAX_U8);
 
-            /*q0*/ samples[y][x]   = _clip1y(q0 - delta, 8);
+            /*q0*/ samples[y][x]   = _clip1y(q0 - delta, MAX_U8);
             /*q1*/ samples[y+1][x] += (aQ < beta) * _clip3(-treshold, treshold,
                   (q2 + ((p0 + q0 + 1) >> 1) - (q1 << 1)) >> 1);
         }
@@ -414,8 +414,8 @@ void filter_2p_vert_edge_low_bS_chroma(int y, int x, const int filter_flags[2],
             delta = _clip3(-t, t,
                 (((q0 - p0) * (1 << 2)) + (p1 - q1) + 4) >> 3);
 
-            /*p0*/ samples[y][x-1] = _clip1c(p0 + delta, 8);
-            /*q0*/ samples[y][x]   = _clip1c(q0 - delta, 8);
+            /*p0*/ samples[y][x-1] = _clip1c(p0 + delta, MAX_U8);
+            /*q0*/ samples[y][x]   = _clip1c(q0 - delta, MAX_U8);
         }
 
         y++;
@@ -440,8 +440,8 @@ void filter_2p_hor_edge_low_bS_chroma(int y, int x, const int filter_flags[2],
             delta = _clip3(-t, t,
                 (((q0 - p0) * (1 << 2)) + (p1 - q1) + 4) >> 3);
 
-            /*p0*/ samples[y-1][x] = _clip1c(p0 + delta, 8);
-            /*q0*/ samples[y][x]   = _clip1c(q0 - delta, 8);
+            /*p0*/ samples[y-1][x] = _clip1c(p0 + delta, MAX_U8);
+            /*q0*/ samples[y][x]   = _clip1c(q0 - delta, MAX_U8);
         }
 
         x++;

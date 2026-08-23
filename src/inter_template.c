@@ -120,6 +120,8 @@ void INTER_FUNC(inter_pred_single,
         if (logWD >= 1) INTER_FUNC(luma_weigh_single, dst, stride, logWD, w, o);
         else            INTER_FUNC(luma_weigh_single_nolog, dst, stride, w, o);
     }
+
+
 }
 
 
@@ -175,7 +177,7 @@ void INTER_FUNC(inter_pred_bi,
     } else {
         // INTER_FUNC(luma_weigh_bi, temp_bi_buf, dst, stride, logWD, w0, w1, o0, o1);
         // in x86_64/weighted_pred_sse4.c, will get resolved from including in mb.c
-        WEIGHTED_SSE_FUNC2(luma_weigh_bi_sse, WIDTH, HEIGHT, temp_bi_buf, dst, stride, logWD, w0, w1, o0, o1);
+        WEIGHTED_SSE_FUNC2(weigh_bi_sse, WIDTH, HEIGHT, temp_bi_buf, dst, stride, logWD, w0, w1, o0, o1);
     }
 }
 

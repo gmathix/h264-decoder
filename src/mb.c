@@ -211,15 +211,21 @@ int8_t blk_2x2_neighbor_coords[4][4][2] = {
 // time for some well-earned shit now
 
 
-// first, include the sse version of weighted pred
+// first, include the sse version of weighted pred and chroma pred/weighted pred
 #define HEIGHT 16
 #include "x86_64/weighted_pred_sse4_template.c"
 #undef HEIGHT
 #define HEIGHT 8
 #include "x86_64/weighted_pred_sse4_template.c"
+#include "x86_64/chroma_inter_sse4_template.c"
 #undef HEIGHT
 #define HEIGHT 4
 #include "x86_64/weighted_pred_sse4_template.c"
+#include "x86_64/chroma_inter_sse4_template.c"
+#undef HEIGHT
+#define HEIGHT 2
+#include "x86_64/weighted_pred_sse4_template.c"
+#include "x86_64/chroma_inter_sse4_template.c"
 #undef HEIGHT
 
 

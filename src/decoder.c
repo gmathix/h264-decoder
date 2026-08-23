@@ -11,6 +11,7 @@
 #include "dpb.h"
 #include "mb.h"
 #include "ps.h"
+#include "dsp_init.h"
 #include "tests/profiler.h"
 #include "util/bitreader.h"
 
@@ -65,6 +66,10 @@ Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, c
 
     ParamSets *ps = calloc(1, sizeof(ParamSets));
     ctx->ps = ps;
+
+    DSPContext *dsp_context = calloc(1, sizeof(DSPContext));
+    ctx->dsp = dsp_context;
+    dsp_init(ctx->dsp);
 
 
     ctx->current_slice = slice_alloc();

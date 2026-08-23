@@ -138,6 +138,14 @@ typedef enum {
     CR_LEVEL_8x8,
 } BlockType ;
 
+typedef enum {
+    BLOCK_16x16, BLOCK_16x8, BLOCK_8x16,
+    BLOCK_8x8, BLOCK_8x4, BLOCK_4x8,
+    BLOCK_4x4, BLOCK_4x2, BLOCK_2x4, BLOCK_2x2
+} BlockShape ;
+#define NUM_BLOCK_SHAPES_LUMA 7
+#define NUM_BLOCK_SHAPES_CHROMA 7
+#define NUM_BLOCK_SHAPES 10
 
 char* blockType_to_string(int bt);
 extern char* profile_to_string(int profile);

@@ -32,14 +32,14 @@ set(UNDO264_SOURCES
     src/picture.c
     src/dequant.c
     src/dpb.c
-    src/inter.c
-    src/qpel.c
     src/deblock.c
     src/cabac.c
     src/util/bitreader.c
     src/util/logger.c
     src/util/expgolomb.c
     src/tests/profiler.c
+        src/dsp_init.c
+        src/dsp_init.h
 )
 
 # warning/flag interface
@@ -47,7 +47,7 @@ add_library(undo264_warnings INTERFACE)
 target_compile_options(undo264_warnings INTERFACE
     $<$<C_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
     $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<BOOL:${USE_NATIVE_ARCH}>>:-march=native>
-    $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<CONFIG:Release>>:-O3>
+    $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<CONFIG:Release,Profile>>:-O3>
     $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<CONFIG:Debug>>:-O0 -g3>
 )
 
@@ -65,6 +65,10 @@ target_include_directories(undo264 PRIVATE src)
 target_compile_definitions(undo264 PRIVATE _DEFAULT_SOURCE
     $<$<CONFIG:Debug>:SLICES_LOG=1>
 )
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
+    target_compile_definitions(undo264 PRIVATE ARCH_X86=1)
+endif()
+
 
 # optional helper tools
 if(BUILD_TOOLS)

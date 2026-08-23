@@ -10,7 +10,6 @@
 #include "global.h"
 
 
-
 typedef struct Undo264Context {
     bool initialized;
 
@@ -30,6 +29,7 @@ typedef struct Undo264Context {
     struct DPB          *dpb;
     struct Profiler     *prf;
     struct PicturePool  *pool;
+    struct DSPContext   *dsp;
 
     bool pic_pool_initialized;
 

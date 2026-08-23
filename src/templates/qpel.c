@@ -10,9 +10,9 @@
 
 
 
-#include "global.h"
+#include "../global.h"
 #include "stdint.h"
-#include "util/formulas.h"
+#include "../util/formulas.h"
 
 
 
@@ -46,7 +46,7 @@
 
 
 
-void (*QPEL_FUNCS_ARRAY[16])(const uint8_t*, uint8_t*, int16_t*, int);
+static void (*QPEL_FUNCS_ARRAY[16])(const uint8_t*, uint8_t*, int16_t*, int);
 
 
 
@@ -273,7 +273,7 @@ void QPEL_FUNC(3, 3, const uint8_t *restrict ref, uint8_t *restrict dst, int16_t
 }
 
 
-void (*QPEL_FUNCS_ARRAY[16])(const uint8_t*, uint8_t*, int16_t*, int) = {
+static void (*QPEL_FUNCS_ARRAY[16])(const uint8_t*, uint8_t*, int16_t*, int) = {
     QPEL_FUNC_NAME(0, 0), QPEL_FUNC_NAME(0, 1), QPEL_FUNC_NAME(0, 2), QPEL_FUNC_NAME(0, 3),
     QPEL_FUNC_NAME(1, 0), QPEL_FUNC_NAME(1, 1), QPEL_FUNC_NAME(1, 2), QPEL_FUNC_NAME(1, 3),
     QPEL_FUNC_NAME(2, 0), QPEL_FUNC_NAME(2, 1), QPEL_FUNC_NAME(2, 2), QPEL_FUNC_NAME(2, 3),

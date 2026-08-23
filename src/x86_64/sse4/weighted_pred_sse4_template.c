@@ -29,7 +29,7 @@ void WEIGHTED_SSE_FUNC(weigh_bi_sse, 2,
 
     const __m128i logWD_reg = _mm_set1_epi32(1 << logWD);
 
-    const __m128i w01_reg = _mm_set1_epi32((w1 << 16) | (w0 & 0xFFFF));
+    const __m128i w01_reg = _mm_set1_epi32((int32_t) ((unsigned)w1 << 16 | ((unsigned)w0 & 0xFFFF)));
     const __m128i o01_reg = _mm_set1_epi32((o0 + o1 + 1) >> 1);
     const __m128i shift_reg = _mm_cvtsi32_si128(logWD + 1);
 
@@ -57,7 +57,7 @@ void WEIGHTED_SSE_FUNC(weigh_bi_sse, 4,
 
     const __m128i logWD_reg = _mm_set1_epi32(1 << logWD);
 
-    const __m128i w01_reg = _mm_set1_epi32((w1 << 16) | (w0 & 0xFFFF));
+    const __m128i w01_reg = _mm_set1_epi32((int32_t) ((unsigned)w1 << 16 | ((unsigned)w0 & 0xFFFF)));
     const __m128i o01_reg = _mm_set1_epi32((o0 + o1 + 1) >> 1);
     const __m128i shift_reg = _mm_cvtsi32_si128(logWD + 1);
 
@@ -86,7 +86,7 @@ void WEIGHTED_SSE_FUNC(weigh_bi_sse, 8,
     const __m128i logWD_reg = _mm_set1_epi32(1 << logWD);
 
     // lanes are ordered little-endian so this will give [w0, w1, w0, w1, w0, w1, w0, w1]
-    const __m128i w01_reg   = _mm_set1_epi32((w1 << 16) | (w0 & 0xFFFF));
+    const __m128i w01_reg   = _mm_set1_epi32((int32_t) ((unsigned)w1 << 16 | ((unsigned)w0 & 0xFFFF)));
     const __m128i o01_reg   = _mm_set1_epi32((o0 + o1 + 1) >> 1);
     const __m128i shift_reg = _mm_cvtsi32_si128(logWD + 1);
 
@@ -115,7 +115,7 @@ void WEIGHTED_SSE_FUNC(weigh_bi_sse, 8,
         __m128i packed8  = _mm_packus_epi16(packed16, packed16);
 
         // only store the low 64 bytes
-        _mm_storel_epi64((__m128i*)dst, packed8);
+        _mm_storeu_si64(dst, packed8);
 
         dst += stride;
     }
@@ -129,7 +129,7 @@ void WEIGHTED_SSE_FUNC(weigh_bi_sse, 16,
 
     const __m128i logWD_reg = _mm_set1_epi32(1 << logWD);
 
-    const __m128i w01_reg   = _mm_set1_epi32((w1 << 16) | (w0 & 0xFFFF));
+    const __m128i w01_reg   = _mm_set1_epi32((int32_t) ((unsigned)w1 << 16 | ((unsigned)w0 & 0xFFFF)));
     const __m128i o01_reg   = _mm_set1_epi32((o0 + o1 + 1) >> 1);
     const __m128i shift_reg = _mm_cvtsi32_si128(logWD + 1);
 
@@ -154,8 +154,99 @@ void WEIGHTED_SSE_FUNC(weigh_bi_sse, 16,
 
             __m128i packed8  = _mm_packus_epi16(packed16, packed16);
 
-            _mm_storel_epi64((__m128i*)&dst[x*8], packed8);
+            _mm_storeu_si64(&dst[x*8], packed8);
         }
+        dst += stride;
+    }
+}
+
+
+
+void WEIGHTED_SSE_FUNC(weigh_single_sse, 2,
+                       uint8_t *dst, int stride,
+                       int logWD, int w, int o) {
+
+    __m128i logWD_reg = _mm_set1_epi16((int16_t) ((logWD > 0) * (1 << (logWD-1))));
+    __m128i w_reg     = _mm_set1_epi16((int16_t) w);
+    __m128i o_reg     = _mm_set1_epi16((int16_t) o);
+    __m128i shift_reg = _mm_cvtsi32_si128(logWD);
+
+    for (int y = 0; y < HEIGHT; y++) {
+        __m128i t = _mm_cvtepu8_epi16(_mm_loadu_si16((__m128i*)dst));
+
+        __m128i res = _mm_add_epi16(_mm_mullo_epi16(t, w_reg), logWD_reg);
+        res = _mm_add_epi16(_mm_sra_epi16(res, shift_reg), o_reg);
+
+        _mm_storeu_si16(dst, _mm_packus_epi16(res, res));
+
+        dst += stride;
+    }
+}
+
+void WEIGHTED_SSE_FUNC(weigh_single_sse, 4,
+                       uint8_t *dst, int stride,
+                       int logWD, int w, int o) {
+
+    __m128i logWD_reg = _mm_set1_epi16((int16_t) ((logWD > 0) * (1 << (logWD-1))));
+    __m128i w_reg     = _mm_set1_epi16((int16_t) w);
+    __m128i o_reg     = _mm_set1_epi16((int16_t) o);
+    __m128i shift_reg = _mm_cvtsi32_si128(logWD);
+
+    for (int y = 0; y < HEIGHT; y++) {
+        __m128i t = _mm_cvtepu8_epi16(_mm_loadu_si32((__m128i*)dst));
+
+        __m128i res = _mm_add_epi16(_mm_mullo_epi16(t, w_reg), logWD_reg);
+        res = _mm_add_epi16(_mm_sra_epi16(res, shift_reg), o_reg);
+
+        _mm_storeu_si32(dst, _mm_packus_epi16(res, res));
+
+        dst += stride;
+    }
+}
+
+void WEIGHTED_SSE_FUNC(weigh_single_sse, 8,
+                       uint8_t *dst, int stride,
+                       int logWD, int w, int o) {
+
+    __m128i logWD_reg = _mm_set1_epi16((int16_t) ((logWD > 0) * (1 << (logWD-1))));
+    __m128i w_reg     = _mm_set1_epi16((int16_t) w);
+    __m128i o_reg     = _mm_set1_epi16((int16_t) o);
+    __m128i shift_reg = _mm_cvtsi32_si128(logWD);
+
+    for (int y = 0; y < HEIGHT; y++) {
+        __m128i t = _mm_cvtepu8_epi16(_mm_loadu_si64((__m128i*)dst));
+
+        __m128i res = _mm_add_epi16(_mm_mullo_epi16(t, w_reg), logWD_reg);
+        res = _mm_add_epi16(_mm_sra_epi16(res, shift_reg), o_reg);
+
+        _mm_storeu_si64(dst, _mm_packus_epi16(res, res));
+
+        dst += stride;
+    }
+}
+
+void WEIGHTED_SSE_FUNC(weigh_single_sse, 16,
+                       uint8_t *dst, int stride,
+                       int logWD, int w, int o) {
+
+    __m128i logWD_reg = _mm_set1_epi16((int16_t) ((logWD > 0) * (1 << (logWD-1))));
+    __m128i w_reg     = _mm_set1_epi16((int16_t) w);
+    __m128i o_reg     = _mm_set1_epi16((int16_t) o);
+    __m128i shift_reg = _mm_cvtsi32_si128(logWD);
+
+    for (int y = 0; y < HEIGHT; y++) {
+        __m128i t1 = _mm_cvtepu8_epi16(_mm_loadu_si64((__m128i*)&dst[0]));
+        __m128i t2 = _mm_cvtepu8_epi16(_mm_loadu_si64((__m128i*)&dst[8]));
+
+        __m128i res1 = _mm_add_epi16(_mm_mullo_epi16(t1, w_reg), logWD_reg);
+        __m128i res2 = _mm_add_epi16(_mm_mullo_epi16(t2, w_reg), logWD_reg);
+
+        res1 = _mm_add_epi16(_mm_sra_epi16(res1, shift_reg), o_reg);
+        res2 = _mm_add_epi16(_mm_sra_epi16(res2, shift_reg), o_reg);
+
+        _mm_storeu_si64(&dst[0], _mm_packus_epi16(res1, res1));
+        _mm_storeu_si64(&dst[8], _mm_packus_epi16(res2, res2));
+
         dst += stride;
     }
 }

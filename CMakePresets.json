@@ -5,7 +5,10 @@
       "name": "release",
       "generator": "Unix Makefiles",
       "binaryDir": "${sourceDir}/build/release",
-      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "USE_NATIVE_ARCH": "ON"
+      }
     },
     {
       "name": "debug",

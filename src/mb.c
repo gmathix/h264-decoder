@@ -210,26 +210,6 @@ int8_t blk_2x2_neighbor_coords[4][4][2] = {
 
 // time for some well-earned shit now
 
-
-// first, include the sse version of weighted pred and chroma pred/weighted pred
-#define HEIGHT 16
-#include "x86_64/weighted_pred_sse4_template.c"
-#undef HEIGHT
-#define HEIGHT 8
-#include "x86_64/weighted_pred_sse4_template.c"
-#include "x86_64/chroma_inter_sse4_template.c"
-#undef HEIGHT
-#define HEIGHT 4
-#include "x86_64/weighted_pred_sse4_template.c"
-#include "x86_64/chroma_inter_sse4_template.c"
-#undef HEIGHT
-#define HEIGHT 2
-#include "x86_64/weighted_pred_sse4_template.c"
-#include "x86_64/chroma_inter_sse4_template.c"
-#undef HEIGHT
-
-
-// then include qpel and inter templates
 #define WIDTH 16
 #define HEIGHT 16
 #include "inter_template.c"        // 16x16
@@ -265,8 +245,11 @@ int8_t blk_2x2_neighbor_coords[4][4][2] = {
 #define HEIGHT 4
 #include "inter_chroma_template.c" // 2x4
 
-#undef HEIGHT
-#undef WIDTH
+
+
+#define BLOCK_TYPE3(w, h) BLOCK_ ## w ## x ## h
+#define BLOCK_TYPE2(w, h) BLOCK_TYPE3(w, h)
+
 
 #define DISPATCH_PART_LUMA(func, w, h, ...) \
     switch (((w) << 8) | (h)) { \

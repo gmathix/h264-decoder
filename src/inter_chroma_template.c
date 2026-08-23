@@ -4,6 +4,7 @@
 
 #include "mb.h"
 #include "inter.h"
+#include "dsp_init.h"
 
 
 /*  this file is compiled 7 times, once for every chroma partition shape type :
@@ -22,6 +23,10 @@
 #define INTER_CHROMA_FUNC3(name, W, H, ...) name ## _ ## W ## x ## H(__VA_ARGS__)
 #define INTER_CHROMA_FUNC2(name, W, H, ...) INTER_CHROMA_FUNC3(name, W, H, __VA_ARGS__)
 #define INTER_CHROMA_FUNC(name, ...) INTER_CHROMA_FUNC2(name, WIDTH, HEIGHT, __VA_ARGS__)
+
+#define BLOCK_TYPE3(w, h) BLOCK_ ## w ## x ## h
+#define BLOCK_TYPE2(w, h) BLOCK_TYPE3(w, h)
+#define BLOCK_TYPE BLOCK_TYPE2(WIDTH, HEIGHT)
 
 
 
@@ -49,48 +54,6 @@ void INTER_CHROMA_FUNC(fetch_ref_block_chroma,
             uint8_t s = row[xc];
             scratch_buf[i*width + j] = s;
         }
-    }
-}
-
-
-void INTER_CHROMA_FUNC(chroma_interpolation,
-                       int xFrac, int yFrac, int stride,
-                       const uint8_t * restrict temp_buf, uint8_t * restrict dst) {
-    for (int i = 0; i < HEIGHT; i++) {
-        for (int j = 0; j < WIDTH; j++) {
-            dst[j] =   ((8-xFrac) * (8-yFrac) * temp_buf[(i+2)*(WIDTH+5) + 2+j]     +
-                           xFrac  * (8-yFrac) * temp_buf[(i+2)*(WIDTH+5) + 2+j+1]   +
-                        (8-xFrac) *    yFrac  * temp_buf[(i+3)*(WIDTH+5) + 2+j]   +
-                           xFrac  *    yFrac  * temp_buf[(i+3)*(WIDTH+5) + 2+j+1] + 32) >> 6;
-        }
-        dst += stride;
-    }
-}
-
-void INTER_CHROMA_FUNC(chroma_weigh,
-                       uint8_t *dst, int logWD, int w, int o, int stride) {
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
-            int t = dst[x];
-            dst[x] = logWD >= 1
-                    ? (uint8_t) _clip1c(((t * w + (1 << (logWD-1))) >> logWD) + o, MAX_U8)
-                    : (uint8_t) _clip1c(t * w + o, MAX_U8);
-        }
-        dst += stride;
-    }
-}
-
-void INTER_CHROMA_FUNC(chroma_weigh_bi,
-                       uint8_t * restrict dst, const uint8_t * restrict temp_bi_buf,
-                       int logWD, int w0, int w1, int o0, int o1, int stride) {
-    for (int y = 0; y < HEIGHT; y++) {
-        for (int x = 0; x < WIDTH; x++) {
-            int t0 = temp_bi_buf[y*WIDTH + x];
-            int t1 = temp_bi_buf[HEIGHT*WIDTH + y*WIDTH + x];
-            dst[x] = (uint8_t) _clip1c(((t0 * w0 + t1 * w1 + (1 << logWD)) >>
-                                    (logWD + 1)) + ((o0 + o1 + 1) >> 1), MAX_U8);
-        }
-        dst += stride;
     }
 }
 
@@ -131,19 +94,16 @@ void INTER_CHROMA_FUNC(inter_pred_chroma_single,
 
 
     INTER_CHROMA_FUNC(fetch_ref_block_chroma, refPic->cb, scratch_buf, refPic->widthC, refPic->heightC, yBase + yOffInt, xBase + xOffInt);
-    // INTER_CHROMA_FUNC(chroma_interpolation, xFrac, yFrac, stride, scratch_buf, dstCb);
-    CHROMA_SSE_FUNC(chroma_interpolation_sse, WIDTH, scratch_buf, dstCb, stride, xFrac, yFrac);
+    ctx->dsp->chroma_interpolation_funcs[BLOCK_TYPE](scratch_buf, dstCb, stride, xFrac, yFrac);
+
 
     INTER_CHROMA_FUNC(fetch_ref_block_chroma, refPic->cr, scratch_buf, refPic->widthC, refPic->heightC, yBase + yOffInt, xBase + xOffInt);
-    // INTER_CHROMA_FUNC(chroma_interpolation, xFrac, yFrac, stride, scratch_buf, dstCr);
-    CHROMA_SSE_FUNC(chroma_interpolation_sse, WIDTH, scratch_buf, dstCr, stride, xFrac, yFrac);
+    ctx->dsp->chroma_interpolation_funcs[BLOCK_TYPE](scratch_buf, dstCr, stride, xFrac, yFrac);
 
 
     if (weighted) {
-        INTER_CHROMA_FUNC(chroma_weigh, dstCb,
-            ctx->wpred.logWD[1], ctx->wpred.weight[list][1], ctx->wpred.offset[list][1], stride);
-        INTER_CHROMA_FUNC(chroma_weigh, dstCr,
-            ctx->wpred.logWD[2], ctx->wpred.weight[list][2], ctx->wpred.offset[list][2], stride);
+        ctx->dsp->weigh_single_funcs[BLOCK_TYPE](dstCb, stride, ctx->wpred.logWD[1], ctx->wpred.weight[list][1], ctx->wpred.offset[list][1]);
+        ctx->dsp->weigh_single_funcs[BLOCK_TYPE](dstCr, stride, ctx->wpred.logWD[2], ctx->wpred.weight[list][2], ctx->wpred.offset[list][2]);
     }
 }
 
@@ -172,43 +132,33 @@ void INTER_CHROMA_FUNC(inter_pred_chroma_bi,
 
     INTER_CHROMA_FUNC(derive_offsets, mvL0, &yOffInt, &xOffInt, &yFrac, &xFrac);
     INTER_CHROMA_FUNC(fetch_ref_block_chroma, ref0->cb, scratch_buf, ref0->widthC, ref0->heightC, yBase + yOffInt, xBase + xOffInt);
-    // INTER_CHROMA_FUNC(chroma_interpolation, xFrac, yFrac, WIDTH, scratch_buf, &temp_bi_buf[0]);
-    CHROMA_SSE_FUNC(chroma_interpolation_sse, WIDTH, scratch_buf, &temp_bi_buf[0], WIDTH, xFrac, yFrac);
+    ctx->dsp->chroma_interpolation_funcs[BLOCK_TYPE](scratch_buf, &temp_bi_buf[0], WIDTH, xFrac, yFrac);
 
     INTER_CHROMA_FUNC(derive_offsets, mvL1, &yOffInt, &xOffInt, &yFrac, &xFrac);
     INTER_CHROMA_FUNC(fetch_ref_block_chroma, ref1->cb, scratch_buf, ref1->widthC, ref1->heightC, yBase + yOffInt, xBase + xOffInt);
-    // INTER_CHROMA_FUNC(chroma_interpolation, xFrac, yFrac, WIDTH, scratch_buf, &temp_bi_buf[WIDTH*HEIGHT]);
-    CHROMA_SSE_FUNC(chroma_interpolation_sse, WIDTH, scratch_buf, &temp_bi_buf[WIDTH*HEIGHT], WIDTH, xFrac, yFrac);
+    ctx->dsp->chroma_interpolation_funcs[BLOCK_TYPE](scratch_buf, &temp_bi_buf[WIDTH*HEIGHT], WIDTH, xFrac, yFrac);
 
     if (!weighted) {
         INTER_CHROMA_FUNC(copy_from_temp_bi_buf, dstCb, temp_bi_buf, stride);
     } else {
-        WEIGHTED_SSE_FUNC(weigh_bi_sse, WIDTH, temp_bi_buf, dstCb, stride, ctx->wpred.logWD[1], ctx->wpred.weight[L0][1], ctx->wpred.weight[L1][1],
-            ctx->wpred.offset[L0][1], ctx->wpred.offset[L1][1]);
-        // INTER_CHROMA_FUNC(chroma_weigh_bi, dstCb, temp_bi_buf,
-        //     ctx->wpred.logWD[1], ctx->wpred.weight[L0][1], ctx->wpred.weight[L1][1],
-        //     ctx->wpred.offset[L0][1], ctx->wpred.offset[L1][1], stride);
+        ctx->dsp->weigh_bi_funcs[BLOCK_TYPE](temp_bi_buf, dstCb, stride, ctx->wpred.logWD[1], ctx->wpred.weight[L0][1], ctx->wpred.weight[L1][1],
+                                             ctx->wpred.offset[L0][1], ctx->wpred.offset[L1][1]);
     }
 
 
     // Cr / V
     INTER_CHROMA_FUNC(derive_offsets, mvL0, &yOffInt, &xOffInt, &yFrac, &xFrac);
     INTER_CHROMA_FUNC(fetch_ref_block_chroma, ref0->cr, scratch_buf, ref0->widthC, ref0->heightC, yBase + yOffInt, xBase + xOffInt);
-    // INTER_CHROMA_FUNC(chroma_interpolation, xFrac, yFrac, WIDTH, scratch_buf, &temp_bi_buf[0]);
-    CHROMA_SSE_FUNC(chroma_interpolation_sse, WIDTH, scratch_buf, &temp_bi_buf[0], WIDTH, xFrac, yFrac);
+    ctx->dsp->chroma_interpolation_funcs[BLOCK_TYPE](scratch_buf, &temp_bi_buf[0], WIDTH, xFrac, yFrac);
 
     INTER_CHROMA_FUNC(derive_offsets, mvL1, &yOffInt, &xOffInt, &yFrac, &xFrac);
     INTER_CHROMA_FUNC(fetch_ref_block_chroma, ref1->cr, scratch_buf, ref1->widthC, ref1->heightC, yBase + yOffInt, xBase + xOffInt);
-    // INTER_CHROMA_FUNC(chroma_interpolation, xFrac, yFrac, WIDTH, scratch_buf, &temp_bi_buf[WIDTH*HEIGHT]);
-    CHROMA_SSE_FUNC(chroma_interpolation_sse, WIDTH, scratch_buf, &temp_bi_buf[WIDTH*HEIGHT], WIDTH, xFrac, yFrac);
+    ctx->dsp->chroma_interpolation_funcs[BLOCK_TYPE](scratch_buf, &temp_bi_buf[WIDTH*HEIGHT], WIDTH, xFrac, yFrac);
 
     if (!weighted) {
         INTER_CHROMA_FUNC(copy_from_temp_bi_buf, dstCr, temp_bi_buf, stride);
     } else {
-        WEIGHTED_SSE_FUNC(weigh_bi_sse, WIDTH, temp_bi_buf, dstCr, stride, ctx->wpred.logWD[2], ctx->wpred.weight[L0][2], ctx->wpred.weight[L1][2],
-            ctx->wpred.offset[L0][2], ctx->wpred.offset[L1][2]);
-        // INTER_CHROMA_FUNC(chroma_weigh_bi, dstCr, temp_bi_buf,
-        //     ctx->wpred.logWD[2], ctx->wpred.weight[L0][2], ctx->wpred.weight[L1][2],
-        //     ctx->wpred.offset[L0][2], ctx->wpred.offset[L1][2], stride);
+        ctx->dsp->weigh_bi_funcs[BLOCK_TYPE](temp_bi_buf, dstCr, stride, ctx->wpred.logWD[2], ctx->wpred.weight[L0][2], ctx->wpred.weight[L1][2],
+                                             ctx->wpred.offset[L0][2], ctx->wpred.offset[L1][2]);
     }
 }

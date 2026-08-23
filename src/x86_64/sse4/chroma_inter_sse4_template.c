@@ -40,9 +40,9 @@ void CHROMA_SSE_FUNC(chroma_interpolation_sse, 2,
         // the maximum temporary value held by the total sum of mul_A*A + mul_B*B + mul_C*C + mul*D*D is 16320, holds in 16-bit
         // (equation 8-270 from the spec)
         // so with _mm_mullo_epi16 we just keep the low 16 bits of the temporary 32-bit product, which is what we want
-        __m128i sum = _mm_adds_epu16(
-            _mm_adds_epu16(_mm_mullo_epi16(A, mul_A), _mm_mullo_epi16(B, mul_B)),
-            _mm_adds_epu16(_mm_mullo_epi16(C, mul_C), _mm_mullo_epi16(D, mul_D))
+        __m128i sum = _mm_add_epi16(
+            _mm_add_epi16(_mm_mullo_epi16(A, mul_A), _mm_mullo_epi16(B, mul_B)),
+            _mm_add_epi16(_mm_mullo_epi16(C, mul_C), _mm_mullo_epi16(D, mul_D))
         );
 
         sum = _mm_srai_epi16(_mm_adds_epi16(sum, add32), 6);
@@ -70,9 +70,9 @@ void CHROMA_SSE_FUNC(chroma_interpolation_sse, 4,
         __m128i C = _mm_cvtepu8_epi16(_mm_loadu_si32(&scratch_buf[(y+3)*9 + 2]));
         __m128i D = _mm_cvtepu8_epi16(_mm_loadu_si32(&scratch_buf[(y+3)*9 + 3]));
 
-        __m128i sum = _mm_adds_epu16(
-            _mm_adds_epu16(_mm_mullo_epi16(A, mul_A), _mm_mullo_epi16(B, mul_B)),
-            _mm_adds_epu16(_mm_mullo_epi16(C, mul_C), _mm_mullo_epi16(D, mul_D))
+        __m128i sum = _mm_add_epi16(
+            _mm_add_epi16(_mm_mullo_epi16(A, mul_A), _mm_mullo_epi16(B, mul_B)),
+            _mm_add_epi16(_mm_mullo_epi16(C, mul_C), _mm_mullo_epi16(D, mul_D))
         );
 
         sum = _mm_srai_epi16(_mm_adds_epi16(sum, add32), 6);
@@ -100,9 +100,9 @@ void CHROMA_SSE_FUNC(chroma_interpolation_sse, 8,
         __m128i C = _mm_cvtepu8_epi16(_mm_loadl_epi64((__m128i*)&scratch_buf[(y+3)*13 + 2]));
         __m128i D = _mm_cvtepu8_epi16(_mm_loadl_epi64((__m128i*)&scratch_buf[(y+3)*13 + 3]));
 
-        __m128i sum = _mm_adds_epu16(
-            _mm_adds_epu16(_mm_mullo_epi16(A, mul_A), _mm_mullo_epi16(B, mul_B)),
-            _mm_adds_epu16(_mm_mullo_epi16(C, mul_C), _mm_mullo_epi16(D, mul_D))
+        __m128i sum = _mm_add_epi16(
+            _mm_add_epi16(_mm_mullo_epi16(A, mul_A), _mm_mullo_epi16(B, mul_B)),
+            _mm_add_epi16(_mm_mullo_epi16(C, mul_C), _mm_mullo_epi16(D, mul_D))
         );
 
         sum = _mm_srai_epi16(_mm_adds_epi16(sum, add32), 6);

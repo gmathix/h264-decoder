@@ -166,7 +166,7 @@ void WEIGHTED_SSE_FUNC(weigh_single_sse, 2,
                        uint8_t *dst, int stride,
                        int logWD, int w, int o) {
 
-    __m128i logWD_reg = _mm_set1_epi16((int16_t) ((logWD > 0) * (1 << (logWD-1))));
+    __m128i logWD_reg = _mm_set1_epi16((int16_t) ((logWD > 0) ? (1 << (logWD-1)) : 0));
     __m128i w_reg     = _mm_set1_epi16((int16_t) w);
     __m128i o_reg     = _mm_set1_epi16((int16_t) o);
     __m128i shift_reg = _mm_cvtsi32_si128(logWD);
@@ -187,7 +187,7 @@ void WEIGHTED_SSE_FUNC(weigh_single_sse, 4,
                        uint8_t *dst, int stride,
                        int logWD, int w, int o) {
 
-    __m128i logWD_reg = _mm_set1_epi16((int16_t) ((logWD > 0) * (1 << (logWD-1))));
+    __m128i logWD_reg = _mm_set1_epi16((int16_t) ((logWD > 0) ? (1 << (logWD-1)) : 0));
     __m128i w_reg     = _mm_set1_epi16((int16_t) w);
     __m128i o_reg     = _mm_set1_epi16((int16_t) o);
     __m128i shift_reg = _mm_cvtsi32_si128(logWD);
@@ -208,7 +208,7 @@ void WEIGHTED_SSE_FUNC(weigh_single_sse, 8,
                        uint8_t *dst, int stride,
                        int logWD, int w, int o) {
 
-    __m128i logWD_reg = _mm_set1_epi16((int16_t) ((logWD > 0) * (1 << (logWD-1))));
+    __m128i logWD_reg = _mm_set1_epi16((int16_t) ((logWD > 0) ? (1 << (logWD-1)) : 0));
     __m128i w_reg     = _mm_set1_epi16((int16_t) w);
     __m128i o_reg     = _mm_set1_epi16((int16_t) o);
     __m128i shift_reg = _mm_cvtsi32_si128(logWD);
@@ -229,7 +229,7 @@ void WEIGHTED_SSE_FUNC(weigh_single_sse, 16,
                        uint8_t *dst, int stride,
                        int logWD, int w, int o) {
 
-    __m128i logWD_reg = _mm_set1_epi16((int16_t) ((logWD > 0) * (1 << (logWD-1))));
+    __m128i logWD_reg = _mm_set1_epi16((int16_t) ((logWD > 0) ? (1 << (logWD-1)) : 0));
     __m128i w_reg     = _mm_set1_epi16((int16_t) w);
     __m128i o_reg     = _mm_set1_epi16((int16_t) o);
     __m128i shift_reg = _mm_cvtsi32_si128(logWD);

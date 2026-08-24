@@ -42,7 +42,7 @@ int frame_debug = -1;
 int frame_num_debug = -1;
 int poc_debug = 60;
 int mb_debug = 395;
-int nb_frames_before_stop = -1;
+int nb_frames_before_stop = 100;
 
 
 Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome) {
@@ -167,7 +167,7 @@ int dispatch_nal_unit(NalUnit *nal_unit, Undo264Context *ctx) {
             }
 
             Slice *slice = ctx->current_slice;
-            deblock_slice(ctx->curr_pic, sh, ctx);
+            // deblock_slice(ctx->curr_pic, sh, ctx);
 
             #ifdef SLICES_LOG
                 printf("done slice %lu %s(frame_num %d, pic %lu)\n\n",
@@ -243,7 +243,6 @@ void decoder_free_metadata(Undo264Context *ctx) {
     free(ctx->luma_total_coeffs);
     free(ctx->cb_total_coeffs);
     free(ctx->cr_total_coeffs);
-
 }
 
 /* caller's job to make sure metadata gets free beforehand */
@@ -267,6 +266,7 @@ void decoder_free(Undo264Context *ctx) {
     munmap((void*)ctx->data, ctx->size);
     free(ctx->br);
     free(ctx->prf);
+    free(ctx->dsp);
 
     free(ctx->ps->sps);
     free(ctx->ps->pps);

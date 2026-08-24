@@ -679,7 +679,7 @@ void dec_ref_pic_marking(DPB *dpb, Slice *slice, BitReader *br) {
         slice->sh->adaptive_ref_pic_marking_mode_flag = read_u(br, 1);
         if (slice->sh->adaptive_ref_pic_marking_mode_flag) {
             /* passive parsing. actual parsing and operations will be done when picture is stored */
-            slice->sh->mmco_position_bits = br->byte_pos*8 + br->bit_pos;
+            slice->sh->mmco_position_bits = br->byte_pos*8 + br->cache_pos;
 
             uint32_t mmco = 0;
             do {
@@ -714,8 +714,10 @@ void process_mmcos(Picture *pic, Undo264Context *ctx) {
 
         /* use a new bitreader to read back at the MMCO position in the bitstream */
         BitReader mmco_br = make_br(ctx->br->data, ctx->br->size);
+
         mmco_br.byte_pos = pic->sh->mmco_position_bits / 8;
-        mmco_br.bit_pos  = pic->sh->mmco_position_bits % 8;
+        mmco_br.cache_pos  = pic->sh->mmco_position_bits % 8;
+        bitreader_refill(&mmco_br);
 
         uint32_t mmco = 0;
         do {

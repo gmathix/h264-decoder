@@ -177,7 +177,7 @@ void infer_flat_matrices(bool seq, Undo264Context *ctx) {
 
 
 
-static ALWAYS_INLINE void inverse_matrix_scan(
+static always_inline void inverse_matrix_scan(
     int size, int scan[static size], int16_t in[static size], int16_t out[static size]) {
 
    for (int i = 0; i < size; i++) {

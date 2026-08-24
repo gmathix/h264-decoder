@@ -51,7 +51,7 @@ static void (*QPEL_FUNCS_ARRAY[16])(const uint8_t*, uint8_t*, int16_t*, int);
 
 
 
-static ALWAYS_INLINE int32_t QPEL_HELPER(vertical_pass_unclipped, const uint8_t *ref, int y, int x) {
+static always_inline int32_t QPEL_HELPER(vertical_pass_unclipped, const uint8_t *ref, int y, int x) {
     return       ref[(y-2)*(WIDTH+5) + x]
             -  5*ref[(y-1)*(WIDTH+5) + x]
             + 20*ref[(y+0)*(WIDTH+5) + x]
@@ -59,7 +59,7 @@ static ALWAYS_INLINE int32_t QPEL_HELPER(vertical_pass_unclipped, const uint8_t 
             -  5*ref[(y+2)*(WIDTH+5) + x]
             +    ref[(y+3)*(WIDTH+5) + x];
 }
-static ALWAYS_INLINE int32_t QPEL_HELPER(horizontal_pass_unclipped, const uint8_t *ref, int y, int x) {
+static always_inline int32_t QPEL_HELPER(horizontal_pass_unclipped, const uint8_t *ref, int y, int x) {
     return       ref[y*(WIDTH+5) + x-2]
             -  5*ref[y*(WIDTH+5) + x-1]
             + 20*ref[y*(WIDTH+5) + x+0]
@@ -68,19 +68,19 @@ static ALWAYS_INLINE int32_t QPEL_HELPER(horizontal_pass_unclipped, const uint8_
             +    ref[y*(WIDTH+5) + x+3];
 }
 
-static ALWAYS_INLINE uint8_t QPEL_HELPER(vertical_pass, const uint8_t *ref, int y, int x) {
+static always_inline uint8_t QPEL_HELPER(vertical_pass, const uint8_t *ref, int y, int x) {
     return _clip1y(
         (QPEL_HELPER(vertical_pass_unclipped, ref, y, x) + 16) >> 5,
             MAX_U8);
 }
 
-static ALWAYS_INLINE uint8_t QPEL_HELPER(horizontal_pass, const uint8_t *ref, int y, int x) {
+static always_inline uint8_t QPEL_HELPER(horizontal_pass, const uint8_t *ref, int y, int x) {
     return _clip1y(
         (QPEL_HELPER(horizontal_pass_unclipped, ref, y, x) + 16) >> 5,
             MAX_U8);
 }
 
-static ALWAYS_INLINE void QPEL_HELPER(precompute_vertical_passes,
+static always_inline void QPEL_HELPER(precompute_vertical_passes,
                                       const uint8_t *restrict ref, int16_t *restrict qpel_pass_buf, int y) {
     for (int x = 0; x < WIDTH+5; x++) {
         qpel_pass_buf[x] = QPEL_HELPER(vertical_pass_unclipped, ref, y, x);
@@ -88,7 +88,7 @@ static ALWAYS_INLINE void QPEL_HELPER(precompute_vertical_passes,
 }
 
 
-static ALWAYS_INLINE uint8_t QPEL_HELPER(horizontal_filter, int16_t *qpel_pass_buf, int x) {
+static always_inline uint8_t QPEL_HELPER(horizontal_filter, int16_t *qpel_pass_buf, int x) {
     return _clip1y(
             (1 * qpel_pass_buf[x-2]
             -  5 * qpel_pass_buf[x-1]

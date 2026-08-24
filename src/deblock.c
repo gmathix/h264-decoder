@@ -52,7 +52,7 @@ const uint8_t treshold_table[3][52] = {
 
 
 
-static ALWAYS_INLINE bool same_ref_pics(
+static always_inline bool same_ref_pics(
     const Picture *picL0_0, const Picture *picL1_0,
     const Picture *picL0_1, const Picture *picL1_1) {
 
@@ -64,11 +64,11 @@ static ALWAYS_INLINE bool same_ref_pics(
     return hash0 == hash1;
 }
 
-static ALWAYS_INLINE bool same_ref_pics_one_block(int refL0, int refL1, Undo264Context *ctx) {
+static always_inline bool same_ref_pics_one_block(int refL0, int refL1, Undo264Context *ctx) {
     return ctx->dpb->lists[L0][1+refL0]->dpb_pic_id == ctx->dpb->lists[L1][1+refL1]->dpb_pic_id;
 }
 
-static ALWAYS_INLINE bool mv_diff_g4(MotionVector mv1, MotionVector mv2) {
+static always_inline bool mv_diff_g4(MotionVector mv1, MotionVector mv2) {
     return (_abs(mv1.x - mv2.x) >= 4) || (_abs(mv1.y - mv2.y) >= 4);
 }
 

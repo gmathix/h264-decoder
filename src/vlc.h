@@ -39,7 +39,7 @@ void build_vlc(VLCTable *vlc);
 uint16_t get_vlc_length(MultiVLC *mv, int table_idx, BitReader *br);
 
 
-static ALWAYS_INLINE uint16_t get_vlc(const MultiVLC *mv, int table_idx, BitReader *br) {
+static always_inline uint16_t get_vlc(const MultiVLC *mv, int table_idx, BitReader *br) {
 
     uint16_t bits = bitreader_peek_bits(br, mv->tables[table_idx].max_bits);
 

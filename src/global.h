@@ -25,7 +25,7 @@
 #define NAL_LOG     (ALL_LOG    |   0)
 
 
-#define ALWAYS_INLINE inline __attribute__((always_inline))
+#define always_inline inline __attribute__((always_inline))
 #define OPTIMIZE_O0   __attribute__((optimize("O0")))
 #define OPTIMIZE_O1   __attribute__((optimize("O1")))
 #define OPTIMIZE_O2   __attribute__((optimize("O2")))

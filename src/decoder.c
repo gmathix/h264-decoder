@@ -243,7 +243,6 @@ void decoder_free_metadata(Undo264Context *ctx) {
     free(ctx->luma_total_coeffs);
     free(ctx->cb_total_coeffs);
     free(ctx->cr_total_coeffs);
-
 }
 
 /* caller's job to make sure metadata gets free beforehand */
@@ -267,6 +266,7 @@ void decoder_free(Undo264Context *ctx) {
     munmap((void*)ctx->data, ctx->size);
     free(ctx->br);
     free(ctx->prf);
+    free(ctx->dsp);
 
     free(ctx->ps->sps);
     free(ctx->ps->pps);

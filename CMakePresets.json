@@ -16,7 +16,8 @@
       "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "USE_SANITIZERS": "ON"
+        "USE_SANITIZERS": "ON",
+        "USE_NATIVE_ARCH": "ON"
       }
     },
     {

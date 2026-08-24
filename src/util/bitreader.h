@@ -5,7 +5,7 @@
 #ifndef TOY_H264_BITREADER_H
 #define TOY_H264_BITREADER_H
 
-#include "global.h"
+#include "../global.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -15,97 +15,108 @@ typedef struct BitReader {
     const uint8_t *data; // pointer to the byte buffer
     size_t         size; // total bytes in buffer
     size_t         byte_pos;
-    size_t         bit_pos; // 0..7 within current byte
+    uint64_t       bits_cache;
+    size_t         cache_pos;
 } BitReader ;
 
 
 
 
-static always_inline void bitreader_init(struct BitReader *br, const uint8_t *data, size_t size) {
-    br->data = data;
-    br->size = size;
-    br->byte_pos = 0;
-    br->bit_pos = 0;
+static always_inline void bitreader_init(BitReader *br, const uint8_t *data, size_t size);
+static always_inline BitReader make_br(const uint8_t *data, size_t size);
+
+
+/*
+ * load 4 bytes located 4 bytes after the current byte into the left part of bits_cache
+ */
+static always_inline int bitreader_refill_half(BitReader *br) {
+    br->bits_cache <<= 32;
+
+    int i;
+    for (i = 0; br->byte_pos+4+i < br->size && i < 4; i++) {
+        br->bits_cache |= (uint64_t) br->data[br->byte_pos + 4 + i] << ((3-i) * 8);
+    }
+    return i;
 }
 
-static always_inline BitReader make_br(const uint8_t *data, size_t size) {
-    BitReader br;
-    bitreader_init(&br, data, size);
-    return br;
+/*
+ * load 8 bytes into bits_cache
+ */
+static always_inline int bitreader_refill(BitReader *br) {
+    br->bits_cache = 0;
+    // unfortunately we can't return *((uint64_t*)&data[byte_pos]) because this might be interpreted as little-endian, whereas we want big-endian
+    int i;
+    for (i = 0; br->byte_pos + i < br->size && i < 8; i++) {
+        int shift = (7-i) * 8;
+        br->bits_cache |= (uint64_t) br->data[br->byte_pos + i] << shift;
+    }
+    return i;
 }
 
-
-
-static always_inline uint32_t bitreader_peek_bits(BitReader *br, int n) {
+/*
+ * guaranteed to always have enough bits in the cache, since the cache it 64 bits and peek_bits returns 32 bits max
+ */
+static always_inline uint32_t bitreader_peek_bits(BitReader *br, size_t n) {
     if (n < 1 || n > 32) return 0;
 
-    uint32_t res = 0;
-
-    size_t total = br->size * 8;
-    size_t start = br->byte_pos*8 + br->bit_pos;
-
-
-    for (int i = 0; i < n && start + i < total; i++) {
-        size_t bit_index = start + i;
-        size_t byte = bit_index >> 3;
-        size_t bit = bit_index & 7;
-
-        res <<= 1;
-        res |= (br->data[byte] >> (7-bit)) & 1;
-    }
-
-    return res;
+    // shift left part of bits_cache to the right 32 bits, then mask the number of bits to peek
+    return (uint32_t) (br->bits_cache >> (64 - br->cache_pos - n)) & (((uint64_t)1<<n) - 1);
 }
 
 static always_inline size_t bitreader_bits_remaining(BitReader *br) {
     if (br->byte_pos >= br->size) return 0;
-    return (br->size - br->byte_pos) * 8 - br->bit_pos;
+    return (br->size - br->byte_pos) * 8 + br->cache_pos;
 }
 
 
-static always_inline void bitreader_skip_bits(BitReader *br, uint32_t n) {
+static always_inline void bitreader_skip_bits(BitReader *br, size_t n) {
     size_t remaining = bitreader_bits_remaining(br);
 
     if (n > remaining) {
-        // printf("%lu\n", remaining);
-        printf("bitreader overflow: requested %u, remaining %u\n", n, remaining);
+        printf("bitreader overflow: requested %lu, remaining %lu\n", n, remaining);
         exit(42);
     }
 
-    size_t totalBits = br->byte_pos * 8 + br->bit_pos + n;
-    br->byte_pos = totalBits / 8;
-    br->bit_pos = totalBits % 8;
+
+    br->cache_pos += n;
+
+    if (br->cache_pos >= 32) {
+        br->byte_pos += 4;
+        bitreader_refill_half(br);
+        br->cache_pos = br->cache_pos % 32;
+    }
 }
 
-static always_inline uint32_t bitreader_read_bits(BitReader *br, int n) {
+static always_inline uint32_t bitreader_read_bits(BitReader *br, size_t n) {
     uint32_t res = bitreader_peek_bits(br, n);
     bitreader_skip_bits(br, n);
 
     return res;
 }
 
-static always_inline void bitreader_rewind(BitReader *br, int n) {
-    size_t before = br->byte_pos * 8 + br->bit_pos;
+static always_inline void bitreader_rewind(BitReader *br, size_t n) {
+    size_t before = br->byte_pos * 8 + br->cache_pos;
 
-    if ((size_t)n > before) n = before;
+    if (n > before) n = before;
 
     size_t new_pos_bits = before - n;
     br->byte_pos = new_pos_bits / 8;
-    br->bit_pos = new_pos_bits % 8;
+
+    bitreader_refill(br);
+
+    br->cache_pos = new_pos_bits % 8;
 }
 
 static always_inline bool bitreader_byte_aligned(BitReader *br) {
-    return br->bit_pos == 0;
+    return br->cache_pos % 8 == 0;
 }
 
 static always_inline size_t bitreader_bits_consumed(BitReader *br) {
-    return br->byte_pos*8 + br->bit_pos;
+    return br->byte_pos*8 + br->cache_pos;
 }
 
 static always_inline bool rbsp_trailing_bits(BitReader *br) {
-    int32_t rem = bitreader_bits_remaining(br);
-    // printf("\n   %d remaining\n", rem);
-    // printf("%d\n", bitreader_peek_bits(br, 10));
+    size_t rem = bitreader_bits_remaining(br);
 
     if (rem <= 0) return false;
 
@@ -114,7 +125,7 @@ static always_inline bool rbsp_trailing_bits(BitReader *br) {
         return false;
 
     // after that, ALL remaining bits must be zero
-    for (int i = 1; i < rem; i++) {
+    for (size_t i = 1; i < rem; i++) {
         if (bitreader_peek_bits(br, i+1) & 1) {
             return false;
         }
@@ -129,6 +140,21 @@ static always_inline bool more_rbsp_data(BitReader *br) {
 
 
 
+
+static always_inline void bitreader_init(struct BitReader *br, const uint8_t *data, size_t size) {
+    br->data = data;
+    br->size = size;
+    br->byte_pos = 0;
+    br->cache_pos = 0;
+    br->bits_cache = 0;
+    bitreader_refill(br);
+}
+
+static always_inline BitReader make_br(const uint8_t *data, size_t size) {
+    BitReader br;
+    bitreader_init(&br, data, size);
+    return br;
+}
 
 
 #endif //TOY_H264_BITREADER_H

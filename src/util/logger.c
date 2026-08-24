@@ -59,8 +59,8 @@ void print_slice_line_value(int32_t value) {
 
 
 void print_bit_pos(size_t g_offset, BitReader *br) {
-    printf("@%lu", g_offset + br->byte_pos*8 + br->bit_pos);
-    spaces(MAX_BIT_OFFSET_SIZE - nb_digits(g_offset + br->byte_pos*8 + br->bit_pos));
+    printf("@%lu", g_offset + br->byte_pos*8 + br->cache_pos);
+    spaces(MAX_BIT_OFFSET_SIZE - nb_digits(g_offset + br->byte_pos*8 + br->cache_pos));
 }
 
 void print_info_only(char *info) {

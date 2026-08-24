@@ -67,7 +67,7 @@ void INTER_CHROMA_FUNC(copy_from_temp_bi_buf,
     }
 }
 
-static ALWAYS_INLINE void INTER_CHROMA_FUNC(derive_offsets,
+static always_inline void INTER_CHROMA_FUNC(derive_offsets,
                                             MotionVector mv, int *yOffInt, int *xOffInt, int *yFrac, int *xFrac) {
     *xOffInt = mv.x >> 3;
     *yOffInt = mv.y >> 3;

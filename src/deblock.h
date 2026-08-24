@@ -67,7 +67,7 @@ void derive_edge_treshold_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t 
     uint8_t *alpha, uint8_t *beta, int filter_flags[2], uint8_t *indexA,
     uint8_t samples[16][16], Undo264Context *ctx);
 
-static ALWAYS_INLINE void fetch_24x24_luma_block(uint8_t block[24][24], int pos, int stride, Picture *pic) {
+static always_inline void fetch_24x24_luma_block(uint8_t block[24][24], int pos, int stride, Picture *pic) {
     int yc, xc;
     int posy = pos / stride;
     int posx = pos % stride;
@@ -79,7 +79,7 @@ static ALWAYS_INLINE void fetch_24x24_luma_block(uint8_t block[24][24], int pos,
         }
     }
 }
-static ALWAYS_INLINE void fetch_16x16_chroma_block(uint8_t cb_block[16][16], uint8_t cr_block[16][16], int pos, int stride, Picture *pic) {
+static always_inline void fetch_16x16_chroma_block(uint8_t cb_block[16][16], uint8_t cr_block[16][16], int pos, int stride, Picture *pic) {
     int yc, xc;
     int posy = pos / stride;
     int posx = pos % stride;

@@ -29,7 +29,7 @@
 #define ONLY_CHROMA   0
 #define START_FRAME   0
 #define INPUT_IS_GRAY 0
-#define CURR_RESOLUTION     RES_QCIF
+#define CURR_RESOLUTION     RES_CIF
 
 const int WIDTH = RES_WIDTH(CURR_RESOLUTION);
 const int HEIGHT = RES_HEIGHT(CURR_RESOLUTION);
@@ -72,8 +72,8 @@ void print_mb(uint8_t *frame, int blk_size, int mb_idx, int frame_stride)
 
 
 int main(void) {
-    char *ref_path = "../videos/out_ffmpeg.yuv";
-    char *test_path = "../videos/output_inter.yuv";
+    char *ref_path = "../test/AVCv1/BA1_FT_C/BA1_FT_C_ffmpeg.yuv";
+    char *test_path = "../test/AVCv1/BA1_FT_C/BA1_FT_C_undo264.yuv";
 
     FILE *ref_file = fopen(ref_path, "rb");
     if (!ref_file) {

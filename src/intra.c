@@ -17,7 +17,7 @@ static const intra_pred_chroma_func intra8x8_chroma_table[4];
 
 
 
-static ALWAYS_INLINE int sum(const uint8_t *samples, int start, int end) {
+static always_inline int sum(const uint8_t *samples, int start, int end) {
     int sum = 0;
     for (int i = start; i <= end; i++) {
         sum += samples[i];

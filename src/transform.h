@@ -23,14 +23,14 @@ void transform_chroma(Macroblock *mb, Undo264Context *ctx);
 
 
 
-static ALWAYS_INLINE void scaling_residual_4x4_lshift(int shift, int16_t (*scale)[4], int32_t c[4][4], int32_t d[4][4], bool is_luma, Undo264Context *ctx) {
+static always_inline void scaling_residual_4x4_lshift(int shift, int16_t (*scale)[4], int32_t c[4][4], int32_t d[4][4], bool is_luma, Undo264Context *ctx) {
     for (int i = 0; i < 4; i++) {
         for (int j =0 ; j < 4; j++) {
             d[i][j] = lshift(c[i][j] * scale[i][j], shift);
         }
     }
 }
-static ALWAYS_INLINE void scaling_residual_4x4_rshift_min(int shift, int16_t (*scale)[4], int32_t c[4][4], int32_t d[4][4], bool is_luma, Undo264Context *ctx) {
+static always_inline void scaling_residual_4x4_rshift_min(int shift, int16_t (*scale)[4], int32_t c[4][4], int32_t d[4][4], bool is_luma, Undo264Context *ctx) {
     for (int i = 0; i < 4; i++) {
         for (int j = 0 ; j < 4; j++) {
             d[i][j] = rshift_min(c[i][j] * scale[i][j], shift);
@@ -38,14 +38,14 @@ static ALWAYS_INLINE void scaling_residual_4x4_rshift_min(int shift, int16_t (*s
     }
 }
 
-static ALWAYS_INLINE void scaling_residual_8x8_lshift(int shift, int16_t (*scale)[8], int32_t c[8][8], int32_t d[8][8], bool is_luma, Undo264Context *ctx) {
+static always_inline void scaling_residual_8x8_lshift(int shift, int16_t (*scale)[8], int32_t c[8][8], int32_t d[8][8], bool is_luma, Undo264Context *ctx) {
     for (int i = 0; i < 8; i++) {
         for (int j =0 ; j < 8; j++) {
             d[i][j] = lshift(c[i][j] * scale[i][j], shift);
         }
     }
 }
-static ALWAYS_INLINE void scaling_residual_8x8_rshift_min(int shift, int16_t (*scale)[8], int32_t c[8][8], int32_t d[8][8], bool is_luma, Undo264Context *ctx) {
+static always_inline void scaling_residual_8x8_rshift_min(int shift, int16_t (*scale)[8], int32_t c[8][8], int32_t d[8][8], bool is_luma, Undo264Context *ctx) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0 ; j < 8; j++) {
             d[i][j] = rshift_min(c[i][j] * scale[i][j], shift);
@@ -55,7 +55,7 @@ static ALWAYS_INLINE void scaling_residual_8x8_rshift_min(int shift, int16_t (*s
 
 
 
-static ALWAYS_INLINE void idct_4x4(int32_t d[4][4], uint8_t *dst, int stride, int bitDepth) {
+static always_inline void idct_4x4(int32_t d[4][4], uint8_t *dst, int stride, int bitDepth) {
 
     int t0,t1,t2,t3;
     int f[4][4];
@@ -93,7 +93,7 @@ static ALWAYS_INLINE void idct_4x4(int32_t d[4][4], uint8_t *dst, int stride, in
     }
 }
 
-static ALWAYS_INLINE void idct_8x8(int32_t d[8][8], uint8_t *dst, int stride, int bitDepth) {
+static always_inline void idct_8x8(int32_t d[8][8], uint8_t *dst, int stride, int bitDepth) {
 
     int t0,t1,t2,t3,t4,t5,t6,t7;
     int f0,f1,f2,f3,f4,f5,f6,f7;
@@ -166,13 +166,13 @@ static ALWAYS_INLINE void idct_8x8(int32_t d[8][8], uint8_t *dst, int stride, in
 }
 
 
-static ALWAYS_INLINE void inverse_4x4_coeff_scaling_scan(int16_t vals[16], int32_t out[4][4]) {
+static always_inline void inverse_4x4_coeff_scaling_scan(int16_t vals[16], int32_t out[4][4]) {
     out[0][0] = vals[0];   out[0][1] = vals[1];   out[0][2] = vals[5];   out[0][3] = vals[6];
     out[1][0] = vals[2];   out[1][1] = vals[4];   out[1][2] = vals[7];   out[1][3] = vals[12];
     out[2][0] = vals[3];   out[2][1] = vals[8];   out[2][2] = vals[11];  out[2][3] = vals[13];
     out[3][0] = vals[9];   out[3][1] = vals[10];  out[3][2] = vals[14];  out[3][3] = vals[15];
 }
-static ALWAYS_INLINE void inverse_4x4_coeff_scaling_scan_dc(int16_t AC[15], int dc, int32_t out[4][4]) {
+static always_inline void inverse_4x4_coeff_scaling_scan_dc(int16_t AC[15], int dc, int32_t out[4][4]) {
     out[0][0] = dc;      out[0][1] = AC[0];   out[0][2] = AC[4];   out[0][3] = AC[5];
     out[1][0] = AC[1];   out[1][1] = AC[3];   out[1][2] = AC[6];   out[1][3] = AC[11];
     out[2][0] = AC[2];   out[2][1] = AC[7];   out[2][2] = AC[10];  out[2][3] = AC[12];
@@ -180,7 +180,7 @@ static ALWAYS_INLINE void inverse_4x4_coeff_scaling_scan_dc(int16_t AC[15], int 
 }
 
 
-static ALWAYS_INLINE void inverse_8x8_coeff_scaling_scan(int16_t vals[64], int32_t out[8][8]) {
+static always_inline void inverse_8x8_coeff_scaling_scan(int16_t vals[64], int32_t out[8][8]) {
     for (int i = 0; i < 8; i++) {
         for (int j = 0; j < 8; j++) {
             out[i][j] = vals[blk_scan_8x8[i][j]];

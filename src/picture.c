@@ -73,18 +73,18 @@ void dump_picture(Picture *p, Undo264Context *ctx) {
     int left   = ctx->ps->sps->crop_left_offset;
     int right  = ctx->ps->sps->crop_right_offset;
 
-    for (int i = top; i < p->heightY - bottom; i++) {
-        fwrite(&p->luma[i*p->widthY + left],   1, p->widthCropY, ctx->out_file);
-    }
-
-    if (!ctx->dump_monochrome) {
-        for (int i = top/2; i < p->heightC - bottom/2; i++) {
-            fwrite(&p->cb[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
-        }
-        for (int i = top/2; i < p->heightC - bottom/2; i++) {
-            fwrite(&p->cr[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
-        }
-    }
+    // for (int i = top; i < p->heightY - bottom; i++) {
+    //     fwrite(&p->luma[i*p->widthY + left],   1, p->widthCropY, ctx->out_file);
+    // }
+    //
+    // if (!ctx->dump_monochrome) {
+    //     for (int i = top/2; i < p->heightC - bottom/2; i++) {
+    //         fwrite(&p->cb[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
+    //     }
+    //     for (int i = top/2; i < p->heightC - bottom/2; i++) {
+    //         fwrite(&p->cr[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
+    //     }
+    // }
 }
 
 void pic_pool_init(PicturePool *pool, Undo264Context *ctx) {

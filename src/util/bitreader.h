@@ -32,6 +32,13 @@ static always_inline BitReader make_br(const uint8_t *data, size_t size);
 static always_inline int bitreader_refill_half(BitReader *br) {
     br->bits_cache <<= 32;
 
+    if (br->size - br->byte_pos >= (size_t)4) {
+        uint32_t v;
+        memcpy(&v, &br->data[br->byte_pos + 4], 4);
+        br->bits_cache |= __builtin_bswap32(v);
+        return 4;
+    }
+
     int i;
     for (i = 0; br->byte_pos+4+i < br->size && i < 4; i++) {
         br->bits_cache |= (uint64_t) br->data[br->byte_pos + 4 + i] << ((3-i) * 8);
@@ -43,10 +50,16 @@ static always_inline int bitreader_refill_half(BitReader *br) {
  * load 8 bytes into bits_cache
  */
 static always_inline int bitreader_refill(BitReader *br) {
+    if (br->size - br->byte_pos >= (size_t)8) {
+        uint64_t v;
+        memcpy(&v, &br->data[br->byte_pos], 8);
+        br->bits_cache = __builtin_bswap64(v); // little-endian to big-endian (no-op on big-endian machines)
+        return 8;
+    }
+
     br->bits_cache = 0;
-    // unfortunately we can't return *((uint64_t*)&data[byte_pos]) because this might be interpreted as little-endian, whereas we want big-endian
     int i;
-    for (i = 0; br->byte_pos + i < br->size && i < 8; i++) {
+    for (i = 0; br->byte_pos + i < br->size; i++) {
         int shift = (7-i) * 8;
         br->bits_cache |= (uint64_t) br->data[br->byte_pos + i] << shift;
     }

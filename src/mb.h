@@ -312,9 +312,7 @@ static always_inline void reset_mb(Macroblock *mb, int mbAddr, Undo264Context *c
     memset(&ctx->cr_total_coeffs[mbAddr], 0, 16);
     memset(&ctx->cb_total_coeffs[mbAddr], 0, 16);
 
-
     memset(&mb->u, 0, sizeof(mb->u));
-    memset(&mb->residuals, 0, sizeof(mb->residuals));
 
     mb->mbAddr = mbAddr;
     mb->mb_y   = mbAddr / ctx->ps->sps->pic_width_in_mbs;

@@ -1141,13 +1141,13 @@ void CAFUNC(read_macroblock,
         if (cbp_luma > 0 || cbp_chroma > 0 || IS_INTRA16x16(type)) {
             mb->mb_qp_delta = CACALL(read_mb_qp_delta, mb, sh, ctx);
             meta->mb_qp_delta = mb->mb_qp_delta;
-            mb->QPY = mb->mbAddr == sh->first_mb
+            mb->QPY = (uint32_t)mb->mbAddr == sh->first_mb
                 ? (pps->pic_init_qp + sh->slice_qp_delta + mb->mb_qp_delta + 52) % 52
                 : (ctx->prevQPY + mb->mb_qp_delta + 52) % 52;
 
             CACALL(read_residual, mb, type, mb->t_8x8_flag, 0, 15, cbp_luma, cbp_chroma, sh, ctx);
         } else {
-            mb->QPY = mb->mbAddr == sh->first_mb
+            mb->QPY = (uint32_t)mb->mbAddr == sh->first_mb
                 ? (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52
                 : ctx->prevQPY;
         }
@@ -1223,6 +1223,7 @@ void CAFUNC(decode_slice,
                 moreDataFlag = !mb_skip_flag;
 
                 if (mb_skip_flag) {
+
             #else
                 uint32_t mb_skip_run = read_ue(br);
                 prevMbSkipped = mb_skip_run > 0;
@@ -1232,11 +1233,14 @@ void CAFUNC(decode_slice,
                     reset_mb(mb, mbAddr, ctx);
                     derive_macroblock_neighbors(mb, sh->first_mb, ctx);
             #endif
+                    profiler_start_mb(ctx->prf);
                     mb->mb_type = MB_TYPE_SKIP;
                     mb->slice_type = sh->slice_type;
                     mb->QPY = mb->mbAddr == sh->first_mb
                         ? (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52
                         : ctx->prevQPY;
+                    mb->residuals.cbp_luma = 0;
+                    mb->residuals.cbp_chroma = 0;
 
                     int qPiCb = _clip3(0, 51, mb->QPY + pps->chroma_qp_index_offset);
                     int qPiCr = _clip3(0, 51, mb->QPY + pps->second_chroma_qp_index_offset);
@@ -1261,9 +1265,7 @@ void CAFUNC(decode_slice,
                     mb->u.pb.mb_info.mb_part_width = 16;
 
 
-                    if (IS_I_SLICE(sh->slice_type)) {
-                        decode_i_macroblock(mb, ctx->current_slice, ctx);
-                    } else if (IS_P_SLICE(sh->slice_type)) {
+                    if (IS_P_SLICE(sh->slice_type)) {
                         decode_p_macroblock(mb, ctx->current_slice, ctx);
                     } else if (IS_B_SLICE(sh->slice_type)) {
                         decode_b_macroblock(mb, ctx->current_slice, ctx);
@@ -1271,6 +1273,8 @@ void CAFUNC(decode_slice,
 
                     ctx->prevQPY = mb->QPY;
                     ctx->current_slice->num_mbs++;
+
+                    profiler_end_mb(ctx->prf);
                 }
 
                 #if !CABAC

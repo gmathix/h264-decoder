@@ -32,7 +32,7 @@ static always_inline BitReader make_br(const uint8_t *data, size_t size);
 static always_inline int bitreader_refill_half(BitReader *br) {
     br->bits_cache <<= 32;
 
-    if (br->size - br->byte_pos >= (size_t)4) {
+    if (br->size - br->byte_pos >= (size_t)8) {
         uint32_t v;
         memcpy(&v, &br->data[br->byte_pos + 4], 4);
         br->bits_cache |= __builtin_bswap32(v);

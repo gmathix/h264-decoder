@@ -1,74 +1,152 @@
 //
+// Created by gmathix on 8/25/26.
+//
+
+
+//
 // Created by gmathix on 4/6/26.
 //
 
-#include "transform.h"
 
-#include "dequant.h"
-#include "picture.h"
 
+#include "global.h"
+#include "mb.h"
 #include "util/formulas.h"
 #include "util/mbutil.h"
-
-
-
-const uint8_t field_scan_4x4[4][4] = {
-      { 0,  2,  8, 12},
-      { 1,  5,  9, 13},
-      { 3,  6, 10, 14},
-      { 4,  7, 11, 15}
-};
-
-const uint8_t blk_scan_8x8[8][8] = {
-      { 0,  1,  5,  6, 14, 15, 27, 28},
-      { 2,  4,  7, 13, 16, 26, 29, 42},
-      { 3,  8, 12, 17, 25, 30, 41, 43},
-      { 9, 11, 18, 24, 31, 40, 44, 53},
-      {10, 19, 23, 32, 39, 45, 52, 54},
-      {20, 22, 33, 38, 46, 51, 55, 60},
-      {21, 34, 37, 47, 50, 56, 59, 61},
-      {35, 36, 48, 49, 57, 58, 62, 63}
-};
-
-const uint8_t field_scan_8x8[8][8] = {
-      { 0,  3,  8, 15, 22, 30, 38, 52},
-      { 1,  4, 14, 21, 29, 37, 45, 53},
-      { 2,  7, 16, 23, 31, 39, 46, 58},
-      { 5,  9, 20, 28, 36, 44, 51, 59},
-      { 6, 13, 24, 32, 40, 47, 54, 60},
-      {10, 17, 25, 33, 41, 48, 55, 61},
-      {11, 18, 26, 34, 42, 49, 56, 62},
-      {12, 19, 27, 35, 43, 50, 57, 63}
-};
-
-const int16_t hadamard_4x4_mat[4][4] = {
-      { 1,  1,  1,  1},
-      { 1,  1, -1, -1},
-      { 1, -1, -1,  1},
-      { 1, -1,  1, -1}
-};
-
-const int16_t hadamard_2x2_mat[2][2] = {
-      { 1,  1},
-      { 1, -1}
-};
+#include "transform_common.h"
 
 
 
 
-void transform_luma_4x4(Macroblock *mb, int qp, int blkIdx, Undo264Context *ctx) {
+static always_inline void idct_4x4(int16_t d[4][4], uint8_t *dst, int stride, int bitDepth) {
+
+      int t0,t1,t2,t3;
+      int f[4][4];
+      int h[4][4];
+
+      for (int i = 0; i < 4; i++) {
+            t0 = d[i][0] + d[i][2];
+            t1 = d[i][0] - d[i][2];
+            t2 = (d[i][1] >> 1) - d[i][3];
+            t3 = d[i][1] + (d[i][3] >> 1);
+
+            f[i][0] = t0 + t3;
+            f[i][1] = t1 + t2;
+            f[i][2] = t1 - t2;
+            f[i][3] = t0 - t3;
+      }
+
+      for (int j = 0; j < 4; j++) {
+            t0 = f[0][j] + f[2][j];
+            t1 = f[0][j] - f[2][j];
+            t2 = (f[1][j] >> 1) - f[3][j];
+            t3 = f[1][j] + (f[3][j] >> 1);
+
+            h[0][j] = t0 + t3;
+            h[1][j] = t1 + t2;
+            h[2][j] = t1 - t2;
+            h[3][j] = t0 - t3;
+      }
+
+      for (int y = 0; y < 4; y++) {
+            for (int x = 0; x < 4; x++) {
+                  dst[x] = _clip3(0, (1<<bitDepth)-1, dst[x] + ((h[y][x] + (1 << 5)) >> 6));
+            }
+            dst += stride;
+      }
+}
+
+static always_inline void idct_8x8(int16_t d[8][8], uint8_t *dst, int stride, int bitDepth) {
+
+    int t0,t1,t2,t3,t4,t5,t6,t7;
+    int f0,f1,f2,f3,f4,f5,f6,f7;
+    int g[8][8];
+    int m[8][8];
+    for (int i = 0; i < 8; i++) {
+        t0 = d[i][0] + d[i][4];
+        t1 = -d[i][3] + d[i][5] - d[i][7] - (d[i][7] >> 1);
+        t2 = d[i][0] - d[i][4];
+        t3 = d[i][1] + d[i][7] - d[i][3] - (d[i][3] >> 1);
+        t4 = (d[i][2] >> 1) - d[i][6];
+        t5 = -d[i][1] + d[i][7] + d[i][5] + (d[i][5] >> 1);
+        t6 = d[i][2] + (d[i][6] >> 1);
+        t7 = d[i][3] + d[i][5] + d[i][1] + (d[i][1] >> 1);
+
+        f0 = t0 + t6;
+        f1 = t1 + (t7 >> 2);
+        f2 = t2 + t4;
+        f3 = t3 + (t5 >> 2);
+        f4 = t2 - t4;
+        f5 = (t3 >> 2) - t5;
+        f6 = t0 - t6;
+        f7 = t7 - (t1 >> 2);
+
+        g[i][0] = f0 + f7;
+        g[i][1] = f2 + f5;
+        g[i][2] = f4 + f3;
+        g[i][3] = f6 + f1;
+        g[i][4] = f6 - f1;
+        g[i][5] = f4 - f3;
+        g[i][6] = f2 - f5;
+        g[i][7] = f0 - f7;
+    }
+
+    for (int j = 0; j < 8; j++) {
+        t0 = g[0][j] + g[4][j];
+        t1 = -g[3][j] + g[5][j] - g[7][j] - (g[7][j] >> 1);
+        t2 = g[0][j] - g[4][j];
+        t3 = g[1][j] + g[7][j] - g[3][j] - (g[3][j] >> 1);
+        t4 = (g[2][j] >> 1) - g[6][j];
+        t5 = -g[1][j] + g[7][j] + g[5][j] + (g[5][j] >> 1);
+        t6 = g[2][j] + (g[6][j] >> 1);
+        t7 = g[3][j] + g[5][j] + g[1][j] + (g[1][j] >> 1);
+
+        f0 = t0 + t6;
+        f1 = t1 + (t7 >> 2);
+        f2 = t2 + t4;
+        f3 = t3 + (t5 >> 2);
+        f4 = t2 - t4;
+        f5 = (t3 >> 2) - t5;
+        f6 = t0 - t6;
+        f7 = t7 - (t1 >> 2);
+
+        m[0][j] = f0 + f7;
+        m[1][j] = f2 + f5;
+        m[2][j] = f4 + f3;
+        m[3][j] = f6 + f1;
+        m[4][j] = f6 - f1;
+        m[5][j] = f4 - f3;
+        m[6][j] = f2 - f5;
+        m[7][j] = f0 - f7;
+    }
+
+    for (int y = 0; y < 8; y++) {
+        for (int x = 0; x < 8; x++) {
+            dst[x] = _clip3(0, (1<<bitDepth)-1, dst[x] + ((m[y][x] + (1 << 5)) >> 6));
+        }
+        dst += stride;
+    }
+}
+
+
+
+
+
+void transform_luma_4x4(Macroblock *mb, int blkIdx, Undo264Context *ctx) {
+      static int16_t c[4][4];
+      static int16_t d[4][4];
+
       int stride = mb->p_pic->widthY;
 
       int blkY = (blkIdx>>2)<<2;
       int blkX = (blkIdx&3)<<2;
+      int qp = mb->QPY;
 
-      int c[4][4];
       inverse_4x4_coeff_scaling_scan(mb->residuals.luma_4x4_coeffs[blkIdx], c);
 
       int scaleIndex = 3 * (IS_INTER(mb->mb_type) > 0);
       int16_t (*scale) [4] = ctx->levelScale4x4[scaleIndex][qp];
 
-      int d[4][4];
       if (qp >= 24)   scaling_residual_4x4_lshift(qp/6-4, scale, c, d, true, ctx);
       else            scaling_residual_4x4_rshift_min(qp/6-4, scale, c, d, true, ctx);
 
@@ -80,19 +158,21 @@ void transform_luma_4x4(Macroblock *mb, int qp, int blkIdx, Undo264Context *ctx)
 }
 
 
-void transform_luma_8x8(Macroblock *mb, int qp, int i8x8, Undo264Context *ctx) {
+void transform_luma_8x8(Macroblock *mb, int i8x8, Undo264Context *ctx) {
+      static int16_t c[8][8];
+      static int16_t d[8][8];
+
       int stride = mb->p_pic->widthY;
 
       int blkY = (i8x8>>1)<<3;
       int blkX = (i8x8&1)<<3;
+      int qp = mb->QPY;
 
-      int c[8][8];
       inverse_8x8_coeff_scaling_scan(mb->residuals.luma_8x8_coeffs[i8x8], c);
 
       int scaleIndex = IS_INTER(mb->mb_type) > 0;
       int16_t (*scale) [8] = ctx->levelScale8x8[scaleIndex][qp];
 
-      int d[8][8];
       if (qp >= 36)   scaling_residual_8x8_lshift(qp/6-6, scale, c, d, true, ctx);
       else            scaling_residual_8x8_rshift_min(qp/6-6, scale, c, d, true, ctx);
 
@@ -102,13 +182,14 @@ void transform_luma_8x8(Macroblock *mb, int qp, int i8x8, Undo264Context *ctx) {
             stride, ctx->ps->sps->bit_depth_luma);
 }
 
-
-void transform_luma_16x16(Macroblock *mb, int qp, Undo264Context *ctx) {
-      int32_t c[4][4];
+void transform_luma_16x16(Macroblock *mb, Undo264Context *ctx) {
+      static int16_t c[4][4];
       inverse_4x4_coeff_scaling_scan(mb->residuals.luma_16x16_DC, c);
 
-      int32_t dcY[4][4];
-      int32_t temp[4][4];
+      static int32_t dcY[4][4];
+      static int32_t temp[4][4];
+
+      int qp = mb->QPY;
 
       /* hadamard on DC */
       for (int i = 0; i < 4; i++)
@@ -134,7 +215,7 @@ void transform_luma_16x16(Macroblock *mb, int qp, Undo264Context *ctx) {
       int16_t (*scale) [4] = ctx->levelScale4x4[scaleIndex][qp];
 
       /* scaling & transform */
-      int d[4][4];
+      static int16_t d[4][4];
       int stride = mb->p_pic->widthY;
       for (int i = 0; i < 16; i++) {
             inverse_4x4_coeff_scaling_scan_dc(mb->residuals.luma_16x16_AC[i], dcY[i>>2][i&3], c);
@@ -190,10 +271,10 @@ void transform_chroma(Macroblock *mb, Undo264Context *ctx) {
                   }
 
 
-                  int32_t  d[4][4];
+                  static int16_t  d[4][4];
                   int stride = mb->p_pic->widthC;
                   for (int i4x4 = 0; i4x4 < nbCr4x4; i4x4++) {
-                        int32_t c[4][4];
+                        static int16_t c[4][4];
                         inverse_4x4_coeff_scaling_scan_dc(mb->residuals.chroma_AC[iCbCr][i4x4], dcC[i4x4>>1][i4x4&1], c);
 
                         int16_t (*scale) [4] = ctx->levelScale4x4[scaleIndex][qp];

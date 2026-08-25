@@ -42,7 +42,7 @@ int frame_debug = -1;
 int frame_num_debug = -1;
 int poc_debug = 60;
 int mb_debug = 395;
-int nb_frames_before_stop = 100;
+int nb_frames_before_stop = -1;
 
 
 Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome) {
@@ -167,7 +167,7 @@ int dispatch_nal_unit(NalUnit *nal_unit, Undo264Context *ctx) {
             }
 
             Slice *slice = ctx->current_slice;
-            // deblock_slice(ctx->curr_pic, sh, ctx);
+            deblock_slice(ctx->curr_pic, sh, ctx);
 
             #ifdef SLICES_LOG
                 printf("done slice %lu %s(frame_num %d, pic %lu)\n\n",
@@ -222,15 +222,15 @@ void decoder_run(Undo264Context *ctx) {
     {
         NalUnit *nal = next_nal_unit(&nal_br);
 
-        dispatch_nal_unit(nal, ctx);
+        if (nal) {
+            dispatch_nal_unit(nal, ctx);
 
+            free(nal->data);
+            free(nal);
 
-        free(nal->data);
-        free(nal);
-
-
-        if (bitreader_bits_remaining(&nal_br) > 8 && ctx->prf->total_frames <= nb_frames_before_stop) {
-            goto https;
+            if (bitreader_bits_remaining(&nal_br) > 8 && ctx->prf->total_frames <= nb_frames_before_stop) {
+                goto https;
+            }
         }
     }
 

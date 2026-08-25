@@ -43,6 +43,10 @@
 #define MAX_U8 255
 
 
+#define PERMUTE(type, p0, p1) \
+    type temp = *p0; \
+    *p0 = *p1;       \
+    *p1 = temp;
 
 extern int debugging;
 extern int frame_debug;

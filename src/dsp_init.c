@@ -11,54 +11,55 @@
 
 #define WIDTH 16
 #define HEIGHT 16
-#include "templates/weighted_pred.c"        // 16x16
-#include "templates/qpel.c"
+#include "dsp/weighted_pred_template.c"        // 16x16
+#include "dsp/qpel_template.c"
 #undef HEIGHT
 #define HEIGHT 8
-#include "templates/weighted_pred.c"        // 16x8
-#include "templates/qpel.c"
+#include "dsp/weighted_pred_template.c"        // 16x8
+#include "dsp/qpel_template.c"
 #undef WIDTH
 #define WIDTH 8
-#include "templates/weighted_pred.c"        // 8x8
-#include "templates/qpel.c"
-#include "templates/chroma_interpolation.c"
+#include "dsp/weighted_pred_template.c"        // 8x8
+#include "dsp/qpel_template.c"
+#include "dsp/chroma_interpolation_template.c"
 #undef HEIGHT
 #define HEIGHT 16
-#include "templates/weighted_pred.c"        // 8x16
-#include "templates/qpel.c"
+#include "dsp/weighted_pred_template.c"        // 8x16
+#include "dsp/qpel_template.c"
 #undef HEIGHT
 #define HEIGHT 4
-#include "templates/weighted_pred.c"        // 8x4
-#include "templates/qpel.c"
-#include "templates/chroma_interpolation.c"
+#include "dsp/weighted_pred_template.c"        // 8x4
+#include "dsp/qpel_template.c"
+#include "dsp/chroma_interpolation_template.c"
 #undef WIDTH
 #define WIDTH 4
-#include "templates/weighted_pred.c"        // 4x4
-#include "templates/qpel.c"
-#include "templates/chroma_interpolation.c"
+#include "dsp/weighted_pred_template.c"        // 4x4
+#include "dsp/qpel_template.c"
+#include "dsp/chroma_interpolation_template.c"
 #undef HEIGHT
 #define HEIGHT 8
-#include "templates/weighted_pred.c"        // 4x8
-#include "templates/qpel.c"
-#include "templates/chroma_interpolation.c"
+#include "dsp/weighted_pred_template.c"        // 4x8
+#include "dsp/qpel_template.c"
+#include "dsp/chroma_interpolation_template.c"
 #undef HEIGHT
 #define HEIGHT 2
-#include "templates/weighted_pred.c"        // 4x2
-#include "templates/chroma_interpolation.c"
+#include "dsp/weighted_pred_template.c"        // 4x2
+#include "dsp/chroma_interpolation_template.c"
 #undef WIDTH
 #define WIDTH 2
-#include "templates/weighted_pred.c"        // 2x2
-#include "templates/chroma_interpolation.c"
+#include "dsp/weighted_pred_template.c"        // 2x2
+#include "dsp/chroma_interpolation_template.c"
 #undef HEIGHT
 #define HEIGHT 4
-#include "templates/weighted_pred.c"        // 2x4
-#include "templates/chroma_interpolation.c"
+#include "dsp/weighted_pred_template.c"        // 2x4
+#include "dsp/chroma_interpolation_template.c"
 
 
 #undef HEIGHT
 #undef WIDTH
 
 
+#include "dsp/transform.c"
 
 
 // scalar versions by default
@@ -100,6 +101,11 @@ static void dsp_init_c(DSPContext *dsp) {
     memcpy(dsp->qpel_func_arrays[BLOCK_8x4],   qpel_funcs_8x4,   sizeof dsp->qpel_func_arrays[BLOCK_8x4]);
     memcpy(dsp->qpel_func_arrays[BLOCK_4x8],   qpel_funcs_4x8,   sizeof dsp->qpel_func_arrays[BLOCK_4x8]);
     memcpy(dsp->qpel_func_arrays[BLOCK_4x4],   qpel_funcs_4x4,   sizeof dsp->qpel_func_arrays[BLOCK_4x4]);
+
+    dsp->transform_4x4    = transform_luma_4x4;
+    dsp->transform_8x8    = transform_luma_8x8;
+    dsp->transform_16x16  = transform_luma_16x16;
+    dsp->transform_chroma = transform_chroma;
 }
 
 

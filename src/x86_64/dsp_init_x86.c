@@ -21,6 +21,8 @@
 #include "sse4/chroma_inter_sse4_template.c"
 #undef HEIGHT
 
+#include "sse4/transform_sse4.c"
+
 
 static void dsp_init_x86(DSPContext *dsp) {
     __builtin_cpu_init();
@@ -55,5 +57,10 @@ static void dsp_init_x86(DSPContext *dsp) {
         dsp->chroma_interpolation_funcs[BLOCK_4x2] = chroma_interpolation_sse_4x2;
         dsp->chroma_interpolation_funcs[BLOCK_2x4] = chroma_interpolation_sse_2x4;
         dsp->chroma_interpolation_funcs[BLOCK_2x2] = chroma_interpolation_sse_2x2;
+
+        dsp->transform_4x4    = transform_luma_4x4_sse;
+        // // dsp->transform_8x8    = transform_luma_8x8_sse;
+        dsp->transform_16x16  = transform_luma_16x16_sse;
+        dsp->transform_chroma = transform_chroma_sse;
     }
 }

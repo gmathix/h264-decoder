@@ -28,7 +28,6 @@ set(UNDO264_SOURCES
     src/mb.c
     src/cavlc.c
     src/vlc.c
-    src/transform.c
     src/picture.c
     src/dequant.c
     src/dpb.c

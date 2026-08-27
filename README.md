@@ -46,17 +46,12 @@ chmod +x download_vectors.sh && chmod +d conformance_test.sh
 
 
 ## Performance
-Not great for now.  
-It can reach ~32fps on a single thread on my Intel I5-10300H, on 1080p streams, without dumping the frames. 
-Compiler optimizations help a lot : without -O3, it : 
-  - runs at ~6fps (feel free to laugh at me)    
-  - looks like color planes are corrupted (feel free to laugh at me harder)  
-  
-With the optimizations on, the compiler efficiently vectorizes qpel and inter prediction functions 
-which are templated for this purpose.  
-CPU and memory profiling is work in progress, which does not include handwritten SIMD for now, 
-but rather architectural work to maximize the compiler optimization potential before touching SIMD manually.
+It can reach ~22fps on a single thread on my Intel I5-10300H, on 1080p streams, without dumping the frames. 
+The deblocking filter is the primary bottleneck ; without it, undo264 runs at 90fps on High profile content, 
+and at 130fps on Baseline profile content. 
 
+Hence, current optimization work is focused on the deblocking filter (architectural improvements + SIMD rewrite)
+reducing as much as possible unnecessary memory movement.
 
 ## Building
 

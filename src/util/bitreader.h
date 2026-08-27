@@ -83,14 +83,6 @@ static always_inline size_t bitreader_bits_remaining(BitReader *br) {
 
 
 static always_inline void bitreader_skip_bits(BitReader *br, size_t n) {
-    size_t remaining = bitreader_bits_remaining(br);
-
-    if (n > remaining) {
-        printf("bitreader overflow: requested %lu, remaining %lu\n", n, remaining);
-        exit(42);
-    }
-
-
     br->cache_pos += n;
 
     if (br->cache_pos >= 32) {

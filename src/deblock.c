@@ -131,8 +131,8 @@ void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int b
         curr_bS += ((curr_bS == 0) &&
         	((meta.t_8x8_flag    && (meta.cbp_luma   & (1 << idx_8x8))) ||
              (meta_n.t_8x8_flag  && (meta_n.cbp_luma & (1 << idx_n_8x8))) ||
-             (!meta.t_8x8_flag   && (ctx->luma_total_coeffs[mbAddr][idx] > 0)) ||
-             (!meta_n.t_8x8_flag && (ctx->luma_total_coeffs[mbAddrN][idx_n] > 0)))) * 2;
+             (!meta.t_8x8_flag   && (ctx->total_coeffs[mbAddr][idx] > 0)) ||
+             (!meta_n.t_8x8_flag && (ctx->total_coeffs[mbAddrN][idx_n] > 0)))) * 2;
 
         /* bS = 1
          * <=> too much writing, 8.7.2.1

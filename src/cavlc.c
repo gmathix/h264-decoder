@@ -228,7 +228,7 @@ static const MultiVLC *nc_to_table[19] = {
 
 
 
-void init_vlc_tables() {
+void init_vlc_tables(void) {
     coeff_token_vlc = make_mutli_vlc(4);
     for (int i = 0; i < 4; i++) {
         set_vlc_table(&coeff_token_vlc, i,
@@ -290,33 +290,29 @@ void init_vlc_tables() {
 }
 
 /* 7.3.5.3.2 */
-void residual_block_cavlc(Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t *coeffLevel, uint8_t (*total_coeffs_table)[16],
-    int startIdx, int endIdx, int maxNumCoeff, bool isLuma, SliceHeader *sh, Undo264Context *ctx) {
+void residual_block_cavlc(Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t *coeffLevel,
+                          int startIdx, int endIdx, int maxNumCoeff, bool isLuma,
 
-    BitReader *br = ctx->br;
-
+    SliceHeader *sh, Undo264Context *ctx) {
 
     if (!vlc_initialized) {
         init_vlc_tables();
     }
 
-    for (int i = 0; i < maxNumCoeff; i++) {
-        coeffLevel[i] = 0;
-    }
-
+    memset(coeffLevel, 0, maxNumCoeff * sizeof(int16_t));
 
 
     int totalCoeff;
     int trailingOnes;
     int nC;
-    coeff_token(mb, blkIdx, iCbCr, bt, &startIdx, &endIdx, isLuma, &totalCoeff, &trailingOnes, &nC, total_coeffs_table, sh, ctx);
+    coeff_token(mb, blkIdx, iCbCr, bt, &startIdx, &endIdx, isLuma, &totalCoeff, &trailingOnes, &nC, sh, ctx);
 
+    static int16_t levelVal[64];
+    static int16_t runVal[64];
 
     if (totalCoeff > 0) {
-        int16_t levelVal[totalCoeff];
         parse_level(levelVal, blkIdx, bt, totalCoeff, trailingOnes, ctx);
 
-        int16_t runVal[totalCoeff];
         parse_run(runVal, blkIdx, bt, totalCoeff, maxNumCoeff, startIdx, endIdx, sh, ctx);
 
         reconstruct(levelVal, blkIdx, bt, runVal, coeffLevel, startIdx, totalCoeff);
@@ -325,7 +321,8 @@ void residual_block_cavlc(Macroblock *mb, int blkIdx, int iCbCr, int bt, int16_t
 
 
 void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, BlockType blockType, int *startIdx, int *endIdx, bool isLuma,
-                    int *totalCoeff, int *trailingOnes, int *nC, uint8_t (*total_coeffs_table)[16], SliceHeader *sh, Undo264Context *ctx) {
+                 int *totalCoeff, int *trailingOnes, int *nC,
+                 SliceHeader *sh, Undo264Context *ctx) {
 
     BitReader *br = ctx->br;
 
@@ -336,19 +333,19 @@ void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, BlockType blockType, int
         ? derive_neighbors_4x4(mb, blkIdx, ctx)
         : derive_neighbors_2x2(mb, blkIdx, ctx);
 
-
+    int tc_table_off = (!isLuma)*16 + iCbCr*4;
 
     if (n.a.av) {
         int mbTypeA = ctx->curr_pic->mb_types[mb->mbAddr + n.a.mb_off];
         if (IS_SKIP(mbTypeA)) nA = 0;
-        if (IS_PCM(mbTypeA)) nA = 16;
-        else nA = total_coeffs_table[mb->mbAddr + n.a.mb_off][n.a.idx];
+        else if (IS_PCM(mbTypeA)) nA = 16;
+        else nA = ctx->total_coeffs[mb->mbAddr + n.a.mb_off][tc_table_off + n.a.idx];
     }
     if (n.b.av) {
         int mbTypeB = ctx->curr_pic->mb_types[mb->mbAddr + n.b.mb_off];
         if (IS_SKIP(mbTypeB)) nB = 0;
-        if (IS_PCM(mbTypeB)) nB = 16;
-        else nB = total_coeffs_table[mb->mbAddr + n.b.mb_off][n.b.idx];
+        else if (IS_PCM(mbTypeB)) nB = 16;
+        else nB = ctx->total_coeffs[mb->mbAddr + n.b.mb_off][tc_table_off + n.b.idx];
     }
 
 
@@ -356,9 +353,6 @@ void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, BlockType blockType, int
         if (n.a.av && n.b.av)  *nC = (nA+nB+1)>>1;
         else *nC = n.a.av*nA + n.b.av * nB;
     }
-
-    unsigned bits = bitreader_peek_bits(br, MAX_COEFF_TOKEN_BITS);
-    int length = get_vlc_length(nc_to_table[*nC + 2], nc_to_index[*nC + 2], br);
 
     int sym = get_vlc(nc_to_table[*nC + 2], nc_to_index[*nC + 2], br);
 
@@ -368,7 +362,7 @@ void coeff_token(Macroblock *mb, int blkIdx, int iCbCr, BlockType blockType, int
 
     /* luma 16x16 DC doesn't store totalCoeff */
     if (blockType != LUMA_INTRA_16x16_DC_LEVEL) {
-        total_coeffs_table[mb->mbAddr][blkIdx] = *totalCoeff;
+        ctx->total_coeffs[mb->mbAddr][tc_table_off + blkIdx] = *totalCoeff;
     }
 }
 

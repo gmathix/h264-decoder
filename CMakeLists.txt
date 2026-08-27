@@ -61,7 +61,9 @@ add_executable(undo264 ${UNDO264_SOURCES})
 target_link_libraries(undo264 PRIVATE m undo264_warnings undo264_sanitizers)
 target_include_directories(undo264 PRIVATE src)
 target_compile_definitions(undo264 PRIVATE _DEFAULT_SOURCE
-    $<$<CONFIG:Debug>:SLICES_LOG=1>
+    $<$<CONFIG:Debug>:SLICES_LOG=1,DUMP_PICTURES=1>
+    $<$<CONFIG:Profile>:DUMP_PICTURES=0>
+    $<$<CONFIG:Release>:DUMP_PICTURES=1>
 )
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
     target_compile_definitions(undo264 PRIVATE ARCH_X86=1)

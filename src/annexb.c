@@ -5,6 +5,7 @@
 #include "global.h"
 #include "annexb.h"
 
+#include "util/formulas.h"
 
 
 /* count start codes to find number of nal units */
@@ -126,7 +127,7 @@ NalUnit *next_nal_unit(BitReader *br) {
     nal->ref_idc = (header >> 5) & 0x03;
     nal->type = header & 0x1F;
 
-    bitreader_skip_bits(br, size * 8);
+    bitreader_skip_bits(br, _min((br->size - br->byte_pos) * 8, size * 8));
 
 
     return nal;

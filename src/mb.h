@@ -308,10 +308,6 @@ static always_inline Macroblock *make_mb(int mbAddr, Undo264Context *ctx) {
 }
 
 static always_inline void reset_mb(Macroblock *mb, int mbAddr, Undo264Context *ctx) {
-    memset(&ctx->luma_total_coeffs[mbAddr], 0, 16);
-    memset(&ctx->cr_total_coeffs[mbAddr], 0, 16);
-    memset(&ctx->cb_total_coeffs[mbAddr], 0, 16);
-
     memset(&mb->u, 0, sizeof(mb->u));
 
     mb->mbAddr = mbAddr;

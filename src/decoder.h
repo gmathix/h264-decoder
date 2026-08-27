@@ -57,10 +57,7 @@ typedef struct Undo264Context {
     int  num_mbs;
 
     struct MacroblockMetadata *mb_metadata;
-    uint8_t (*luma_total_coeffs)   [16];
-    uint8_t (*cb_total_coeffs)     [16];
-    uint8_t (*cr_total_coeffs)     [16];
-
+    uint8_t (*total_coeffs)           [24]; // 16 values for luma, 4 values for Cb, 4 values for Cr
 
 
     /* weighted prediction variables */

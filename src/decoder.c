@@ -240,9 +240,7 @@ void decoder_run(Undo264Context *ctx) {
 
 void decoder_free_metadata(Undo264Context *ctx) {
     free(ctx->mb_metadata);
-    free(ctx->luma_total_coeffs);
-    free(ctx->cb_total_coeffs);
-    free(ctx->cr_total_coeffs);
+    free(ctx->total_coeffs);
 }
 
 /* caller's job to make sure metadata gets free beforehand */
@@ -251,9 +249,8 @@ void decoder_alloc_metadata(Undo264Context *ctx) {
     ctx->num_mbs = (int32_t)ctx->ps->sps->pic_width_in_mbs * (int32_t)ctx->ps->sps->pic_height_in_map_units;
 
     ctx->mb_metadata = calloc(ctx->num_mbs, sizeof( MacroblockMetadata));
-    ctx->luma_total_coeffs   = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
-    ctx->cb_total_coeffs     = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
-    ctx->cr_total_coeffs     = calloc(ctx->num_mbs, sizeof( uint8_t        [16] ));
+    ctx->total_coeffs = calloc(ctx->num_mbs, sizeof( uint8_t [24]));
+
 
     ctx->mb_metadata_initialized = true;
 }

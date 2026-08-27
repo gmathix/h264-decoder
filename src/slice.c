@@ -41,29 +41,24 @@ void CAFUNC(read_residual_luma,
 
 
     if (startIdx == 0 && IS_INTRA16x16(type)) {
-        CACALL(residual_block, mb, 0, 0, LUMA_INTRA_16x16_DC_LEVEL, mb->residuals.luma_16x16_DC, ctx->luma_total_coeffs, 0, 15, 16, true, sh, ctx);
+        CACALL(residual_block, mb, 0, 0, LUMA_INTRA_16x16_DC_LEVEL, mb->residuals.luma_16x16_DC, 0, 15, 16, true, sh, ctx);
     }
 
     for (int i8x8 = 0; i8x8 < 4; i8x8++) {
+        int base = map_4x4[i8x8*4];
         if (!t_8x8_flag || !sh->pps->cabac_flag) {
             for (int i4x4 = 0; i4x4 < 4; i4x4++) {
                 int blkIdx = map_4x4[i8x8*4+i4x4];
                 if (cbp_luma & (1 << i8x8)) {
                     if (IS_INTRA16x16(type)) {
-                        CACALL(residual_block, mb, blkIdx, 0, LUMA_INTRA_16x16_AC_LEVEL, mb->residuals.luma_16x16_AC[blkIdx], ctx->luma_total_coeffs,
+                        CACALL(residual_block, mb, blkIdx, 0, LUMA_INTRA_16x16_AC_LEVEL, mb->residuals.luma_16x16_AC[blkIdx],
                                 _max(0, startIdx - 1), endIdx - 1, 15, true, sh, ctx);
                     } else {
-                        CACALL(residual_block, mb, blkIdx, 0, LUMA_LEVEL_4x4, mb->residuals.luma_4x4_coeffs[blkIdx], ctx->luma_total_coeffs,
+                        CACALL(residual_block, mb, blkIdx, 0, LUMA_LEVEL_4x4, mb->residuals.luma_4x4_coeffs[blkIdx],
                                 startIdx, endIdx, 16, true, sh, ctx);
                     }
-                } else if (IS_INTRA16x16(type)) {
-                    for (int i = 0; i < 15; i++) {
-                        mb->residuals.luma_16x16_AC[blkIdx][i] = 0;
-                    }
                 } else {
-                    for (int i = 0; i < 16; i++) {
-                        mb->residuals.luma_4x4_coeffs[blkIdx][i] = 0;
-                    }
+                    ctx->total_coeffs[mb->mbAddr][blkIdx] = 0;
                 }
 
                 if (!sh->pps->cabac_flag && t_8x8_flag) {
@@ -73,12 +68,13 @@ void CAFUNC(read_residual_luma,
                 }
             }
         } else if (cbp_luma & (1 << i8x8)) {
-            CACALL(residual_block, mb, i8x8, 0, LUMA_LEVEL_8x8, mb->residuals.luma_8x8_coeffs[i8x8], ctx->luma_total_coeffs,
+            CACALL(residual_block, mb, i8x8, 0, LUMA_LEVEL_8x8, mb->residuals.luma_8x8_coeffs[i8x8],
                     4*startIdx, 4*endIdx+3, 64, true, sh, ctx);
         } else {
-            for (int i = 0; i < 64; i++) {
-                mb->residuals.luma_8x8_coeffs[i8x8][i] = 0;
-            }
+            ctx->total_coeffs[mb->mbAddr][base] = 0;
+            ctx->total_coeffs[mb->mbAddr][base+1] = 0;
+            ctx->total_coeffs[mb->mbAddr][base+4] = 0;
+            ctx->total_coeffs[mb->mbAddr][base+5] = 0;
         }
     }
 }
@@ -104,51 +100,25 @@ void CAFUNC(read_residual,
 
 
         for (int iCbCr = 0; iCbCr < 2; iCbCr++) {
-            uint8_t (*chroma_coeff_table)[16] = iCbCr
-                ? ctx->cr_total_coeffs
-                : ctx->cb_total_coeffs;
-
             if ((cbp_chroma & 3) && startIdx == 0) {
                 /* chroma DC residual present */
-                CACALL(residual_block, mb, 0, iCbCr, CHROMA_DC_LEVEL, mb->residuals.chroma_DC[iCbCr], chroma_coeff_table, 0, 4*numC8x8-1, 4*numC8x8, false, sh, ctx);
-            } else {
-                for (int i = 0; i < 4 * numC8x8; i++) {
-                    mb->residuals.chroma_DC[iCbCr][i] = 0;
-                }
+                CACALL(residual_block, mb, 0, iCbCr, CHROMA_DC_LEVEL, mb->residuals.chroma_DC[iCbCr], 0, 4*numC8x8-1, 4*numC8x8, false, sh, ctx);
             }
         }
 
         for (int iCbCr = 0; iCbCr < 2; iCbCr++) {
-            uint8_t (*chroma_coeff_table)[16] = iCbCr
-                ? ctx->cr_total_coeffs
-                : ctx->cb_total_coeffs;
-
             for (int i8x8 = 0; i8x8 < numC8x8; i8x8++) {
                 for (int i4x4 = 0; i4x4 < 4; i4x4++) {
                     if (cbp_chroma & 2) {
                         /* chroma AC residual present */
-                        CACALL(residual_block, mb, i4x4, iCbCr, CHROMA_AC_LEVEL, mb->residuals.chroma_AC[iCbCr][i8x8*4 + i4x4], chroma_coeff_table,
+                        CACALL(residual_block, mb, i4x4, iCbCr, CHROMA_AC_LEVEL, mb->residuals.chroma_AC[iCbCr][i8x8*4 + i4x4],
                                 _max(0, startIdx-1), endIdx-1, 15, false, sh, ctx);
                     } else {
-                        for (int i = 0; i < 15; i++) {
-                            mb->residuals.chroma_AC[iCbCr][i8x8*4 + i4x4][i] = 0;
-                        }
+                        ctx->total_coeffs[mb->mbAddr][16 + iCbCr*4 + i4x4] = 0;
                     }
                 }
             }
         }
-    } else if (sh->sps->chroma_format_idc == 3) { /* 4:4:4 not handled for now */
-        int16_t CbIntra16x16DC[16];
-        int16_t CbIntra16x16AC[16][15];
-        int16_t Cb4x4[16][16];
-        int16_t Cb8x8[4][64];
-        CACALL(read_residual_luma, mb, type, t_8x8_flag, cbp_chroma, startIdx,  endIdx, sh, ctx);
-
-        int16_t CrIntra16x16DC[16];
-        int16_t CrIntra16x16AC[16][15];
-        int16_t Cr4x4[16][16];
-        int16_t Cr8x8[4][64];
-        CACALL(read_residual_luma, mb, type, t_8x8_flag, cbp_chroma, startIdx,  endIdx, sh, ctx);
     }
 }
 
@@ -1020,11 +990,6 @@ void CAFUNC(read_macroblock,
     mb->residuals.cbp_chroma = cbp_chroma;
     mb->residuals.cbp_luma = cbp_luma;
 
-
-    memset(ctx->luma_total_coeffs[mb->mbAddr], 0, 16);
-    memset(ctx->cb_total_coeffs[mb->mbAddr], 0, 16);
-    memset(ctx->cr_total_coeffs[mb->mbAddr], 0, 16);
-
     MacroblockMetadata *meta = &ctx->mb_metadata[mb->mbAddr];
     meta->mb_type     = mb->mb_type;
     meta->cbp_luma    = cbp_luma;
@@ -1150,6 +1115,7 @@ void CAFUNC(read_macroblock,
             mb->QPY = (uint32_t)mb->mbAddr == sh->first_mb
                 ? (pps->pic_init_qp + sh->slice_qp_delta + 52) % 52
                 : ctx->prevQPY;
+            memset(ctx->total_coeffs[mb->mbAddr], 0, 24);
         }
     }
 
@@ -1257,6 +1223,7 @@ void CAFUNC(decode_slice,
                     meta->t_8x8_flag  = 0;
                     meta->mb_qp_delta = 0;
                     ctx->curr_pic->mb_types[mb->mbAddr] = mb->mb_type;
+                    memset(ctx->total_coeffs[mb->mbAddr], 0, 24);
 
                     // for P_Skip only
                     // B_Skip will get this replaced later

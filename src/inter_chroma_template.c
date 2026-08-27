@@ -34,25 +34,24 @@
 void INTER_CHROMA_FUNC(fetch_ref_block_chroma,
                        const uint8_t * restrict ref, uint8_t * restrict scratch_buf,
                        int picW, int picH, int y, int x) {
-    int height = HEIGHT+5;
-    int width = WIDTH+5;
+
     // fast path: entire fetch window is inside the picture
-    if (y - 2 >= 0 && y + height-2 < picH && x - 2 >= 0 && x + width-2 < picW) {
-        for (int i = 0; i < height; i++) {
-            memcpy(&scratch_buf[i*width], &ref[(y-2+i)*picW + (x-2)], width);
+    if (y >= 2 && y + HEIGHT+3 < picH && x >= 2 && x + WIDTH+3 < picW) {
+        for (int i = 0; i < HEIGHT+5; i++) {
+            memcpy(&scratch_buf[i*(WIDTH+5)], &ref[(y-2+i)*picW + (x-2)], WIDTH+5);
         }
         return;
     }
 
     // slow path: border mb
     int yc, xc;
-    for (int i = 0; i < height; i++) {
+    for (int i = 0; i < HEIGHT+5; i++) {
         yc = _clip3(0, picH - 1, y-2+i);
         const uint8_t *row = &ref[yc*picW];
-        for (int j = 0; j < width; j++) {
+        for (int j = 0; j < WIDTH+5; j++) {
             xc = _clip3(0, picW - 1, x-2+j);
             uint8_t s = row[xc];
-            scratch_buf[i*width + j] = s;
+            scratch_buf[i*(WIDTH+5) + j] = s;
         }
     }
 }

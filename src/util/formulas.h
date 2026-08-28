@@ -48,8 +48,8 @@ static void binprintf(int v, int length)
 }
 
 
-static always_inline int32_t _clip3(int32_t x, int32_t y, int32_t z) {
-    return z > y ? y : (z < x ? x : z);
+static always_inline int32_t _clip3(int32_t min, int32_t max, int32_t n) {
+    return n > max ? max : (n < min ? min : n);
 }
 
 static always_inline int32_t _clip2(int32_t x, int32_t y) {

@@ -133,10 +133,6 @@ int CAFUNC(read_I_mb_type,
     BitReader *br = ctx->br;
 
     #if CABAC
-        #if CABAC_LOG
-            fprintf(ctx->log_file, "\nreading mb_type I slice\n");
-            fflush(ctx->log_file);
-        #endif
         // maxBinIdx=6 ctxIdxOffset=3 for I slice
         // maxBinIdx=5 ctxIdxOffset=17 for P slice
         // maxBinIdx=5 ctxIdxOffset=32 for B slice
@@ -192,10 +188,6 @@ int CAFUNC(read_P_mb_type,
     BitReader *br = ctx->br;
 
     #if CABAC
-        #if CABAC_LOG
-            fprintf(ctx->log_file, "\nreading mb_type P slice\n");
-            fflush(ctx->log_file);
-        #endif
         // prefix: maxBinIdxCtx=2 ctxIdxOffset=14
         // suffix: maxBinIdxCtx=5 ctxIdxOffset=17
         static const int str2P_mbtype[4] = {0, 3, 2, 1};
@@ -220,10 +212,6 @@ int CAFUNC(read_B_mb_type,
     BitReader *br = ctx->br;
 
     #if CABAC
-        #if CABAC_LOG
-            fprintf(ctx->log_file, "\nreading mb_type B slice\n");
-            fflush(ctx->log_file);
-        #endif
         // prefix: maxBinIdxCtx=3 ctxIdxOffset=27
         // suffix: maxBinIdxCtx=5 ctxIdxOffset=32
         static const int str2B_mb_type[26] = { // only for mb_type >= 3
@@ -275,10 +263,6 @@ int CAFUNC(read_P_sub_mb_type,
     BitReader *br = ctx->br;
 
     #if CABAC
-        #if CABAC_LOG
-            fprintf(ctx->log_file, "\nreading sub_mb_type P slice\n");
-            fflush(ctx->log_file);
-        #endif
         // maxBinIdxCtx=2 ctxIdxOffset=21
         int sub_mb_type = 0, str = 0;
         if (str += str + cabac_get_bit(ctx, 21), str == 1) {
@@ -304,10 +288,6 @@ int CAFUNC(read_B_sub_mb_type,
     BitReader *br = ctx->br;
 
     #if CABAC
-        #if CABAC_LOG
-            fprintf(ctx->log_file, "\nreading sub_mb_type B slice\n");
-            fflush(ctx->log_file);
-        #endif
         // maxBinIdxCtx=3 ctxIdxOffset=36
         static const int str2B_sub_mb_type[12] = {
               3,  4,  5,  6,
@@ -346,11 +326,6 @@ int CAFUNC(read_ref_idx,
     Macroblock *mb, int list, int pos4x4, int num_ref_active_minus1, SliceHeader *sh, Undo264Context *ctx) {
 
     #if CABAC
-        #if CABAC_LOG
-            fprintf(ctx->log_file, "\nreading ref_idx_l%d\n", list);
-            fflush(ctx->log_file);
-        #endif
-
         int ref_idx = 0;
         long str = 0;
         static int ctxIdxInc[16] = {0, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5};
@@ -414,10 +389,6 @@ int CAFUNC(read_mvd,
     Macroblock *mb, int list, int xy, int pos4x4, int part, int subPart, SliceHeader *sh, Undo264Context *ctx) {
 
     #if CABAC
-        #if CABAC_LOG
-            fprintf(ctx->log_file, "\nreading mvd_l%d[%d] part:%d subPart:%d\n", list, xy, part, subPart);
-            fflush(ctx->log_file);
-        #endif
         static int ctxIdxInc[9] = {0, 3, 4, 5, 6, 6, 6, 6, 6};
         int mvd = 0;
         long str = 0;
@@ -484,10 +455,6 @@ int CAFUNC(read_intra_chroma_pred_mode,
     Macroblock *mb, SliceHeader *sh, Undo264Context *ctx) {
 
     #if CABAC
-        #if CABAC_LOG
-            fprintf(ctx->log_file, "\nreading intra chroma pred mode\n");
-            fflush(ctx->log_file);
-        #endif
         // maxBinIdxCtx=1 ctxIdxOffset=64
         int intra_chroma_pred_mode = 0;
         long str = 0;
@@ -511,10 +478,6 @@ int CAFUNC(read_intra_chroma_pred_mode,
 int CAFUNC(read_coded_block_pattern,
     Macroblock *mb, SliceHeader *sh, Undo264Context *ctx) {
     #if CABAC
-        #if CABAC_LOG
-            fprintf(ctx->log_file, "\nreading coded_block_pattern\n");
-            fflush(ctx->log_file);
-        #endif
         // prefix : maxBinIdxCtx=3 ctxIdxOffset=73
         // suffix : maxBinIdxCtx=1 ctxIdxOffset=77
         int cbp_luma = 0, inc = 0;
@@ -572,10 +535,6 @@ int CAFUNC(read_mb_qp_delta,
     Macroblock *mb, SliceHeader *sh, Undo264Context *ctx) {
 
     #if CABAC
-        #if CABAC_LOG
-            fprintf(ctx->log_file, "\nreading mb_qp_delta\n");
-            fflush(ctx->log_file);
-        #endif
         // maxBinIdxCtx=2 ctxIdxOffset=60
         int val = 0;
         long str = 0;
@@ -648,18 +607,12 @@ void CAFUNC(read_mb_pred,
                 int predIntraMode = _min(intraModeA, intraModeB);
 
                 #if CABAC
-                    #if CABAC_LOG
-                        fprintf(ctx->log_file, "\nreading prev_intra4x4_pred_mode_flag\n");
-                    #endif
                     int8_t prev_intra4x4_pred_mode_flag = cabac_get_bit(ctx, 68);
                 #else
                     uint8_t prev_intra4x4_pred_mode_flag = read_u(br, 1);
                 #endif
                 if (!prev_intra4x4_pred_mode_flag) {
                     #if CABAC
-                        #if CABAC_LOG
-                            fprintf(ctx->log_file, "\nreading rem_intra4x4_pred_mode\n");
-                        #endif
                         uint8_t rem_intra4x4_pred_mode = 0;
                         rem_intra4x4_pred_mode += cabac_get_bit(ctx, 69);
                         rem_intra4x4_pred_mode += cabac_get_bit(ctx, 69) << 1;
@@ -707,18 +660,12 @@ void CAFUNC(read_mb_pred,
 
 
                 #if CABAC
-                    #if CABAC_LOG
-                        fprintf(ctx->log_file, "\nreading prev_intra8x8_pred_mode_flag\n");
-                    #endif
                     int8_t prev_intra8x8_pred_mode_flag = cabac_get_bit(ctx, 68);
                 #else
                     uint8_t prev_intra8x8_pred_mode_flag = read_u(br, 1);
                 #endif
                 if (!prev_intra8x8_pred_mode_flag) {
                     #if CABAC
-                        #if CABAC_LOG
-                            fprintf(ctx->log_file, "\nreading rem_intra8x8_pred_mode\n");
-                        #endif
                         uint8_t rem_intra8x8_pred_mode = 0;
                         rem_intra8x8_pred_mode += cabac_get_bit(ctx, 69);
                         rem_intra8x8_pred_mode += cabac_get_bit(ctx, 69) << 1;
@@ -1054,10 +1001,6 @@ void CAFUNC(read_macroblock,
         } else {
             if (pps->transform_8x8_mode_flag && IS_INTRA4x4(type)) {
                 #if CABAC
-                    #if CABAC_LOG
-                        fprintf(ctx->log_file, "\nreading transform_8x8_flag\n");
-                      fflush(ctx->log_file);
-                    #endif
                     int inc = (mb->has_mb_a && ctx->mb_metadata[mb->mbAddr - 1].t_8x8_flag) +
                               (mb->has_mb_b && ctx->mb_metadata[mb->mbAddr + mb->mb_b_off].t_8x8_flag);
                     mb->t_8x8_flag = cabac_get_bit(ctx, 399 + inc);
@@ -1089,10 +1032,6 @@ void CAFUNC(read_macroblock,
                 (!IS_DIRECT(type) || sps->direct_8x8_inference_flag)) {
 
                 #if CABAC
-                    #if CABAC_LOG
-                        fprintf(ctx->log_file, "\nreading transform_8x8_flag\n");
-                        fflush(ctx->log_file);
-                    #endif
                     int inc = (mb->has_mb_a && ctx->mb_metadata[mb->mbAddr - 1].t_8x8_flag) +
                               (mb->has_mb_b && ctx->mb_metadata[mb->mbAddr + mb->mb_b_off].t_8x8_flag);
                     mb->t_8x8_flag = cabac_get_bit(ctx, 399 + inc);
@@ -1140,10 +1079,6 @@ void CAFUNC(decode_slice,
 
     BitReader *br = ctx->br;
 
-    #if CABAC_LOG
-        fprintf(ctx->log_file, "\n\nREADING SLICE %lu\n", ctx->prf->total_frames);
-    #endif
-
 
     PPS *pps = sh->pps;
     SPS *sps = sh->sps;
@@ -1171,19 +1106,11 @@ void CAFUNC(decode_slice,
         if (!IS_I_SLICE(sh->slice_type) && !IS_SI_SLICE(sh->slice_type)) {
             // preprocessor trick : for CAVLC, loop 0...mb_skip_run-1, for CABAC decode one skipped macroblock at a time per slice loop
             #if CABAC
-                #if CABAC_LOG
-                    fprintf(ctx->log_file, "\n\nREADING MACROBLOCK %d (slice %d)\n", currMbAddr, ctx->prf->total_frames);
-                     fflush(ctx->log_file);
-                #endif
                 Macroblock *mb = ctx->currMb;
                 reset_mb(mb, currMbAddr, ctx);
                 derive_macroblock_neighbors(mb, sh->first_mb, ctx);
                 int inc = (mb->has_mb_a && ctx->mb_metadata[currMbAddr - 1].mb_skip_flag == 0) +
                           (mb->has_mb_b && ctx->mb_metadata[currMbAddr + mb->mb_b_off].mb_skip_flag == 0);
-                #if CABAC_LOG
-                    fprintf(ctx->log_file, "\nreading mb_skip_flag\n");
-                  fflush(ctx->log_file);
-                #endif
                 mb_skip_flag = IS_P_SLICE(sh->slice_type) ? cabac_get_bit(ctx, 11+inc) : cabac_get_bit(ctx, 24+inc);
                 ctx->mb_metadata[currMbAddr].mb_skip_flag = mb_skip_flag;
                 moreDataFlag = !mb_skip_flag;
@@ -1290,10 +1217,6 @@ void CAFUNC(decode_slice,
             if (!IS_I_SLICE(sh->slice_type) && !IS_SI_SLICE(sh->slice_type)) {
                 prevMbSkipped = mb_skip_flag;
             }
-            #if CABAC_LOG
-                fprintf(ctx->log_file, "\nreading end_of_slice_flag\n");
-                fflush(ctx->log_file);
-            #endif
             int end_of_slice_flag = cabac_get_bit_term(ctx);
             moreDataFlag = !end_of_slice_flag;
         }

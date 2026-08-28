@@ -58,7 +58,7 @@ void cabac_init_engine(Undo264Context *ctx) {
 
 
 
-int cabac_get_bit(Undo264Context *ctx, int ctxIdx) {
+always_inline int cabac_get_bit(Undo264Context *ctx, int ctxIdx) {
     CabacContext *cactx = ctx->cactx;
 
 
@@ -66,16 +66,6 @@ int cabac_get_bit(Undo264Context *ctx, int ctxIdx) {
     int8_t pStateIdx = p_state_idx[ctxIdx];
     int8_t valMPS = val_mps[ctxIdx];
     int16_t codIRangeLPS = range_tab_lps[pStateIdx][qCodIRangeIdx];
-
-    int prevrange = cactx->codIRange;
-    int prevoff = cactx->codIOffset;
-    int p = pStateIdx;
-    int val = valMPS;
-
-    #if CABAC_LOG
-        fprintf(ctx->log_file, "ctxIdx:%d range:%d offset:%d state:%d mps:%d ", ctxIdx, prevrange, prevoff, p, val);
-        fflush(ctx->log_file);
-    #endif
 
     cactx->codIRange -= codIRangeLPS;
 
@@ -88,17 +78,9 @@ int cabac_get_bit(Undo264Context *ctx, int ctxIdx) {
         if (pStateIdx == 0) {
             val_mps[ctxIdx] = 1 - valMPS;
         }
-        #if CABAC_LOG
-            fprintf(ctx->log_file, "trans:%d ",trans_idx_lps[pStateIdx]);
-            fflush(ctx->log_file);
-        #endif
         p_state_idx[ctxIdx] = trans_idx_lps[pStateIdx];
     } else {
         bin = valMPS;
-        #if CABAC_LOG
-                fprintf(ctx->log_file, "trans:%d ",trans_idx_mps[pStateIdx]);
-            fflush(ctx->log_file);
-        #endif
         p_state_idx[ctxIdx] = trans_idx_mps[pStateIdx];
     }
 
@@ -107,21 +89,12 @@ int cabac_get_bit(Undo264Context *ctx, int ctxIdx) {
         cactx->codIOffset = (cactx->codIOffset << 1) | read_u(ctx->br, 1);
     }
 
-    #if CABAC_LOG
-        fprintf(ctx->log_file, "   bit:%d\n", bin);
-        fflush(ctx->log_file);
-    #endif
-
-
 
     return bin;
 }
 
 int cabac_get_bit_term(Undo264Context *ctx) {
     CabacContext *cactx = ctx->cactx;
-
-    int prevrange = cactx->codIRange;
-    int prevoff = cactx->codIOffset;
 
     cactx->codIRange -= 2;
 
@@ -137,37 +110,18 @@ int cabac_get_bit_term(Undo264Context *ctx) {
         }
     }
 
-
-    #if CABAC_LOG
-        // fprintf(ctx->log_file, "range:%d offset:%d   bit:%d\n", prevrange, prevoff, bin);
-    #endif
-
-
     return bin;
 }
 
 int cabac_get_bit_bypass(Undo264Context *ctx) {
     CabacContext *cactx = ctx->cactx;
 
-    #if CABAC_LOG
-        fprintf(ctx->log_file, "range:%d offset:%d ", cactx->codIRange, cactx->codIOffset);
-        fflush(ctx->log_file);
-    #endif
-
     cactx->codIOffset = (cactx->codIOffset << 1) | read_u(ctx->br, 1);
     if (cactx->codIOffset >= cactx->codIRange) {
         cactx->codIOffset -= cactx->codIRange;
-        #if CABAC_LOG
-            fprintf(ctx->log_file, "  bit:1\n");
-            fflush(ctx->log_file);
-        #endif
         return 1;
     }
 
-    #if CABAC_LOG
-        fprintf(ctx->log_file, "  bit:0\n");
-        fflush(ctx->log_file);
-    #endif
     return 0;
 }
 
@@ -176,10 +130,6 @@ int read_coded_block_flag(Macroblock *mb, int blkIdx, int iCbCr, BlockType block
     static const int16_t ctxIdxOffset[14] = {85, 85, 85, 85, 85, 1012, 460, 460, 460, 1012, 472, 472, 472, 1012};
     static const int8_t  ctxIdxCatOffset[14] = {0, 4, 8, 12, 16, 0, 0, 4, 8, 4, 0, 4, 8, 8};
 
-    #if CABAC_LOG
-        fprintf(ctx->log_file, "\nreading coded_block_flag\n");
-        fflush(ctx->log_file);
-    #endif
     if (blockType == CHROMA_AC_LEVEL || blockType == LUMA_LEVEL_8x8) {
         blkIdx = map_4x4[blkIdx * 4];
     }
@@ -255,10 +205,6 @@ int read_significant_coeff_flag(Macroblock *mb, int coeffIdx, BlockType blockTyp
     int ctxIdx = ctxIdxOffset[blockType] + ctxIdxCatOffset[blockType] + ctxIdxInc[blockType == LUMA_LEVEL_8x8][coeffIdx];
 
 
-    #if CABAC_LOG
-        fprintf(ctx->log_file, "\nreading significant_coeff_flag\n");
-    #endif
-
     return cabac_get_bit(ctx, ctxIdx);
 }
 
@@ -281,10 +227,6 @@ int read_last_significant_coeff_flag(Macroblock *mb, int coeffIdx, BlockType blo
 
     int ctxIdx = ctxIdxOffset[blockType] + ctxIdxCatOffset[blockType] + ctxIdxInc[blockType == LUMA_LEVEL_8x8][coeffIdx];
 
-    #if CABAC_LOG
-        fprintf(ctx->log_file, "\nreading last_significant_coeff_flag\n");
-    #endif
-
     return cabac_get_bit(ctx, ctxIdx);
 }
 
@@ -294,9 +236,6 @@ int read_coeff_abs_level(Macroblock *mb, int coeffIdx, int numDecodAbsEq1, int n
 
     int ctxIdx = ctxIdxOffset[blockType] + ctxIdxCatOffset[blockType];
 
-    #if CABAC_LOG
-        fprintf(ctx->log_file, "\ndecoding coeff_abs_level\n");
-    #endif
 
     int val = 0;
     long str = 0;
@@ -335,9 +274,6 @@ int read_coeff_abs_level(Macroblock *mb, int coeffIdx, int numDecodAbsEq1, int n
 
 int read_coeff_sign_flag(Macroblock *mb, int blkIdx, BlockType blockType, Undo264Context *ctx) {
     // uses bypass, no ctxIdx to compute
-    #if CABAC_LOG
-        fprintf(ctx->log_file, "\nreading coeff_sign_flag\n");
-    #endif
     return cabac_get_bit_bypass(ctx);
 }
 
@@ -350,9 +286,6 @@ void residual_block_cabac  (Macroblock *mb, int blkIdx, int iCbCr, BlockType blo
     if (maxNumCoeff != 64) {
         codedBlockFlag = read_coded_block_flag(mb, blkIdx, iCbCr, blockType, ctx);
     }
-    #if CABAC_LOG
-        fprintf(ctx->log_file, "%s\n", blockType_to_string(blockType));
-    #endif
 
 
     // store coded_block_flag

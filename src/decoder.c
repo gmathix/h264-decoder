@@ -167,7 +167,7 @@ int dispatch_nal_unit(NalUnit *nal_unit, Undo264Context *ctx) {
             }
 
             Slice *slice = ctx->current_slice;
-            deblock_slice(ctx->curr_pic, sh, ctx);
+            // deblock_slice(ctx->curr_pic, sh, ctx);
 
             #ifdef SLICES_LOG
                 printf("done slice %lu %s(frame_num %d, pic %lu)\n\n",

@@ -58,41 +58,6 @@ void cabac_init_engine(Undo264Context *ctx) {
 
 
 
-always_inline int cabac_get_bit(Undo264Context *ctx, int ctxIdx) {
-    CabacContext *cactx = ctx->cactx;
-
-
-    int qCodIRangeIdx = (cactx->codIRange >> 6) & 3;
-    int8_t pStateIdx = p_state_idx[ctxIdx];
-    int8_t valMPS = val_mps[ctxIdx];
-    int16_t codIRangeLPS = range_tab_lps[pStateIdx][qCodIRangeIdx];
-
-    cactx->codIRange -= codIRangeLPS;
-
-    int bin;
-
-    if (cactx->codIOffset >= cactx->codIRange) {
-        bin = 1 - valMPS;
-        cactx->codIOffset -= cactx->codIRange;
-        cactx->codIRange = codIRangeLPS;
-        if (pStateIdx == 0) {
-            val_mps[ctxIdx] = 1 - valMPS;
-        }
-        p_state_idx[ctxIdx] = trans_idx_lps[pStateIdx];
-    } else {
-        bin = valMPS;
-        p_state_idx[ctxIdx] = trans_idx_mps[pStateIdx];
-    }
-
-    while (cactx->codIRange < 256) {
-        cactx->codIRange <<= 1;
-        cactx->codIOffset = (cactx->codIOffset << 1) | read_u(ctx->br, 1);
-    }
-
-
-    return bin;
-}
-
 int cabac_get_bit_term(Undo264Context *ctx) {
     CabacContext *cactx = ctx->cactx;
 
@@ -919,16 +884,17 @@ const int16_t range_tab_lps[64][4] = {
     {  6,   7,   8,  9},  {  2,   2,   2,   2},
 };
 
-const int8_t trans_idx_lps[64] = {
-    0, 0, 1, 2, 2, 4, 4, 5, 6, 7, 8, 9, 9, 11, 11, 12,
-    13, 13, 15, 15, 16, 16, 18, 18, 19, 19, 21, 21, 22, 22, 23, 24,
-    24, 25, 26, 26, 27, 27, 28, 29, 29, 30, 30, 30, 31, 32, 32, 33,
-    33, 33, 34, 34, 35, 35, 35, 36, 36, 36, 37, 37, 37, 38, 38, 63,
-};
-
-const int8_t trans_idx_mps[64] = {
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-    17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
-    33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
-    49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 62, 63,
+const int8_t trans_idx[2][64] = {
+    { // mps
+        1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+        17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+        33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+        49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 62, 63,
+    },
+    { // lps
+        0, 0, 1, 2, 2, 4, 4, 5, 6, 7, 8, 9, 9, 11, 11, 12,
+        13, 13, 15, 15, 16, 16, 18, 18, 19, 19, 21, 21, 22, 22, 23, 24,
+        24, 25, 26, 26, 27, 27, 28, 29, 29, 30, 30, 30, 31, 32, 32, 33,
+        33, 33, 34, 34, 35, 35, 35, 36, 36, 36, 37, 37, 37, 38, 38, 63,
+    }
 };

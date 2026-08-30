@@ -21,7 +21,6 @@
 #define ALL_LOG     0
 
 #define CAVLC_LOG   (ALL_LOG    |   0)
-#define CABAC_LOG   (ALL_LOG    |   0) // be careful with this one, won't run at more than 2fps
 #define NAL_LOG     (ALL_LOG    |   0)
 
 

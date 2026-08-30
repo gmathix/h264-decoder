@@ -34,8 +34,7 @@ set(UNDO264_SOURCES
     src/deblock.c
     src/cabac.c
         src/util/logger.c
-    src/util/expgolomb.c
-    src/tests/profiler.c
+        src/tests/profiler.c
         src/dsp_init.c
         src/dsp_init.h
 )

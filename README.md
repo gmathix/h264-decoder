@@ -36,7 +36,7 @@ as well as an automated script to run those test suites
 and compare undo264's output either against given reference decoded files or against FFmpeg's H.264 decoder output, 
 which is supposed to be bit-exact. 
 
-To run the test suites in the test/ folder : 
+To run the test suites in the test/ folder, ffmpeg needs to be installed. Then, run : 
 ```shell
 chmod +x download_vectors.sh && chmod +d conformance_test.sh
 ./download_vectors.sh # may take a while to download and extract
@@ -46,9 +46,9 @@ chmod +x download_vectors.sh && chmod +d conformance_test.sh
 
 
 ## Performance
-It can reach ~22fps on a single thread on my Intel I5-10300H, on 1080p streams, without dumping the frames. 
+It can reach ~49fps on a single thread on my Intel I5-10300H, on 1080p streams, without dumping the frames. 
 The deblocking filter is the primary bottleneck ; without it, undo264 runs at 90fps on High profile content, 
-and at 130fps on Baseline profile content. 
+and at 150fps on Baseline profile content. 
 
 Hence, current optimization work is focused on the deblocking filter (architectural improvements + SIMD rewrite)
 reducing as much as possible unnecessary memory movement.

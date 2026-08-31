@@ -64,7 +64,7 @@ static always_inline bool same_ref_pics(
     return hash0 == hash1;
 }
 
-static always_inline bool same_ref_pics_one_block(int refL0, int refL1, Undo264Context *ctx) {
+static always_inline bool same_ref_pics_one_block(int refL0, int refL1, const Undo264Context *ctx) {
     return ctx->dpb->lists[L0][1+refL0]->dpb_pic_id == ctx->dpb->lists[L1][1+refL1]->dpb_pic_id;
 }
 
@@ -84,7 +84,7 @@ static always_inline bool mv_diff_g4(MotionVector mv1, MotionVector mv2) {
  * @param blkIdx8x8N initial 8x8 block index in neighbor mb
  */
 void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int blkIdx8x8, int blkIdx8x8N,
-    bool mb_edge, bool vertical, uint8_t bS_list[4], Undo264Context *ctx) {
+                         bool mb_edge, bool vertical, uint8_t bS_list[4], const Undo264Context *ctx) {
 
     MacroblockMetadata meta   = ctx->mb_metadata[mbAddr];
     MacroblockMetadata meta_n = ctx->mb_metadata[mbAddrN];
@@ -167,9 +167,8 @@ void derive_edge_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int b
 }
 
 
-void derive_edge_treshold_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t bS, int y, int x, bool vertical,
-    uint8_t *alpha, uint8_t *beta, int filter_flags[4], uint8_t *indexA,
-    uint8_t samples[24][24], Undo264Context *ctx) {
+void derive_edge_treshold_luma(Picture *pic, uint8_t *dst, int stride, int mbAddr, int mbAddrN, uint8_t bS, bool vertical,
+                               uint8_t *alpha, uint8_t *beta, int filter_flags[4], uint8_t *indexA, const Undo264Context* ctx) {
 
 
     MacroblockMetadata *meta0 = &ctx->mb_metadata[mbAddr];
@@ -187,31 +186,29 @@ void derive_edge_treshold_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t bS
     *beta  = beta_table[indexB];
 
 
-
     if (vertical) {
         for (int i = 0; i < 4; i++) {
             filter_flags[i] =
                 (bS != 0) &&
-                (_abs(samples[y][x-1] - samples[y][x]) < *alpha) &&
-                (_abs(samples[y][x-2] - samples[y][x-1]) < *beta) &&
-                (_abs(samples[y][x+1] - samples[y][x]) < *beta);
-            y++;
+                (_abs(dst[-1] - dst[ 0]) < *alpha) &&
+                (_abs(dst[-2] - dst[-1]) < *beta) &&
+                (_abs(dst[ 1] - dst[ 0]) < *beta);
+            dst += stride;
         }
     } else {
         for (int i = 0; i < 4; i++) {
             filter_flags[i] =
                 (bS != 0) &&
-                (_abs(samples[y-1][x] - samples[y][x]) < *alpha) &&
-                (_abs(samples[y-2][x] - samples[y-1][x]) < *beta) &&
-                (_abs(samples[y+1][x] - samples[y][x]) < *beta);
-            x++;
+                (_abs(dst[-1*stride] - dst[ 0*stride]) < *alpha) &&
+                (_abs(dst[-2*stride] - dst[-1*stride]) < *beta) &&
+                (_abs(dst[ 1*stride] - dst[ 0*stride]) < *beta);
+            dst++;
         }
     }
 }
 
-void derive_edge_treshold_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t bS, int y, int x, int iCbCr, bool vertical,
-    uint8_t *alpha, uint8_t *beta, int filter_flags[2], uint8_t *indexA,
-    uint8_t samples[16][16], Undo264Context *ctx) {
+void derive_edge_treshold_chroma(Picture *pic, uint8_t *dst, int stride, int mbAddr, int mbAddrN, uint8_t bS, int iCbCr, bool vertical,
+                                 uint8_t *alpha, uint8_t *beta, int filter_flags[2], uint8_t *indexA, const Undo264Context *ctx) {
 
     MacroblockMetadata *meta0 = &ctx->mb_metadata[mbAddr];
     MacroblockMetadata *meta1 = &ctx->mb_metadata[mbAddrN];
@@ -232,26 +229,26 @@ void derive_edge_treshold_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t 
         for (int i = 0; i < 2; i++) {
             filter_flags[i] =
                 (bS != 0) &&
-                (_abs(samples[y][x-1] - samples[y][x]) < *alpha) &&
-                (_abs(samples[y][x-2] - samples[y][x-1]) < *beta) &&
-                (_abs(samples[y][x+1] - samples[y][x]) < *beta);
-            y++;
+                (_abs(dst[-1] - dst[ 0]) < *alpha) &&
+                (_abs(dst[-2] - dst[-1]) < *beta) &&
+                (_abs(dst[ 1] - dst[ 0]) < *beta);
+            dst += stride;
         }
     } else {
         for (int i = 0; i < 2; i++) {
             filter_flags[i] =
                 (bS != 0) &&
-                (_abs(samples[y-1][x] - samples[y][x]) < *alpha) &&
-                (_abs(samples[y-2][x] - samples[y-1][x]) < *beta) &&
-                (_abs(samples[y+1][x] - samples[y][x]) < *beta);
-            x++;
+                (_abs(dst[-1*stride] - dst[ 0*stride]) < *alpha) &&
+                (_abs(dst[-2*stride] - dst[-1*stride]) < *beta) &&
+                (_abs(dst[ 1*stride] - dst[ 0*stride]) < *beta);
+            dst++;
         }
     }
 }
 
 
-void filter_4p_vert_edge_low_bS_luma(int y, int x, const int filter_flags[4],
-    uint8_t bS, uint8_t indexA, uint8_t beta, uint8_t samples[24][24]) {
+void filter_4p_vert_edge_low_bS_luma(uint8_t *dst, int stride, const int filter_flags[4],
+                                     uint8_t bS, uint8_t indexA, uint8_t beta) {
 
     int treshold = treshold_table[bS-1][indexA];
     int aP, aQ, t, delta;
@@ -260,8 +257,8 @@ void filter_4p_vert_edge_low_bS_luma(int y, int x, const int filter_flags[4],
 
     for (int i = 0; i < 4; i++) {
         if (filter_flags[i]) {
-            p0 = samples[y][x-1];  p1 = samples[y][x-2];  p2 = samples[y][x-3];
-            q0 = samples[y][x];    q1 = samples[y][x+1];  q2 = samples[y][x+2];
+            p0 = dst[-1];  p1 = dst[-2];  p2 = dst[-3];
+            q0 = dst[ 0];  q1 = dst[ 1];  q2 = dst[ 2];
 
             aP = _abs(p2 - p0);
             aQ = _abs(q2 - q0);
@@ -271,21 +268,21 @@ void filter_4p_vert_edge_low_bS_luma(int y, int x, const int filter_flags[4],
             delta = _clip3(-t, t,
                 (((q0 - p0) * (1 << 2)) + (p1 - q1) + 4) >> 3);
 
-            /*p1*/ samples[y][x-2] += (aP < beta) * _clip3(-treshold, treshold,
+            /*p1*/ dst[-2] += (aP < beta) * _clip3(-treshold, treshold,
                   (p2 + ((p0 + q0 + 1) >> 1) - (p1 << 1)) >> 1);
-            /*p0*/ samples[y][x-1] = _clip1y(p0 + delta, MAX_U8);
+            /*p0*/ dst[-1] = _clip1y(p0 + delta, MAX_U8);
 
-            /*q0*/ samples[y][x]   = _clip1y(q0 - delta, MAX_U8);
-            /*q1*/ samples[y][x+1] += (aQ < beta) * _clip3(-treshold, treshold,
+            /*q0*/ dst[0]   = _clip1y(q0 - delta, MAX_U8);
+            /*q1*/ dst[1] += (aQ < beta) * _clip3(-treshold, treshold,
                   (q2 + ((p0 + q0 + 1) >> 1) - (q1 << 1)) >> 1);
         }
 
-        y++;
+        dst += stride;
     }
 }
 
-void filter_4p_hor_edge_low_bS_luma(int y, int x, const int filter_flags[4],
-    uint8_t bS, uint8_t indexA, uint8_t beta, uint8_t samples[24][24]) {
+void filter_4p_hor_edge_low_bS_luma(uint8_t *dst, int stride, const int filter_flags[4],
+                                    uint8_t bS, uint8_t indexA, uint8_t beta) {
 
     int treshold = treshold_table[bS-1][indexA];
     int aP, aQ, t, delta;
@@ -295,8 +292,8 @@ void filter_4p_hor_edge_low_bS_luma(int y, int x, const int filter_flags[4],
 
     for (int i = 0; i < 4; i++) {
         if (filter_flags[i]) {
-            p0 = samples[y-1][x];  p1 = samples[y-2][x];  p2 = samples[y-3][x];
-            q0 = samples[y][x];    q1 = samples[y+1][x];  q2 = samples[y+2][x];
+            p0 = dst[-1*stride];  p1 = dst[-2*stride];  p2 = dst[-3*stride];
+            q0 = dst[ 0*stride];  q1 = dst[ 1*stride];  q2 = dst[ 2*stride];
 
             aP = _abs(p2 - p0);
             aQ = _abs(q2 - q0);
@@ -307,21 +304,21 @@ void filter_4p_hor_edge_low_bS_luma(int y, int x, const int filter_flags[4],
             delta = _clip3(-t, t,
                 (((q0 - p0) * (1 << 2)) + (p1 - q1) + 4) >> 3);
 
-            /*p1*/ samples[y-2][x] += (aP < beta) * _clip3(-treshold, treshold,
+            /*p1*/ dst[-2*stride] += (aP < beta) * _clip3(-treshold, treshold,
                   (p2 + ((p0 + q0 + 1) >> 1) - (p1 << 1)) >> 1);
-            /*p0*/ samples[y-1][x] = _clip1y(p0 + delta, MAX_U8);
+            /*p0*/ dst[-1*stride] = _clip1y(p0 + delta, MAX_U8);
 
-            /*q0*/ samples[y][x]   = _clip1y(q0 - delta, MAX_U8);
-            /*q1*/ samples[y+1][x] += (aQ < beta) * _clip3(-treshold, treshold,
+            /*q0*/ dst[ 0*stride]   = _clip1y(q0 - delta, MAX_U8);
+            /*q1*/ dst[ 1*stride] += (aQ < beta) * _clip3(-treshold, treshold,
                   (q2 + ((p0 + q0 + 1) >> 1) - (q1 << 1)) >> 1);
         }
 
-        x++;
+        dst++;
     }
 }
 
-void filter_4p_vert_edge_high_bS_luma(int y, int x, const int filter_flags[4],
-    uint8_t alpha, uint8_t beta, uint8_t samples[24][24]) {
+void filter_4p_vert_edge_high_bS_luma(uint8_t *dst, int stride, const int filter_flags[4],
+                                      uint8_t alpha, uint8_t beta) {
 
     int aP, aQ;
 
@@ -329,37 +326,37 @@ void filter_4p_vert_edge_high_bS_luma(int y, int x, const int filter_flags[4],
 
     for (int i = 0; i < 4; i++) {
         if (filter_flags[i]) {
-            p0 = samples[y][x-1];  p1 = samples[y][x-2];  p2 = samples[y][x-3];  p3 = samples[y][x-4];
-            q0 = samples[y][x];    q1 = samples[y][x+1];  q2 = samples[y][x+2];  q3 = samples[y][x+3];
+            p0 = dst[-1];  p1 = dst[-2];  p2 = dst[-3];  p3 = dst[-4];
+            q0 = dst[ 0];  q1 = dst[ 1];  q2 = dst[ 2];  q3 = dst[ 3];
 
             aP = _abs(p2 - p0);
             aQ = _abs(q2 - q0);
 
             if (aP < beta &&
                 _abs(p0 - q0) < ((alpha >> 2) + 2)) {
-                /*p0*/ samples[y][x-1] = (p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4) >> 3;
-                /*p1*/ samples[y][x-2] = (p2 + p1 + p0 + q0 + 2) >> 2;
-                /*p2*/ samples[y][x-3] = (2*p3 + 3*p2 + p1 + p0 + q0 + 4) >> 3;
+                /*p0*/ dst[-1] = (p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4) >> 3;
+                /*p1*/ dst[-2] = (p2 + p1 + p0 + q0 + 2) >> 2;
+                /*p2*/ dst[-3] = (2*p3 + 3*p2 + p1 + p0 + q0 + 4) >> 3;
             } else {
-                /*p0*/ samples[y][x-1] = (2*p1 + p0 + q1 + 2) >> 2;
+                /*p0*/ dst[-1] = (2*p1 + p0 + q1 + 2) >> 2;
             }
 
             if (aQ < beta &&
                 _abs(p0 - q0) < ((alpha >> 2) + 2)) {
-                /*q0*/ samples[y][x]   = (p1 + 2*p0 + 2*q0 + 2*q1 + q2 + 4) >> 3;
-                /*q1*/ samples[y][x+1] = (p0 + q0 + q1 + q2 + 2) >> 2;
-                /*q2*/ samples[y][x+2] = (2*q3 + 3*q2 + q1 + q0 + p0 + 4) >> 3;
+                /*q0*/ dst[ 0] = (p1 + 2*p0 + 2*q0 + 2*q1 + q2 + 4) >> 3;
+                /*q1*/ dst[ 1] = (p0 + q0 + q1 + q2 + 2) >> 2;
+                /*q2*/ dst[ 2] = (2*q3 + 3*q2 + q1 + q0 + p0 + 4) >> 3;
             } else {
-                /*q0*/ samples[y][x]   = (2*q1 + q0 + p1 + 2) >> 2;
+                /*q0*/ dst[ 0] = (2*q1 + q0 + p1 + 2) >> 2;
             }
         }
 
-        y++;
+        dst += stride;
     }
 }
 
-void filter_4p_hor_edge_high_bS_luma(int y, int x, const int filter_flags[4],
-    uint8_t alpha, uint8_t beta, uint8_t samples[24][24]) {
+void filter_4p_hor_edge_high_bS_luma(uint8_t *dst, int stride, const int filter_flags[4],
+                                     uint8_t alpha, uint8_t beta) {
 
     int aP, aQ;
 
@@ -367,37 +364,37 @@ void filter_4p_hor_edge_high_bS_luma(int y, int x, const int filter_flags[4],
 
     for (int i = 0; i < 4; i++) {
         if (filter_flags[i]) {
-            p0 = samples[y-1][x];  p1 = samples[y-2][x];  p2 = samples[y-3][x];  p3 = samples[y-4][x];
-            q0 = samples[y][x];    q1 = samples[y+1][x];  q2 = samples[y+2][x];  q3 = samples[y+3][x];
+            p0 = dst[-1*stride];  p1 = dst[-2*stride];  p2 = dst[-3*stride];  p3 = dst[-4*stride];
+            q0 = dst[ 0*stride];  q1 = dst[ 1*stride];  q2 = dst[ 2*stride];  q3 = dst[ 3*stride];
 
             aP = _abs(p2 - p0);
             aQ = _abs(q2 - q0);
 
             if (aP < beta &&
                 _abs(p0 - q0) < ((alpha >> 2) + 2)) {
-                /*p0*/ samples[y-1][x] = (p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4) >> 3;
-                /*p1*/ samples[y-2][x] = (p2 + p1 + p0 + q0 + 2) >> 2;
-                /*p2*/ samples[y-3][x] = (2*p3 + 3*p2 + p1 + p0 + q0 + 4) >> 3;
+                /*p0*/ dst[-1*stride] = (p2 + 2*p1 + 2*p0 + 2*q0 + q1 + 4) >> 3;
+                /*p1*/ dst[-2*stride] = (p2 + p1 + p0 + q0 + 2) >> 2;
+                /*p2*/ dst[-3*stride] = (2*p3 + 3*p2 + p1 + p0 + q0 + 4) >> 3;
             } else {
-                /*p0*/ samples[y-1][x] = (2*p1 + p0 + q1 + 2) >> 2;
+                /*p0*/ dst[-1*stride] = (2*p1 + p0 + q1 + 2) >> 2;
             }
 
             if (aQ < beta &&
                 _abs(p0 - q0) < ((alpha >> 2) + 2)) {
-                /*q0*/ samples[y][x]   = (p1 + 2*p0 + 2*q0 + 2*q1 + q2 + 4) >> 3;
-                /*q1*/ samples[y+1][x] = (p0 + q0 + q1 + q2 + 2) >> 2;
-                /*q2*/ samples[y+2][x] = (2*q3 + 3*q2 + q1 + q0 + p0 + 4) >> 3;
+                /*q0*/ dst[ 0*stride] = (p1 + 2*p0 + 2*q0 + 2*q1 + q2 + 4) >> 3;
+                /*q1*/ dst[ 1*stride] = (p0 + q0 + q1 + q2 + 2) >> 2;
+                /*q2*/ dst[ 2*stride] = (2*q3 + 3*q2 + q1 + q0 + p0 + 4) >> 3;
             } else {
-                /*q0*/ samples[y][x]   = (2*q1 + q0 + p1 + 2) >> 2;
+                /*q0*/ dst[ 0*stride] = (2*q1 + q0 + p1 + 2) >> 2;
             }
         }
 
-        x++;
+        dst++;
     }
 }
 
-void filter_2p_vert_edge_low_bS_chroma(int y, int x, const int filter_flags[2],
-    uint8_t bS, uint8_t indexA, uint8_t samples[16][16]) {
+void filter_2p_vert_edge_low_bS_chroma(uint8_t *dst, int stride, const int filter_flags[2],
+                                       uint8_t bS, uint8_t indexA) {
 
     int treshold = treshold_table[bS-1][indexA];
     int t, delta;
@@ -406,24 +403,24 @@ void filter_2p_vert_edge_low_bS_chroma(int y, int x, const int filter_flags[2],
 
     for (int i = 0; i < 2; i++) {
         if (filter_flags[i]) {
-            p0 = samples[y][x-1];  p1 = samples[y][x-2];
-            q0 = samples[y][x];    q1 = samples[y][x+1];
+            p0 = dst[-1];  p1 = dst[-2];
+            q0 = dst[ 0];  q1 = dst[ 1];
 
             t = treshold + 1;
 
             delta = _clip3(-t, t,
                 (((q0 - p0) * (1 << 2)) + (p1 - q1) + 4) >> 3);
 
-            /*p0*/ samples[y][x-1] = _clip1c(p0 + delta, MAX_U8);
-            /*q0*/ samples[y][x]   = _clip1c(q0 - delta, MAX_U8);
+            /*p0*/ dst[-1] = _clip1c(p0 + delta, MAX_U8);
+            /*q0*/ dst[ 0]   = _clip1c(q0 - delta, MAX_U8);
         }
 
-        y++;
+        dst += stride;
     }
 }
 
-void filter_2p_hor_edge_low_bS_chroma(int y, int x, const int filter_flags[2],
-    uint8_t bS, uint8_t indexA, uint8_t samples[16][16]) {
+void filter_2p_hor_edge_low_bS_chroma(uint8_t *dst, int stride, const int filter_flags[2],
+                                      uint8_t bS, uint8_t indexA) {
 
     int treshold = treshold_table[bS-1][indexA];
     int t, delta;
@@ -432,113 +429,105 @@ void filter_2p_hor_edge_low_bS_chroma(int y, int x, const int filter_flags[2],
 
     for (int i = 0; i < 2; i++) {
         if (filter_flags[i]) {
-            p0 = samples[y-1][x];  p1 = samples[y-2][x];
-            q0 = samples[y][x];    q1 = samples[y+1][x];
+            p0 = dst[-1*stride];  p1 = dst[-2*stride];
+            q0 = dst[ 0*stride];  q1 = dst[ 1*stride];
 
             t = treshold + 1;
 
             delta = _clip3(-t, t,
                 (((q0 - p0) * (1 << 2)) + (p1 - q1) + 4) >> 3);
 
-            /*p0*/ samples[y-1][x] = _clip1c(p0 + delta, MAX_U8);
-            /*q0*/ samples[y][x]   = _clip1c(q0 - delta, MAX_U8);
+            /*p0*/ dst[-1*stride] = _clip1c(p0 + delta, MAX_U8);
+            /*q0*/ dst[ 0*stride] = _clip1c(q0 - delta, MAX_U8);
         }
 
-        x++;
+        dst++;
     }
 }
 
-void filter_2p_vert_edge_high_bS_chroma(int y, int x, const int filter_flags[2], uint8_t samples[16][16]) {
+void filter_2p_vert_edge_high_bS_chroma(uint8_t *dst, int stride, const int filter_flags[2]) {
 
     uint8_t p0, p1, q0, q1;
 
     for (int i = 0; i < 2; i++) {
         if (filter_flags[i]) {
-            p0 = samples[y][x-1];  p1 = samples[y][x-2];
-            q0 = samples[y][x];    q1 = samples[y][x+1];
+            p0 = dst[-1];  p1 = dst[-2];
+            q0 = dst[ 0];  q1 = dst[ 1];
 
-            /*p0*/ samples[y][x-1] = (2*p1 + p0 + q1 + 2) >> 2;
-            /*q0*/ samples[y][x]   = (2*q1 + q0 + p1 + 2) >> 2;
+            /*p0*/ dst[-1] = (2*p1 + p0 + q1 + 2) >> 2;
+            /*q0*/ dst[ 0] = (2*q1 + q0 + p1 + 2) >> 2;
         }
 
-        y++;
+        dst += stride;
     }
 }
 
-void filter_2p_hor_edge_high_bS_chroma(int y, int x, const int filter_flags[2], uint8_t samples[16][16]) {
+void filter_2p_hor_edge_high_bS_chroma(uint8_t *dst, int stride, const int filter_flags[2]) {
 
     int p0, p1, q0, q1;
 
     for (int i = 0; i < 2; i++) {
         if (filter_flags[i]) {
-            p0 = samples[y-1][x];  p1 = samples[y-2][x];
-            q0 = samples[y][x];    q1 = samples[y+1][x];
+            p0 = dst[-1*stride];  p1 = dst[-2*stride];
+            q0 = dst[ 0*stride];  q1 = dst[ 1*stride];
 
-            /*p0*/ samples[y-1][x] = (2*p1 + p0 + q1 + 2) >> 2;
-            /*q0*/ samples[y][x]   = (2*q1 + q0 + p1 + 2) >> 2;
+            /*p0*/ dst[-1*stride] = (2*p1 + p0 + q1 + 2) >> 2;
+            /*q0*/ dst[ 0*stride] = (2*q1 + q0 + p1 + 2) >> 2;
         }
 
-        x++;
-    }
-}
-
-
-void filter_row_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int y, uint8_t luma_block[24][24],
-    uint8_t bS_list[4], int stride, Undo264Context *ctx) {
-
-    uint8_t indexA, alpha, beta;
-    int filter_flags[4];
-
-    for (int i = 0; i < 4; i++) {
-        derive_edge_treshold_luma(pic, mbAddr, mbAddrN, bS_list[i], 4+y, 4+i*4, false,
-            &alpha, &beta, filter_flags, &indexA, luma_block, ctx);
-    	if (bS_list[i] > 0) {
-            if (bS_list[i] < 4) {
-                filter_4p_hor_edge_low_bS_luma(4+y, 4+i*4, filter_flags, bS_list[i], indexA, beta, luma_block);
-            } else {
-                filter_4p_hor_edge_high_bS_luma(4+y, 4+i*4, filter_flags, alpha, beta, luma_block);
-            }
-        }
-    }
-
-    for (int k = 0; k < 16; k++) {
-        for (int i = 0; i < 3; i++) {
-            dst[i*stride]      = luma_block[y+4+i][k+4];   // q0, q1, q2
-            dst[(-i-1)*stride] = luma_block[y+4-i-1][k+4]; // p0, p1, p2
-        }
         dst++;
     }
 }
-void filter_col_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int x, uint8_t luma_block[24][24],
-    uint8_t bS_list[4], int stride, Undo264Context *ctx) {
+
+void deblock_edge(uint8_t *dst, int xstride, int ystride, int sub_edge_size, int alpha, int beta) {
+
+}
+
+void deblock_edge_intra(uint8_t *dst, int xstride, int ystride, int sub_edge_size, int alpha, int beta) {
+
+}
+
+
+void filter_row_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst,
+                     uint8_t bS_list[4], int stride, const Undo264Context *ctx) {
+    uint8_t indexA, alpha, beta;
+    int filter_flags[4];
+
+    for (int i = 0; i < 4; i++) {
+        derive_edge_treshold_luma(pic, dst + 4*i, stride, mbAddr, mbAddrN, bS_list[i], false,
+            &alpha, &beta, filter_flags, &indexA, ctx);
+        if (bS_list[i] > 0) {
+            if (bS_list[i] < 4) {
+                filter_4p_hor_edge_low_bS_luma(dst + 4*i, stride, filter_flags, bS_list[i], indexA, beta);
+            } else {
+                filter_4p_hor_edge_high_bS_luma(dst + 4*i, stride, filter_flags, alpha, beta);
+            }
+        }
+    }
+}
+
+void filter_col_luma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst,
+                     uint8_t bS_list[4], int stride, const Undo264Context *ctx) {
 
     uint8_t indexA, alpha, beta;
     int filter_flags[4];
 
 
     for (int i = 0; i < 4; i++) {
-        derive_edge_treshold_luma(pic, mbAddr, mbAddrN, bS_list[i], 4+i*4, 4+x, true,
-            &alpha, &beta, filter_flags, &indexA, luma_block, ctx);
+        derive_edge_treshold_luma(pic, dst + 4*i*stride, stride, mbAddr, mbAddrN, bS_list[i], true,
+            &alpha, &beta, filter_flags, &indexA, ctx);
     	if (bS_list[i] > 0) {
             if (bS_list[i] < 4) {
-                filter_4p_vert_edge_low_bS_luma(4+i*4, 4+x, filter_flags, bS_list[i], indexA, beta, luma_block);
+                filter_4p_vert_edge_low_bS_luma(dst + 4*i*stride, stride, filter_flags, bS_list[i], indexA, beta);
             } else {
-                filter_4p_vert_edge_high_bS_luma(4+i*4, 4+x, filter_flags, alpha, beta, luma_block);
+                filter_4p_vert_edge_high_bS_luma(dst + 4*i*stride, stride, filter_flags, alpha, beta);
             }
         }
     }
-
-    for (int k = 0; k < 16; k++) {
-        for (int i = 0; i < 3; i++) {
-           dst[i]    = luma_block[k+4][x+4+i];   // q0, q1, q2
-           dst[-i-1] = luma_block[k+4][x+4-i-1]; // p0, p1, p2
-        }
-        dst += stride;
-    }
 }
 
-void filter_row_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int y, int iCbCr, uint8_t samples[16][16],
-    const uint8_t bS_list[4], int stride, Undo264Context *ctx) {
+void filter_row_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int iCbCr,
+                       const uint8_t bS_list[4], int stride, const Undo264Context *ctx) {
 
     uint8_t indexA, alpha, beta;
     int filter_flags[2];
@@ -546,26 +535,21 @@ void filter_row_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int 
     for (int i = 0; i < 4; i++) {
         int bS = bS_list[i];
 
-        derive_edge_treshold_chroma(pic, mbAddr, mbAddrN, bS, 4+y, 4+i*2, iCbCr, false,
-            &alpha, &beta, filter_flags, &indexA, samples, ctx);
+        derive_edge_treshold_chroma(pic, dst + i*2, stride, mbAddr, mbAddrN, bS, iCbCr, false,
+            &alpha, &beta, filter_flags, &indexA, ctx);
 
         if (bS > 0) {
             if (bS < 4) {
-                filter_2p_hor_edge_low_bS_chroma(4+y, 4+i*2, filter_flags, bS, indexA, samples);
+                filter_2p_hor_edge_low_bS_chroma(dst + i*2, stride, filter_flags, bS, indexA);
             } else {
-                filter_2p_hor_edge_high_bS_chroma(4+y, 4+i*2, filter_flags, samples);
+                filter_2p_hor_edge_high_bS_chroma(dst + i*2, stride, filter_flags);
             }
         }
     }
-
-    for (int i = 0; i < 8; i++) {
-        dst[0]       = samples[4+y][4+i];   // q0
-        dst[-stride] = samples[4+y-1][4+i]; // p0
-        dst++;
-    }
 }
-void filter_col_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int x, int iCbCr, uint8_t samples[16][16],
-    const uint8_t bS_list[4], int stride, Undo264Context *ctx) {
+
+void filter_col_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int iCbCr,
+                       const uint8_t bS_list[4], int stride, const Undo264Context *ctx) {
 
     uint8_t indexA, alpha, beta;
     int filter_flags[2];
@@ -573,29 +557,22 @@ void filter_col_chroma(Picture *pic, int mbAddr, int mbAddrN, uint8_t *dst, int 
     for (int i = 0; i < 4; i++) {
         int bS = bS_list[i];
 
-        derive_edge_treshold_chroma(pic, mbAddr, mbAddrN, bS, 4+i*2, 4+x, iCbCr, true,
-            &alpha, &beta, filter_flags, &indexA, samples, ctx);
+        derive_edge_treshold_chroma(pic, dst + i*2*stride, stride, mbAddr, mbAddrN, bS, iCbCr, true,
+            &alpha, &beta, filter_flags, &indexA, ctx);
 
         if (bS > 0) {
             if (bS < 4) {
-                filter_2p_vert_edge_low_bS_chroma(4+i*2, 4+x, filter_flags, bS, indexA, samples);
+                filter_2p_vert_edge_low_bS_chroma(dst + i*2*stride, stride, filter_flags, bS, indexA);
             } else {
-                filter_2p_vert_edge_high_bS_chroma(4+i*2, 4+x, filter_flags, samples);
+                filter_2p_vert_edge_high_bS_chroma(dst + i*2*stride, stride, filter_flags);
             }
         }
     }
-
-    for (int i = 0; i < 8; i++) {
-        dst[0]  = samples[i+4][4+x];   // q0
-        dst[-1] = samples[i+4][4+x-1]; // p0
-        dst += stride;
-    }
 }
 
-void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Context *ctx) {
+void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, const Undo264Context *ctx) {
+
     SPS *sps = sh->sps;
-    PPS *pps = sh->pps;
-
 
 
     // make dummy mb just for accessing the neighbors afterward
@@ -619,11 +596,6 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
     uint8_t *cb_base_dst   = &pic->cb[chroma_pos];
     uint8_t *cr_base_dst   = &pic->cr[chroma_pos];
 
-
-    uint8_t luma_block[24][24], cb_block[16][16], cr_block[16][16];
-    fetch_24x24_luma_block(luma_block, luma_pos, widthY, pic);
-    fetch_16x16_chroma_block(cb_block, cr_block, chroma_pos, widthC, pic);
-
     uint8_t bS_list[4];
 
     bool mb8x8 = ctx->mb_metadata[mb->mbAddr].t_8x8_flag;
@@ -634,9 +606,9 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
             0, 3, 0, 1,
             true, true, bS_list, ctx);
 
-        filter_col_luma(pic, mbAddr, mbAddr - 1, luma_base_dst, 0, luma_block, bS_list, widthY, ctx);
-        filter_col_chroma(pic, mbAddr, mbAddr - 1, cb_base_dst, 0, 0, cb_block, bS_list, widthC, ctx);
-        filter_col_chroma(pic, mbAddr, mbAddr - 1, cr_base_dst, 0, 1, cr_block, bS_list, widthC, ctx);
+        filter_col_luma(pic, mbAddr, mbAddr - 1, luma_base_dst, bS_list, widthY, ctx);
+        filter_col_chroma(pic, mbAddr, mbAddr - 1, cb_base_dst, 0, bS_list, widthC, ctx);
+        filter_col_chroma(pic, mbAddr, mbAddr - 1, cr_base_dst, 1, bS_list, widthC, ctx);
     }
     if (filterInternalEdges) {
 
@@ -645,7 +617,7 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
             derive_edge_bS_list(mbAddr, mbAddr,
                 1, 0, 0, 0,
                 false, true, bS_list, ctx);
-            filter_col_luma(pic, mbAddr, mbAddr, luma_base_dst +  4,  4, luma_block, bS_list, widthY, ctx);
+            filter_col_luma(pic, mbAddr, mbAddr, luma_base_dst + 4,  bS_list, widthY, ctx);
         }
 
 
@@ -654,9 +626,9 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
             2, 1, 1, 0,
             false, true, bS_list, ctx);
 
-        filter_col_luma(pic, mbAddr, mbAddr, luma_base_dst + 8, 8, luma_block, bS_list, widthY, ctx);
-        filter_col_chroma(pic, mbAddr, mbAddr, cb_base_dst + 4, 4, 0, cb_block, bS_list, widthC, ctx);
-        filter_col_chroma(pic, mbAddr, mbAddr, cr_base_dst + 4, 4, 1, cr_block, bS_list, widthC, ctx);
+        filter_col_luma(pic, mbAddr, mbAddr, luma_base_dst + 8, bS_list, widthY, ctx);
+        filter_col_chroma(pic, mbAddr, mbAddr, cb_base_dst + 4, 0, bS_list, widthC, ctx);
+        filter_col_chroma(pic, mbAddr, mbAddr, cr_base_dst + 4, 1, bS_list, widthC, ctx);
 
 
         // x = 12
@@ -664,7 +636,7 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
             derive_edge_bS_list(mbAddr, mbAddr,
                 3, 2, 1, 1,
                 false, true, bS_list, ctx);
-            filter_col_luma(pic, mbAddr, mbAddr, luma_base_dst + 12, 12, luma_block, bS_list, widthY, ctx);
+            filter_col_luma(pic, mbAddr, mbAddr, luma_base_dst + 12, bS_list, widthY, ctx);
         }
     }
 
@@ -676,9 +648,9 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
             true, false, bS_list, ctx);
 
 
-        filter_row_luma(pic, mbAddr, mbAddr - mbWidth, luma_base_dst, 0, luma_block, bS_list, widthY, ctx);
-        filter_row_chroma(pic, mbAddr, mbAddr - mbWidth, cb_base_dst, 0, 0, cb_block, bS_list, widthC, ctx);
-        filter_row_chroma(pic, mbAddr, mbAddr - mbWidth, cr_base_dst, 0, 1, cr_block, bS_list, widthC, ctx);
+        filter_row_luma(pic, mbAddr, mbAddr - mbWidth, luma_base_dst, bS_list, widthY, ctx);
+        filter_row_chroma(pic, mbAddr, mbAddr - mbWidth, cb_base_dst, 0, bS_list, widthC, ctx);
+        filter_row_chroma(pic, mbAddr, mbAddr - mbWidth, cr_base_dst, 1, bS_list, widthC, ctx);
     }
     if (filterInternalEdges) {
 
@@ -687,7 +659,7 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
             derive_edge_bS_list(mbAddr, mbAddr,
                 4, 0, 0, 0,
                 false, false, bS_list, ctx);
-            filter_row_luma(pic, mbAddr, mbAddr, luma_base_dst +  4*widthY, 4, luma_block, bS_list, widthY, ctx);
+            filter_row_luma(pic, mbAddr, mbAddr, luma_base_dst + 4*widthY, bS_list, widthY, ctx);
         }
 
 
@@ -696,9 +668,9 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
             8, 4, 2, 0,
             false, false, bS_list, ctx);
 
-        filter_row_luma(pic, mbAddr, mbAddr, luma_base_dst + 8*widthY, 8, luma_block, bS_list, widthY, ctx);
-        filter_row_chroma(pic, mbAddr, mbAddr, cb_base_dst + 4*widthC, 4, 0, cb_block, bS_list, widthC, ctx);
-        filter_row_chroma(pic, mbAddr, mbAddr, cr_base_dst + 4*widthC, 4, 1, cr_block, bS_list, widthC, ctx);
+        filter_row_luma(pic, mbAddr, mbAddr, luma_base_dst + 8*widthY, bS_list, widthY, ctx);
+        filter_row_chroma(pic, mbAddr, mbAddr, cb_base_dst + 4*widthC, 0, bS_list, widthC, ctx);
+        filter_row_chroma(pic, mbAddr, mbAddr, cr_base_dst + 4*widthC, 1, bS_list, widthC, ctx);
 
 
         // y = 12
@@ -706,7 +678,7 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
             derive_edge_bS_list(mbAddr, mbAddr,
                 12, 8, 2, 2,
                 false, false, bS_list, ctx);
-            filter_row_luma(pic, mbAddr, mbAddr, luma_base_dst + 12*widthY, 12, luma_block, bS_list, widthY, ctx);
+            filter_row_luma(pic, mbAddr, mbAddr, luma_base_dst + 12*widthY, bS_list, widthY, ctx);
         }
     }
 
@@ -714,7 +686,7 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, Undo264Contex
 }
 
 
-void deblock_slice(Picture *pic, SliceHeader *sh, Undo264Context *ctx) {
+void deblock_slice(Picture *pic, SliceHeader *sh, const Undo264Context *ctx) {
     for (int i = sh->first_mb; i < sh->first_mb + ctx->current_slice->num_mbs; i++) {
         deblock_macroblock(pic, sh, i, ctx);
     }

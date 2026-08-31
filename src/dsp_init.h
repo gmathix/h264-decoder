@@ -18,6 +18,8 @@ typedef void (*transform_4x4_func)(Macroblock*, int, const Undo264Context*);
 typedef void (*transform_8x8_func)(Macroblock*, int, const Undo264Context*);
 typedef void (*transform_16x16_func)(Macroblock*, const Undo264Context*);
 typedef void (*transform_chroma_func)(Macroblock*, const Undo264Context*);
+typedef void (*deblock_low_bs_func)(uint8_t*, int, int, int, int, int, int*);
+typedef void (*deblock_high_bs_func)(uint8_t*, int, int, int, int);
 
 typedef struct DSPContext {
     weigh_bi_func             weigh_bi_funcs[NUM_BLOCK_SHAPES];
@@ -28,6 +30,10 @@ typedef struct DSPContext {
     transform_8x8_func        transform_8x8;
     transform_16x16_func      transform_16x16;
     transform_chroma_func     transform_chroma;
+    deblock_low_bs_func       deblock_edge_low_bs_luma;
+    deblock_low_bs_func       deblock_edge_low_bs_chroma;
+    deblock_high_bs_func      deblock_edge_high_bs_luma;
+    deblock_high_bs_func      deblock_edge_high_bs_chroma;
 } DSPContext ;
 
 

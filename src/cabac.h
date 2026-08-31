@@ -46,7 +46,7 @@ void cabac_init_ctx_vars(Slice *slice, int idc);
 void cabac_init_engine(const Undo264Context *ctx);
 
 
-always_inline int renorm(int bin, CabacContext *cactx, const Undo264Context *ctx) {
+static always_inline int renorm(int bin, CabacContext *cactx, const Undo264Context *ctx) {
     while (cactx->codIRange < 256) {
         cactx->codIRange <<= 1;
         cactx->codIOffset = (cactx->codIOffset << 1) | read_u(ctx->br, 1);
@@ -55,7 +55,7 @@ always_inline int renorm(int bin, CabacContext *cactx, const Undo264Context *ctx
     return bin;
 }
 
-always_inline int cabac_get_bit(const Undo264Context *ctx, int ctxIdx) {
+static always_inline int cabac_get_bit(const Undo264Context *ctx, int ctxIdx) {
     CabacContext *cactx = ctx->cactx;
 
 

@@ -42,7 +42,7 @@ int frame_debug = -1;
 int frame_num_debug = -1;
 int poc_debug = 60;
 int mb_debug = 395;
-int nb_frames_before_stop = 400;
+int nb_frames_before_stop = -1;
 
 
 Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome) {

@@ -15,7 +15,7 @@ if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release RelWithDebInfo)
 endif()
 
-option(USE_NATIVE_ARCH "Optimize for the host CPU (-march:native); breaks portability" OFF)
+option(USE_NATIVE_ARCH "Optimize for the host CPU to support SIMD (-march:native)" OFF)
 option(USE_SANITIZERS "Build with ASan/UBSan" OFF)
 option(BUILD_TOOLS "Build gen_rgb_video / compare_streams helper tools" ON)
 
@@ -33,10 +33,10 @@ set(UNDO264_SOURCES
     src/dpb.c
     src/deblock.c
     src/cabac.c
-        src/util/logger.c
-        src/tests/profiler.c
-        src/dsp_init.c
-        src/dsp_init.h
+    src/util/logger.c
+    src/tests/profiler.c
+    src/dsp_init.c
+    src/dsp_init.h
 )
 
 # warning/flag interface
@@ -44,7 +44,7 @@ add_library(undo264_warnings INTERFACE)
 target_compile_options(undo264_warnings INTERFACE
     $<$<C_COMPILER_ID:GNU,Clang>:-Wall -Wextra -Wpedantic>
     $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<BOOL:${USE_NATIVE_ARCH}>>:-march=native>
-    $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<CONFIG:Release,Profile>>:-O3>
+    $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<CONFIG:Release>>:-O3>
     $<$<AND:$<C_COMPILER_ID:GNU,Clang>,$<CONFIG:Debug>>:-O0 -g3>
 )
 
@@ -60,9 +60,7 @@ add_executable(undo264 ${UNDO264_SOURCES})
 target_link_libraries(undo264 PRIVATE m undo264_warnings undo264_sanitizers)
 target_include_directories(undo264 PRIVATE src)
 target_compile_definitions(undo264 PRIVATE _DEFAULT_SOURCE
-    $<$<CONFIG:Debug>:SLICES_LOG=1,DUMP_PICTURES=1>
-    $<$<CONFIG:Profile>:DUMP_PICTURES=0>
-    $<$<CONFIG:Release>:DUMP_PICTURES=1>
+    $<$<CONFIG:Debug>:SLICES_LOG=1>
 )
 if(CMAKE_SYSTEM_PROCESSOR MATCHES "x86_64|AMD64")
     target_compile_definitions(undo264 PRIVATE ARCH_X86=1)

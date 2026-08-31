@@ -70,7 +70,6 @@ cmake --build --preset release
 |-----------|------------------|-----------------------------------------|
 | `release` | Release (-O3)    | Default for normal use                  |
 | `debug`   | Debug + ASan/UBSan | Use while developing / hunting bugs   |
-| `profile` | RelWithDebInfo + `-march=native` | For local profiling (Cachegrind, perf) — **not portable**, do not distribute this binary |
 
 ### Options
 

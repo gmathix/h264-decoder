@@ -19,20 +19,10 @@
         "USE_SANITIZERS": "ON",
         "USE_NATIVE_ARCH": "ON"
       }
-    },
-    {
-      "name": "profile",
-      "generator": "Unix Makefiles",
-      "binaryDir": "${sourceDir}/build/profile",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "USE_NATIVE_ARCH": "ON"
-      }
     }
   ],
   "buildPresets": [
     { "name": "release", "configurePreset": "release" },
-    { "name": "debug", "configurePreset": "debug" },
-    { "name": "profile", "configurePreset": "profile" }
+    { "name": "debug", "configurePreset": "debug" }
   ]
 }

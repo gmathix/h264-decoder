@@ -18,6 +18,7 @@ extern const uint8_t treshold_table[3][52];
 
 void deblock_slice(Picture *pic, SliceHeader *sh, const Undo264Context *ctx);
 void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, const Undo264Context *ctx);
+void deblock_macroblock_intra(Picture *pic, SliceHeader *sh, int mbAddr, const Undo264Context *ctx);
 
 
 

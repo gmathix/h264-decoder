@@ -124,7 +124,7 @@ while IFS= read -r -d '' subdir; do
 
     # decode with ffmpeg if needed
     if [[ $use_ffmpeg -eq 1 ]]; then
-        if ! ffmpeg -y -v error -vsync 0 -i "$bitstream" -f rawvideo -pix_fmt "$pix_fmt" \
+        if ! ffmpeg -y -v error -i "$bitstream" -f rawvideo -fps_mode passthrough -pix_fmt "$pix_fmt" \
             "$dec_ref" > "${subdir}/${stream_name}_ffmpeg.log" 2>&1; then
             echo "  [FAIL] ffmpeg (see ${stream_name}_ffmpeg.log)"
             ((fail_count++))

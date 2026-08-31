@@ -264,7 +264,7 @@ static void scaling_residual_4x4_rshift_min_sse(int qp, __m128i *r01, __m128i *r
       *r23 = _mm_packs_epi32(r2, r3);
 }
 
-void transform_luma_4x4_sse(Macroblock *mb, int blkIdx, Undo264Context *ctx) {
+void transform_luma_4x4_sse(Macroblock *mb, int blkIdx, const Undo264Context *ctx) {
       static int16_t c[4][4];
 
       int stride = mb->p_pic->widthY;
@@ -295,7 +295,7 @@ void transform_luma_4x4_sse(Macroblock *mb, int blkIdx, Undo264Context *ctx) {
 }
 
 
-void transform_luma_8x8_sse(Macroblock *mb, int i8x8, Undo264Context *ctx) {
+void transform_luma_8x8_sse(Macroblock *mb, int i8x8, const Undo264Context *ctx) {
       static int16_t c[8][8];
       static int16_t d[8][8];
 
@@ -319,7 +319,7 @@ void transform_luma_8x8_sse(Macroblock *mb, int i8x8, Undo264Context *ctx) {
 
 
 
-void transform_luma_16x16_sse(Macroblock *mb, Undo264Context *ctx) {
+void transform_luma_16x16_sse(Macroblock *mb, const Undo264Context *ctx) {
       static int16_t c[4][4];
       inverse_4x4_coeff_scaling_scan(mb->residuals.luma_16x16_DC, c);
 
@@ -380,7 +380,7 @@ void transform_luma_16x16_sse(Macroblock *mb, Undo264Context *ctx) {
 }
 
 
-void transform_chroma_sse(Macroblock *mb, Undo264Context *ctx) {
+void transform_chroma_sse(Macroblock *mb, const Undo264Context *ctx) {
 
       int nbCr4x4 = (mb->mb_height_c/4) * (mb->mb_width_c/4);
 

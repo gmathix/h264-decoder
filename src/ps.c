@@ -24,7 +24,7 @@
 
 
 /* 7.3.2.1.1 */
-int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
+int decode_sps(Undo264Context *ctx) {
     #ifdef SLICES_LOG
         printf("READING SPS\n");
     #endif
@@ -213,7 +213,7 @@ int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
     /* unused for now */
     int vui_params_present = read_u(br, 1);
     if (vui_params_present) {
-        decode_vui(global_bit_offset, ctx);
+        decode_vui(ctx);
     }
 
 
@@ -239,7 +239,7 @@ int decode_sps(size_t global_bit_offset, Undo264Context *ctx) {
 
 
 /* 7.3.2.2 */
-int decode_pps(size_t global_bit_offset, Undo264Context *ctx) {
+int decode_pps(Undo264Context *ctx) {
     #ifdef SLICES_LOG
         printf("READING PPS\n");
     #endif
@@ -343,7 +343,7 @@ int decode_pps(size_t global_bit_offset, Undo264Context *ctx) {
 
 
 /* E.1.1 */
-int decode_vui (size_t global_bit_offset, Undo264Context *ctx) {
+int decode_vui (Undo264Context *ctx) {
     BitReader *br = ctx->br;
 
     /* not used for now, just necessary parsing for bitreader alignement with the reference decoder */

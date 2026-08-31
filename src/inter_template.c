@@ -60,7 +60,7 @@ void INTER_FUNC(fetch_ref_block_luma,
 
 void INTER_FUNC(inter_pred_single,
                 Macroblock *mb, int pos4x4, MotionVector mv, int list,
-                uint8_t *restrict scratch_buf, int16_t *restrict qpel_pass_buf, Undo264Context *ctx) {
+                uint8_t *restrict scratch_buf, int16_t *restrict qpel_pass_buf, const Undo264Context *ctx) {
 
     Picture *currPic = mb->p_pic;
     Picture *refPic = ctx->dpb->lists[list][1+mv.ref_idx];
@@ -96,7 +96,7 @@ void INTER_FUNC(inter_pred_single,
 void INTER_FUNC(inter_pred_bi,
                 Macroblock *mb, int pos4x4, MotionVector mvL0, MotionVector mvL1,
                 uint8_t *restrict scratch_buf, uint8_t *restrict temp_bi_buf, int16_t *restrict qpel_pass_buf,
-                Undo264Context *ctx) {
+                const Undo264Context *ctx) {
 
     Picture *currPic = mb->p_pic;
     Picture *picL0 = ctx->dpb->lists[L0][1+mvL0.ref_idx];

@@ -42,7 +42,7 @@ int frame_debug = -1;
 int frame_num_debug = -1;
 int poc_debug = 60;
 int mb_debug = 395;
-int nb_frames_before_stop = -1;
+int nb_frames_before_stop = 400;
 
 
 Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, char *log_path, bool dump_monochrome) {
@@ -84,10 +84,6 @@ Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, c
     ctx->levelScale4x4 = calloc(6, sizeof( int16_t[52][4][4] ));
     ctx->levelScale8x8 = calloc(2, sizeof( int16_t[52][8][8] ));
 
-
-
-    ctx->prf = malloc(sizeof(Profiler));
-    profiler_init(ctx->prf);
     ctx->out_path = out_path;
     ctx->out_file = fopen(ctx->out_path, "wb");
     ctx->dump_monochrome = dump_monochrome;
@@ -122,6 +118,11 @@ Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, c
     ctx->qpel_pass_buffers[ 8 / 4 - 1] = ctx->qpel_pass_buf_8;
     ctx->qpel_pass_buffers[ 4 / 4 - 1] = ctx->qpel_pass_buf_4;
 
+
+    ctx->prf = malloc(sizeof(Profiler));
+    profiler_init(ctx->prf);
+
+
     ctx->initialized = true;
 
     return ctx;
@@ -138,14 +139,14 @@ int dispatch_nal_unit(NalUnit *nal_unit, Undo264Context *ctx) {
     switch (nal_unit->type) {
         case NAL_SEI: break;
         case NAL_SPS:
-            decode_sps(ctx->global_bit_offset, ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br);
+            decode_sps(ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br);
             int num_mbs = ctx->ps->sps->pic_height_in_map_units * ctx->ps->sps->pic_width_in_mbs;
             if (!ctx->pic_pool_initialized || num_mbs != ctx->num_mbs) {
                 pic_pool_init(ctx->pool, ctx);
                 ctx->pic_pool_initialized = true;
             }
             break;
-        case NAL_PPS: decode_pps(ctx->global_bit_offset, ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
+        case NAL_PPS: decode_pps(ctx); ctx->global_bit_offset += bitreader_bits_consumed(ctx->br); break;
 
 
         case NAL_CODED_SLICE_OF_NON_IDR_PICTURE:
@@ -167,7 +168,7 @@ int dispatch_nal_unit(NalUnit *nal_unit, Undo264Context *ctx) {
             }
 
             Slice *slice = ctx->current_slice;
-            // deblock_slice(ctx->curr_pic, sh, ctx);
+            deblock_slice(ctx->curr_pic, sh, ctx);
 
             #ifdef SLICES_LOG
                 printf("done slice %lu %s(frame_num %d, pic %lu)\n\n",

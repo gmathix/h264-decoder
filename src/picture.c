@@ -11,7 +11,7 @@
 Picture EMPTY_PICTURE = {};
 
 
-Picture *picture_alloc(SPS *sps, Undo264Context *ctx) {
+Picture *picture_alloc(SPS *sps, const Undo264Context *ctx) {
     Picture *p  = calloc(1, sizeof(Picture));
 
 	p->widthY      = sps->pic_width_samples_l;
@@ -67,31 +67,28 @@ void picture_free(Picture *p) {
     free(p);
 }
 
-void dump_picture(Picture *p, Undo264Context *ctx) {
+void dump_picture(Picture *p, const Undo264Context *ctx) {
     int top    = ctx->ps->sps->crop_top_offset;
     int bottom = ctx->ps->sps->crop_bottom_offset;
     int left   = ctx->ps->sps->crop_left_offset;
     int right  = ctx->ps->sps->crop_right_offset;
 
-    #ifdef DUMP_PICTURES
-    #if DUMP_PICTURES
-        for (int i = top; i < p->heightY - bottom; i++) {
-            fwrite(&p->luma[i*p->widthY + left],   1, p->widthCropY, ctx->out_file);
-        }
-
-        if (!ctx->dump_monochrome) {
-            for (int i = top/2; i < p->heightC - bottom/2; i++) {
-                fwrite(&p->cb[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
-            }
-            for (int i = top/2; i < p->heightC - bottom/2; i++) {
-                fwrite(&p->cr[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
-            }
-        }
-    #endif
-    #endif
+        //
+        // for (int i = top; i < p->heightY - bottom; i++) {
+        //     fwrite(&p->luma[i*p->widthY + left],   1, p->widthCropY, ctx->out_file);
+        // }
+        //
+        // if (!ctx->dump_monochrome) {
+        //     for (int i = top/2; i < p->heightC - bottom/2; i++) {
+        //         fwrite(&p->cb[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
+        //     }
+        //     for (int i = top/2; i < p->heightC - bottom/2; i++) {
+        //         fwrite(&p->cr[i*p->widthC + left/2], 1, p->widthCropC, ctx->out_file);
+        //     }
+        // }
 }
 
-void pic_pool_init(PicturePool *pool, Undo264Context *ctx) {
+void pic_pool_init(PicturePool *pool, const Undo264Context *ctx) {
     SPS *sps = ctx->ps->sps;
     int num_mbs = sps->pic_width_in_mbs * sps->pic_height_in_map_units;
 
@@ -119,7 +116,7 @@ void pic_pool_init(PicturePool *pool, Undo264Context *ctx) {
     pool->nb_available = pool->size;
 }
 
-void pic_pool_free(PicturePool *pool, Undo264Context *ctx) {
+void pic_pool_free(PicturePool *pool, const Undo264Context *ctx) {
     for (int i = 0; i < pool->size; i++) {
         if (pool->slots[i]) picture_free(pool->slots[i]);
     }

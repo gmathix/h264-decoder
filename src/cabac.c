@@ -39,7 +39,7 @@ void cabac_init_ctx_vars(Slice *slice, int idc) {
     val_mps[276] = 0;
 }
 
-void cabac_init(Undo264Context *ctx) {
+void cabac_init(const Undo264Context *ctx) {
     Slice *slice = ctx->current_slice;
 
     int idc = IS_I_SLICE(slice->sh->slice_type) ? 0 : slice->sh->cabac_init_idc + 1;
@@ -48,7 +48,7 @@ void cabac_init(Undo264Context *ctx) {
     cabac_init_engine(ctx);
 }
 
-void cabac_init_engine(Undo264Context *ctx) {
+void cabac_init_engine(const Undo264Context *ctx) {
     ctx->cactx->codIRange       = 510;
     ctx->cactx->codIOffset      = (int16_t) read_u(ctx->br, 9);
     ctx->cactx->p_state_idx_ptr = p_state_idx;
@@ -58,7 +58,7 @@ void cabac_init_engine(Undo264Context *ctx) {
 
 
 
-int cabac_get_bit_term(Undo264Context *ctx) {
+int cabac_get_bit_term(const Undo264Context *ctx) {
     CabacContext *cactx = ctx->cactx;
 
     cactx->codIRange -= 2;
@@ -78,7 +78,7 @@ int cabac_get_bit_term(Undo264Context *ctx) {
     return bin;
 }
 
-int cabac_get_bit_bypass(Undo264Context *ctx) {
+int cabac_get_bit_bypass(const Undo264Context *ctx) {
     CabacContext *cactx = ctx->cactx;
 
     cactx->codIOffset = (cactx->codIOffset << 1) | read_u(ctx->br, 1);
@@ -91,7 +91,7 @@ int cabac_get_bit_bypass(Undo264Context *ctx) {
 }
 
 
-int read_coded_block_flag(Macroblock *mb, int blkIdx, int iCbCr, BlockType blockType, Undo264Context *ctx) {
+int read_coded_block_flag(Macroblock *mb, int blkIdx, int iCbCr, BlockType blockType, const Undo264Context *ctx) {
     static const int16_t ctxIdxOffset[14] = {85, 85, 85, 85, 85, 1012, 460, 460, 460, 1012, 472, 472, 472, 1012};
     static const int8_t  ctxIdxCatOffset[14] = {0, 4, 8, 12, 16, 0, 0, 4, 8, 4, 0, 4, 8, 8};
 
@@ -149,7 +149,7 @@ int read_coded_block_flag(Macroblock *mb, int blkIdx, int iCbCr, BlockType block
     return cabac_get_bit(ctx, ctxIdx);
 }
 
-int read_significant_coeff_flag(Macroblock *mb, int coeffIdx, BlockType blockType, Undo264Context *ctx) {
+int read_significant_coeff_flag(Macroblock *mb, int coeffIdx, BlockType blockType, const Undo264Context *ctx) {
     static const int16_t ctxIdxOffset[14] = {105, 105, 105, 105, 105, 402, 484, 484, 484, 660, 528, 528, 528, 718};
     static const int8_t ctxIdxCatOffset[14] = {0, 15, 29, 44, 47, 0, 0, 15, 29, 0, 0, 15, 29, 0};
     static const alignas(64) int8_t ctxIdxInc[2][64] = {
@@ -173,7 +173,7 @@ int read_significant_coeff_flag(Macroblock *mb, int coeffIdx, BlockType blockTyp
     return cabac_get_bit(ctx, ctxIdx);
 }
 
-int read_last_significant_coeff_flag(Macroblock *mb, int coeffIdx, BlockType blockType, Undo264Context *ctx) {
+int read_last_significant_coeff_flag(Macroblock *mb, int coeffIdx, BlockType blockType, const Undo264Context *ctx) {
     static const int16_t ctxIdxOffset[14] = {166, 166, 166, 166, 166, 417, 572, 572, 572, 690, 616, 616, 616, 748};
     static const int8_t ctxIdxCatOffset[14] = {0, 15, 29, 44, 47, 0, 0, 15, 29, 0, 0, 15, 29, 0};
     static const alignas(64) int8_t ctxIdxInc[2][64] = {
@@ -195,7 +195,7 @@ int read_last_significant_coeff_flag(Macroblock *mb, int coeffIdx, BlockType blo
     return cabac_get_bit(ctx, ctxIdx);
 }
 
-int read_coeff_abs_level(Macroblock *mb, int coeffIdx, int numDecodAbsEq1, int numDecodAbsGt1, BlockType blockType, Undo264Context *ctx) {
+int read_coeff_abs_level(Macroblock *mb, int coeffIdx, int numDecodAbsEq1, int numDecodAbsGt1, BlockType blockType, const Undo264Context *ctx) {
     static const int16_t ctxIdxOffset[14] = {227, 227, 227, 227, 227, 426, 952, 952, 952, 708, 982, 982, 982, 766}; // for prefix
     static const int8_t ctxIdxCatOffset[14] = {0, 10, 20, 30, 39, 0, 0, 10, 20, 0, 0, 10, 20, 0};
 
@@ -237,13 +237,13 @@ int read_coeff_abs_level(Macroblock *mb, int coeffIdx, int numDecodAbsEq1, int n
     }
 }
 
-int read_coeff_sign_flag(Macroblock *mb, int blkIdx, BlockType blockType, Undo264Context *ctx) {
+int read_coeff_sign_flag(Macroblock *mb, int blkIdx, BlockType blockType, const Undo264Context *ctx) {
     // uses bypass, no ctxIdx to compute
     return cabac_get_bit_bypass(ctx);
 }
 
 void residual_block_cabac  (Macroblock *mb, int blkIdx, int iCbCr, BlockType blockType, int16_t *coeffLevel,
-    int startIdx, int endIdx, int maxNumCoeff, bool isLuma, struct SliceHeader *sh, Undo264Context *ctx) {
+    int startIdx, int endIdx, int maxNumCoeff, bool isLuma, struct SliceHeader *sh, const Undo264Context *ctx) {
 
 
 

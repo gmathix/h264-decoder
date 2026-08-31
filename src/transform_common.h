@@ -49,14 +49,14 @@ static const int16_t hadamard_2x2_mat[2][2] = {
 };
 
 
-static always_inline void scaling_residual_4x4_lshift(int shift, int16_t (*scale)[4], int16_t c[4][4], int16_t d[4][4], bool is_luma, Undo264Context *ctx) {
+static always_inline void scaling_residual_4x4_lshift(int shift, int16_t (*scale)[4], int16_t c[4][4], int16_t d[4][4], bool is_luma, const Undo264Context *ctx) {
       for (int i = 0; i < 4; i++) {
             for (int j =0 ; j < 4; j++) {
                   d[i][j] = lshift(c[i][j] * scale[i][j], shift);
             }
       }
 }
-static always_inline void scaling_residual_4x4_rshift_min(int shift, int16_t (*scale)[4], int16_t c[4][4], int16_t d[4][4], bool is_luma, Undo264Context *ctx) {
+static always_inline void scaling_residual_4x4_rshift_min(int shift, int16_t (*scale)[4], int16_t c[4][4], int16_t d[4][4], bool is_luma, const Undo264Context *ctx) {
       for (int i = 0; i < 4; i++) {
             for (int j = 0 ; j < 4; j++) {
                   d[i][j] = rshift_min(c[i][j] * scale[i][j], shift);
@@ -64,14 +64,14 @@ static always_inline void scaling_residual_4x4_rshift_min(int shift, int16_t (*s
       }
 }
 
-static always_inline void scaling_residual_8x8_lshift(int shift, int16_t (*scale)[8], int16_t c[8][8], int16_t d[8][8], bool is_luma, Undo264Context *ctx) {
+static always_inline void scaling_residual_8x8_lshift(int shift, int16_t (*scale)[8], int16_t c[8][8], int16_t d[8][8], bool is_luma, const Undo264Context *ctx) {
       for (int i = 0; i < 8; i++) {
             for (int j =0 ; j < 8; j++) {
                   d[i][j] = lshift(c[i][j] * scale[i][j], shift);
             }
       }
 }
-static always_inline void scaling_residual_8x8_rshift_min(int shift, int16_t (*scale)[8], int16_t c[8][8], int16_t d[8][8], bool is_luma, Undo264Context *ctx) {
+static always_inline void scaling_residual_8x8_rshift_min(int shift, int16_t (*scale)[8], int16_t c[8][8], int16_t d[8][8], bool is_luma, const Undo264Context *ctx) {
       for (int i = 0; i < 8; i++) {
             for (int j = 0 ; j < 8; j++) {
                   d[i][j] = rshift_min(c[i][j] * scale[i][j], shift);

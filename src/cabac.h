@@ -41,12 +41,12 @@ static void free_cactx(CabacContext *cactx) {
 
 
 
-void cabac_init(Undo264Context *ctx);
+void cabac_init(const Undo264Context *ctx);
 void cabac_init_ctx_vars(Slice *slice, int idc);
-void cabac_init_engine(Undo264Context *ctx);
+void cabac_init_engine(const Undo264Context *ctx);
 
 
-always_inline int renorm(int bin, CabacContext *cactx, Undo264Context *ctx) {
+always_inline int renorm(int bin, CabacContext *cactx, const Undo264Context *ctx) {
     while (cactx->codIRange < 256) {
         cactx->codIRange <<= 1;
         cactx->codIOffset = (cactx->codIOffset << 1) | read_u(ctx->br, 1);
@@ -55,7 +55,7 @@ always_inline int renorm(int bin, CabacContext *cactx, Undo264Context *ctx) {
     return bin;
 }
 
-always_inline int cabac_get_bit(Undo264Context *ctx, int ctxIdx) {
+always_inline int cabac_get_bit(const Undo264Context *ctx, int ctxIdx) {
     CabacContext *cactx = ctx->cactx;
 
 
@@ -88,11 +88,11 @@ always_inline int cabac_get_bit(Undo264Context *ctx, int ctxIdx) {
 
 
 
-int cabac_get_bit_term(Undo264Context *ctx);
-int cabac_get_bit_bypass(Undo264Context *ctx);
+int cabac_get_bit_term(const Undo264Context *ctx);
+int cabac_get_bit_bypass(const Undo264Context *ctx);
 void  residual_block_cabac   (Macroblock *mb, int blkIdx, int iCbCr, BlockType blockType, int16_t *coeffLevel,
     int startIdx, int endIdx, int maxNumCoeff, bool isLuma,
-    struct SliceHeader *sh, Undo264Context *ctx);
+    struct SliceHeader *sh, const Undo264Context *ctx);
 
 
 #endif //H264_DECODER_CABAC_H

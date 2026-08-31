@@ -132,7 +132,7 @@ static always_inline void idct_8x8(int16_t d[8][8], uint8_t *dst, int stride, in
 
 
 
-void transform_luma_4x4(Macroblock *mb, int blkIdx, Undo264Context *ctx) {
+void transform_luma_4x4(Macroblock *mb, int blkIdx, const Undo264Context *ctx) {
       static int16_t c[4][4];
       static int16_t d[4][4];
 
@@ -158,7 +158,7 @@ void transform_luma_4x4(Macroblock *mb, int blkIdx, Undo264Context *ctx) {
 }
 
 
-void transform_luma_8x8(Macroblock *mb, int i8x8, Undo264Context *ctx) {
+void transform_luma_8x8(Macroblock *mb, int i8x8, const Undo264Context *ctx) {
       static int16_t c[8][8];
       static int16_t d[8][8];
 
@@ -182,7 +182,7 @@ void transform_luma_8x8(Macroblock *mb, int i8x8, Undo264Context *ctx) {
             stride, ctx->ps->sps->bit_depth_luma);
 }
 
-void transform_luma_16x16(Macroblock *mb, Undo264Context *ctx) {
+void transform_luma_16x16(Macroblock *mb, const Undo264Context *ctx) {
       static int16_t c[4][4];
       inverse_4x4_coeff_scaling_scan(mb->residuals.luma_16x16_DC, c);
 
@@ -234,7 +234,7 @@ void transform_luma_16x16(Macroblock *mb, Undo264Context *ctx) {
 }
 
 
-void transform_chroma(Macroblock *mb, Undo264Context *ctx) {
+void transform_chroma(Macroblock *mb, const Undo264Context *ctx) {
 
       int nbCr4x4 = (mb->mb_height_c/4) * (mb->mb_width_c/4);
 

@@ -92,10 +92,10 @@ void plane_8x8_chroma_pred(uint8_t *dst_cb, uint8_t *dst_cr, int stride, int a_a
 
 
 
-void intra_pred_4x4(Macroblock *mb, int blkIdx, int pred_mode, Undo264Context *ctx);
-void intra_pred_8x8(Macroblock *mb, int idx8x8, int pred_mode, Undo264Context *ctx);
-void intra_pred_16x16(Macroblock *mb, Undo264Context *ctx);
-void intra_chroma_pred(Macroblock *mb, Undo264Context *ctx);
+void intra_pred_4x4(Macroblock *mb, int blkIdx, int pred_mode, const Undo264Context *ctx);
+void intra_pred_8x8(Macroblock *mb, int idx8x8, int pred_mode, const Undo264Context *ctx);
+void intra_pred_16x16(Macroblock *mb, const Undo264Context *ctx);
+void intra_chroma_pred(Macroblock *mb, const Undo264Context *ctx);
 
 
 #endif //TOY_H264_INTRA_H

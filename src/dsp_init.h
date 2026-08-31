@@ -14,10 +14,10 @@ typedef void (*weigh_bi_func)(const uint8_t*, uint8_t*, int, int, int, int, int,
 typedef void (*weigh_single_func)(uint8_t*, int, int, int, int);
 typedef void (*chroma_interpolation_func)(const uint8_t*, uint8_t*, int, int, int);
 typedef void (*qpel_func_array[16])(const uint8_t*, uint8_t*, int16_t*, int);
-typedef void (*transform_4x4_func)(Macroblock*, int, Undo264Context*);
-typedef void (*transform_8x8_func)(Macroblock*, int, Undo264Context*);
-typedef void (*transform_16x16_func)(Macroblock*, Undo264Context*);
-typedef void (*transform_chroma_func)(Macroblock*, Undo264Context*);
+typedef void (*transform_4x4_func)(Macroblock*, int, const Undo264Context*);
+typedef void (*transform_8x8_func)(Macroblock*, int, const Undo264Context*);
+typedef void (*transform_16x16_func)(Macroblock*, const Undo264Context*);
+typedef void (*transform_chroma_func)(Macroblock*, const Undo264Context*);
 
 typedef struct DSPContext {
     weigh_bi_func             weigh_bi_funcs[NUM_BLOCK_SHAPES];

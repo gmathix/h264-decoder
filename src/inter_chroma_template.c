@@ -76,7 +76,7 @@ static always_inline void INTER_CHROMA_FUNC(derive_offsets,
 
 void INTER_CHROMA_FUNC(inter_pred_chroma_single,
                        Macroblock *mb, int pos4x4, MotionVector mv, int list,
-                       uint8_t *scratch_buf, Undo264Context *ctx) {
+                       uint8_t *scratch_buf, const Undo264Context *ctx) {
     Picture *currPic = mb->p_pic;
     Picture *refPic  = ctx->dpb->lists[list][1+mv.ref_idx];
     bool weighted = ctx->wpred.is_active;
@@ -109,7 +109,7 @@ void INTER_CHROMA_FUNC(inter_pred_chroma_single,
 
 void INTER_CHROMA_FUNC(inter_pred_chroma_bi,
                        Macroblock *mb, int pos4x4, MotionVector mvL0, MotionVector mvL1,
-                       uint8_t *scratch_buf, uint8_t *temp_bi_buf, Undo264Context *ctx) {
+                       uint8_t *scratch_buf, uint8_t *temp_bi_buf, const Undo264Context *ctx) {
 
     Picture *currPic = mb->p_pic;
     Picture *ref0  = ctx->dpb->lists[L0][1+mvL0.ref_idx];

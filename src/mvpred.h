@@ -14,7 +14,7 @@
 #include "util/mbutil.h"
 
 
-static always_inline MotionVector get_median_mv(Macroblock *mb, int refIdx, int idx_for_abd, int idx_for_c, int list, Undo264Context *ctx) {
+static always_inline MotionVector get_median_mv(Macroblock *mb, int refIdx, int idx_for_abd, int idx_for_c, int list, const Undo264Context *ctx) {
     MotionVector mv = {refIdx, 0, 0};
 
     Picture *currPic = ctx->curr_pic;
@@ -61,7 +61,7 @@ static always_inline MotionVector get_median_mv(Macroblock *mb, int refIdx, int 
     return mv;
 }
 
-static always_inline void derive_p_skip_mv(Macroblock *mb, Undo264Context *ctx) {
+static always_inline void derive_p_skip_mv(Macroblock *mb, const Undo264Context *ctx) {
     MotionVector mv = {0, 0, 0};
 
     Neighbor a = derive_a_neighbor_4x4(mb, 0, ctx);
@@ -86,7 +86,7 @@ static always_inline void derive_p_skip_mv(Macroblock *mb, Undo264Context *ctx) 
     memset(&ctx->curr_pic->pred_flags[mb->mbAddr][L1][0], false, 4 * sizeof(bool));
 }
 
-static always_inline void derive_16x16_mv(Macroblock *mb, int list, Undo264Context *ctx) {
+static always_inline void derive_16x16_mv(Macroblock *mb, int list, const Undo264Context *ctx) {
     MotionVector mv = get_median_mv(mb, mb->u.pb.ref_idx[list][0], 0, 3, list, ctx);
 
     // add delta and broadcast the MV through the whole 4x4 MV block
@@ -99,7 +99,7 @@ static always_inline void derive_16x16_mv(Macroblock *mb, int list, Undo264Conte
     memset(&ctx->curr_pic->pred_flags[mb->mbAddr][list][0], true, 4 * sizeof(bool));
 }
 
-static always_inline void derive_16x8_part_mv(Macroblock *mb, int partIdx, int list, Undo264Context *ctx) {
+static always_inline void derive_16x8_part_mv(Macroblock *mb, int partIdx, int list, const Undo264Context *ctx) {
     MotionInfo (*motion_info) [16] = ctx->curr_pic->motion_info;
 
     MotionVector mv1 = {mb->u.pb.ref_idx[list][0], 0, 0};
@@ -144,7 +144,7 @@ static always_inline void derive_16x8_part_mv(Macroblock *mb, int partIdx, int l
     }
 }
 
-static always_inline void derive_8x16_part_mv(Macroblock *mb, int partIdx, int list, Undo264Context *ctx) {
+static always_inline void derive_8x16_part_mv(Macroblock *mb, int partIdx, int list, const Undo264Context *ctx) {
     MotionInfo (*motion_info) [16] = ctx->curr_pic->motion_info;
 
 
@@ -200,7 +200,7 @@ static always_inline void derive_8x16_part_mv(Macroblock *mb, int partIdx, int l
     }
 }
 
-static always_inline void derive_sub_8x8_mv(Macroblock *mb, int partIdx, int list, Undo264Context *ctx) {
+static always_inline void derive_sub_8x8_mv(Macroblock *mb, int partIdx, int list, const Undo264Context *ctx) {
     MotionInfo (*motion_info) [16] = ctx->curr_pic->motion_info;
 
     int part_4x4_idx = partIdx/2*8 + (partIdx%2)*2;
@@ -220,7 +220,7 @@ static always_inline void derive_sub_8x8_mv(Macroblock *mb, int partIdx, int lis
     }
 }
 
-static always_inline void derive_sub_8x4_mv(Macroblock *mb, int partIdx, int list, Undo264Context *ctx) {
+static always_inline void derive_sub_8x4_mv(Macroblock *mb, int partIdx, int list, const Undo264Context *ctx) {
     MotionInfo (*motion_info) [16] = ctx->curr_pic->motion_info;
 
     int part_4x4_idx = partIdx/2*8 + (partIdx%2)*2;
@@ -238,7 +238,7 @@ static always_inline void derive_sub_8x4_mv(Macroblock *mb, int partIdx, int lis
     }
 }
 
-static always_inline void derive_sub_4x8_mv(Macroblock *mb, int partIdx, int list, Undo264Context *ctx) {
+static always_inline void derive_sub_4x8_mv(Macroblock *mb, int partIdx, int list, const Undo264Context *ctx) {
     MotionInfo (*motion_info) [16] = ctx->curr_pic->motion_info;
 
     int part_4x4_idx = partIdx/2*8 + (partIdx%2)*2;
@@ -256,7 +256,7 @@ static always_inline void derive_sub_4x8_mv(Macroblock *mb, int partIdx, int lis
     }
 }
 
-static always_inline void derive_sub_4x4_mv(Macroblock *mb, int partIdx, int list, Undo264Context *ctx) {
+static always_inline void derive_sub_4x4_mv(Macroblock *mb, int partIdx, int list, const Undo264Context *ctx) {
     MotionInfo (*motion_info) [16] = ctx->curr_pic->motion_info;
 
     int part_4x4_idx = partIdx/2*8 + (partIdx%2)*2;
@@ -278,7 +278,7 @@ static always_inline void derive_sub_4x4_mv(Macroblock *mb, int partIdx, int lis
  * so this greatly simplifies the colocated motion vector derivation as the colocated picture has identical
  * geometry.
  */
-static always_inline MotionInfo get_colocated_mv(Macroblock *mb, int partIdx, int subPartIdx, int *list, Undo264Context *ctx) {
+static always_inline MotionInfo get_colocated_mv(Macroblock *mb, int partIdx, int subPartIdx, int *list, const Undo264Context *ctx) {
     Picture *currPic = ctx->curr_pic;
     Picture *refPic  = ctx->dpb->lists[L1][1+0];
 
@@ -306,7 +306,7 @@ static always_inline MotionInfo get_colocated_mv(Macroblock *mb, int partIdx, in
     }
 }
 
-static always_inline void derive_spatial_direct_mv(Macroblock *mb, int partIdx, Undo264Context *ctx) {
+static always_inline void derive_spatial_direct_mv(Macroblock *mb, int partIdx, const Undo264Context *ctx) {
     Picture *currPic = ctx->curr_pic;
 
     MotionVector mvL0 = {0, 0, 0};
@@ -404,7 +404,7 @@ static always_inline void derive_spatial_direct_mv(Macroblock *mb, int partIdx, 
 
 }
 
-static always_inline void derive_temporal_direct_mv(Macroblock *mb, int partIdx, Undo264Context *ctx) {
+static always_inline void derive_temporal_direct_mv(Macroblock *mb, int partIdx, const Undo264Context *ctx) {
     Picture *currPic = ctx->curr_pic;
 
     MotionVector mvL0 = {0, 0, 0};
@@ -448,7 +448,7 @@ static always_inline void derive_temporal_direct_mv(Macroblock *mb, int partIdx,
     currPic->pred_flags[mb->mbAddr][L1][partIdx] = 1;
 }
 
-static always_inline void derive_direct_mv(Macroblock *mb, int partIdx, Undo264Context *ctx) {
+static always_inline void derive_direct_mv(Macroblock *mb, int partIdx, const Undo264Context *ctx) {
     if (ctx->current_slice->sh->direct_spatial_mv_pred_flag) {
         derive_spatial_direct_mv(mb, partIdx, ctx);
     } else {
@@ -458,7 +458,7 @@ static always_inline void derive_direct_mv(Macroblock *mb, int partIdx, Undo264C
 
 
 
-static always_inline void derive_8x8_mv(Macroblock *mb, Undo264Context *ctx) {
+static always_inline void derive_8x8_mv(Macroblock *mb, const Undo264Context *ctx) {
     for (int part = 0; part < 4; part++) {
         int subType = mb->u.pb.sub_mb_info[part].type;
 

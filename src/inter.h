@@ -6,15 +6,34 @@
 #define H264_DECODER_INTER_H
 
 
-#include "global.h"
+#include "emmintrin.h"
 
+#include "global.h"
 
 #include "decoder.h"
 #include "slice.h"
 #include "picture.h"
 
+/*
+ * Prefetch a reference block into the cache (all levels), optimized for 64-byte cache lines
+ */
+static always_inline void prefetch_ref_block_luma(Picture *pic, Macroblock *mb, MotionVector mv, int w, int h, int pos4x4) {
+    int stride = pic->widthY;
+    int yStart  = mb->mb_y*16 + (pos4x4 >> 2)*4 + (mv.y >> 2) - 2;
+    int xStartC = _clip3(0, pic->widthY-1, mb->mb_x*16 + (pos4x4 & 3)*4 + (mv.x >> 2) - 2);
 
-static void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1, Undo264Context *ctx) {
+    int boundary64 = (xStartC & 63) + w+5;
+    int nbCacheLines = 1 + (boundary64 >> 6);
+
+    // avoid prefetching the same row multiple times if the mv is pointing outside the picture
+    for (int y = _clip3(0, pic->heightY-1, yStart); y < _clip3(0, pic->heightY-1, yStart + h+5); y++) {
+        for (int line = 0; line < nbCacheLines; line++) {
+            _mm_prefetch(&pic->luma[y*stride + xStartC + line*(64 - (xStartC & 63))], _MM_HINT_T0);
+        }
+    }
+}
+
+static always_inline void derive_pred_weights(int refL0, int refL1, bool predFlagL0, bool predFlagL1, Undo264Context *ctx) {
     Picture *currPic = ctx->curr_pic;
     SliceHeader *sh  = currPic->sh;
     PPS *pps         = sh->pps;

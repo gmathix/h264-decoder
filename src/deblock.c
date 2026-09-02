@@ -51,7 +51,26 @@ const uint8_t treshold_table[3][52] = {
 };
 
 
+int tc0_tables_initialized = 0;
+int8_t tc0_tables[256][52][16] __attribute__((aligned(16)));
 
+void init_tc0_tables(void) {
+    for (int bs0 = 0; bs0 < 4; bs0++) {
+        for (int bs1 = 0; bs1 < 4; bs1++) {
+            for (int bs2 = 0; bs2 < 4; bs2++) {
+                for (int bs3 = 0; bs3 < 4; bs3++) {
+                    for (int indexA = 0; indexA < 52; indexA++) {
+                        int8_t *table = &tc0_tables[(bs0<<6) + (bs1<<4) + (bs2<<2) + bs3][indexA][0];
+                        memset(table +  0, bs0 ? treshold_table[bs0-1][indexA] : (int8_t)-1, 4);
+                        memset(table +  4, bs1 ? treshold_table[bs1-1][indexA] : (int8_t)-1, 4);
+                        memset(table +  8, bs2 ? treshold_table[bs2-1][indexA] : (int8_t)-1, 4);
+                        memset(table + 12, bs3 ? treshold_table[bs3-1][indexA] : (int8_t)-1, 4);
+                    }
+                }
+            }
+        }
+    }
+}
 
 static always_inline bool same_ref_pics(
     const Picture *picL0_0, const Picture *picL1_0,
@@ -119,7 +138,7 @@ always_inline int check_mv(int mbAddr, int mbAddrN, int idx, int idx_n, int idx_
  * @param blkIdx8x8  initial 8x8 block_index in current mb
  * @param blkIdx8x8N initial 8x8 block index in neighbor mb
  */
-always_inline flatten void derive_low_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int blkIdx8x8, int blkIdx8x8N,
+always_inline void derive_low_bS_list(int mbAddr, int mbAddrN, int blkIdx, int blkIdxN, int blkIdx8x8, int blkIdx8x8N,
                         bool vertical, int bS_list[4], const Undo264Context *ctx) {
 
     MacroblockMetadata meta   = ctx->mb_metadata[mbAddr];
@@ -192,7 +211,8 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, const Undo264
 
 
     // make dummy mb just for accessing the neighbors afterward
-    Macroblock *mb = make_mb(mbAddr, ctx);
+    Macroblock *mb = ctx->scratchMb;
+    reset_mb(mb, mbAddr, ctx);
     derive_macroblock_neighbors(mb, sh->first_mb, ctx);
 
 
@@ -225,14 +245,14 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, const Undo264
         derive_alpha_beta(pic, mbAddr, mbAddr - 1, alphaLeft, betaLeft, indexALeft, ctx);
 
         if (IS_INTRA(ctx->mb_metadata[mbAddr-1].mb_type)) {
-            ctx->dsp->deblock_edge_high_bs_luma(luma_base_dst, widthY, 1, alphaLeft[0], betaLeft[0]);
-            ctx->dsp->deblock_edge_high_bs_chroma(cb_base_dst, widthC, 1, alphaLeft[1], betaLeft[1]);
-            ctx->dsp->deblock_edge_high_bs_chroma(cr_base_dst, widthC, 1, alphaLeft[2], betaLeft[2]);
+            ctx->dsp->deblock_edge_strong_luma_v(luma_base_dst, widthY, alphaLeft[0], betaLeft[0]);
+            ctx->dsp->deblock_edge_strong_chroma_v(cb_base_dst, widthC, alphaLeft[1], betaLeft[1]);
+            ctx->dsp->deblock_edge_strong_chroma_v(cr_base_dst, widthC, alphaLeft[2], betaLeft[2]);
         } else {
             derive_low_bS_list(mbAddr, mbAddr - 1, 0, 3, 0, 1, true, bS_list, ctx);
-            ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst, widthY, 1, alphaLeft[0], betaLeft[0], indexALeft[0], bS_list);
-            ctx->dsp->deblock_edge_low_bs_chroma(cb_base_dst, widthC, 1, alphaLeft[1], betaLeft[1], indexALeft[1], bS_list);
-            ctx->dsp->deblock_edge_low_bs_chroma(cr_base_dst, widthC, 1, alphaLeft[2], betaLeft[2], indexALeft[2], bS_list);
+            ctx->dsp->deblock_edge_weak_luma_v(luma_base_dst, widthY, alphaLeft[0], betaLeft[0], indexALeft[0], bS_list);
+            ctx->dsp->deblock_edge_weak_chroma_v(cb_base_dst, widthC, alphaLeft[1], betaLeft[1], indexALeft[1], bS_list);
+            ctx->dsp->deblock_edge_weak_chroma_v(cr_base_dst, widthC, alphaLeft[2], betaLeft[2], indexALeft[2], bS_list);
         }
     }
     if (filterInternalEdges) {
@@ -241,19 +261,19 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, const Undo264
         // x = 4
         if (!mb8x8) {
             derive_low_bS_list(mbAddr, mbAddr, 1, 0, 0, 0, true, bS_list, ctx);
-            ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst + 4, widthY, 1, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
+            ctx->dsp->deblock_edge_weak_luma_v(luma_base_dst + 4, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
         }
 
         // x = 8
         derive_low_bS_list(mbAddr, mbAddr, 2, 1, 1, 0, true, bS_list, ctx);
-        ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst + 8, widthY, 1, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
-        ctx->dsp->deblock_edge_low_bs_chroma(cb_base_dst + 4, widthC, 1, alphaIn[1], betaIn[1], indexAIn[1], bS_list);
-        ctx->dsp->deblock_edge_low_bs_chroma(cr_base_dst + 4, widthC, 1, alphaIn[2], betaIn[2], indexAIn[2], bS_list);
+        ctx->dsp->deblock_edge_weak_luma_v(luma_base_dst + 8, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
+        ctx->dsp->deblock_edge_weak_chroma_v(cb_base_dst + 4, widthC, alphaIn[1], betaIn[1], indexAIn[1], bS_list);
+        ctx->dsp->deblock_edge_weak_chroma_v(cr_base_dst + 4, widthC, alphaIn[2], betaIn[2], indexAIn[2], bS_list);
 
         // x = 12
         if (!mb8x8) {
             derive_low_bS_list(mbAddr, mbAddr, 3, 2, 1, 1, true, bS_list, ctx);
-            ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst + 12, widthY, 1, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
+            ctx->dsp->deblock_edge_weak_luma_v(luma_base_dst + 12, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
         }
     }
 
@@ -263,44 +283,43 @@ void deblock_macroblock(Picture *pic, SliceHeader *sh, int mbAddr, const Undo264
         derive_alpha_beta(pic, mbAddr, mbAddr - mbWidth, alphaTop, betaTop, indexATop, ctx);
 
         if (IS_INTRA(ctx->mb_metadata[mbAddr - mbWidth].mb_type)) {
-            ctx->dsp->deblock_edge_high_bs_luma(luma_base_dst, 1, widthY, alphaTop[0], betaTop[0]);
-            ctx->dsp->deblock_edge_high_bs_chroma(cb_base_dst, 1, widthC, alphaTop[1], betaTop[1]);
-            ctx->dsp->deblock_edge_high_bs_chroma(cr_base_dst, 1, widthC, alphaTop[2], betaTop[2]);
+            ctx->dsp->deblock_edge_strong_luma_h(luma_base_dst, widthY, alphaTop[0], betaTop[0]);
+            ctx->dsp->deblock_edge_strong_chroma_h(cb_base_dst, widthC, alphaTop[1], betaTop[1]);
+            ctx->dsp->deblock_edge_strong_chroma_h(cr_base_dst, widthC, alphaTop[2], betaTop[2]);
         } else {
             derive_low_bS_list(mbAddr, mbAddr - mbWidth, 0, 12, 0, 2, false, bS_list, ctx);
-            ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst, 1, widthY, alphaTop[0], betaTop[0], indexATop[0], bS_list);
-            ctx->dsp->deblock_edge_low_bs_chroma(cb_base_dst, 1, widthC, alphaTop[1], betaTop[1], indexATop[1], bS_list);
-            ctx->dsp->deblock_edge_low_bs_chroma(cr_base_dst, 1, widthC, alphaTop[2], betaTop[2], indexATop[2], bS_list);
+            ctx->dsp->deblock_edge_weak_luma_h(luma_base_dst, widthY, alphaTop[0], betaTop[0], indexATop[0], bS_list);
+            ctx->dsp->deblock_edge_weak_chroma_h(cb_base_dst, widthC, alphaTop[1], betaTop[1], indexATop[1], bS_list);
+            ctx->dsp->deblock_edge_weak_chroma_h(cr_base_dst, widthC, alphaTop[2], betaTop[2], indexATop[2], bS_list);
         }
     }
     if (filterInternalEdges) {
         // y = 4
         if (!mb8x8) {
             derive_low_bS_list(mbAddr, mbAddr, 4, 0, 0, 0, false, bS_list, ctx);
-            ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst + 4*widthY, 1, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
+            ctx->dsp->deblock_edge_weak_luma_h(luma_base_dst + 4*widthY, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
         }
 
         // y = 8
         derive_low_bS_list(mbAddr, mbAddr, 8, 4, 2, 0, false, bS_list, ctx);
-        ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst + 8*widthY, 1, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
-        ctx->dsp->deblock_edge_low_bs_chroma(cb_base_dst + 4*widthC, 1, widthC, alphaIn[1], betaIn[1], indexAIn[1], bS_list);
-        ctx->dsp->deblock_edge_low_bs_chroma(cr_base_dst + 4*widthC, 1, widthC, alphaIn[2], betaIn[2], indexAIn[2], bS_list);
+        ctx->dsp->deblock_edge_weak_luma_h(luma_base_dst + 8*widthY, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
+        ctx->dsp->deblock_edge_weak_chroma_h(cb_base_dst + 4*widthC, widthC, alphaIn[1], betaIn[1], indexAIn[1], bS_list);
+        ctx->dsp->deblock_edge_weak_chroma_h(cr_base_dst + 4*widthC, widthC, alphaIn[2], betaIn[2], indexAIn[2], bS_list);
 
         // y = 12
         if (!mb8x8) {
             derive_low_bS_list(mbAddr, mbAddr, 12, 8, 2, 2, false, bS_list, ctx);
-            ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst + 12*widthY, 1, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
+            ctx->dsp->deblock_edge_weak_luma_h(luma_base_dst + 12*widthY, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
         }
     }
-
-    free(mb);
 }
 
 void deblock_macroblock_intra(Picture *pic, SliceHeader *sh, int mbAddr, const Undo264Context *ctx) {
     SPS *sps = sh->sps;
 
     // make dummy mb just for accessing the neighbors afterward
-    Macroblock *mb = make_mb(mbAddr, ctx);
+    Macroblock *mb = ctx->scratchMb;
+    reset_mb(mb, mbAddr, ctx);
     derive_macroblock_neighbors(mb, sh->first_mb, ctx);
 
 
@@ -333,26 +352,26 @@ void deblock_macroblock_intra(Picture *pic, SliceHeader *sh, int mbAddr, const U
         // x = 0
         derive_alpha_beta(pic, mbAddr, mbAddr - 1, alphaLeft, betaLeft, indexALeft, ctx);
 
-        ctx->dsp->deblock_edge_high_bs_luma(luma_base_dst, widthY, 1, alphaLeft[0], betaLeft[0]);
-        ctx->dsp->deblock_edge_high_bs_chroma(cb_base_dst, widthC, 1, alphaLeft[1], betaLeft[1]);
-        ctx->dsp->deblock_edge_high_bs_chroma(cr_base_dst, widthC, 1, alphaLeft[2], betaLeft[2]);
+        ctx->dsp->deblock_edge_strong_luma_v(luma_base_dst, widthY, alphaLeft[0], betaLeft[0]);
+        ctx->dsp->deblock_edge_strong_chroma_v(cb_base_dst, widthC, alphaLeft[1], betaLeft[1]);
+        ctx->dsp->deblock_edge_strong_chroma_v(cr_base_dst, widthC, alphaLeft[2], betaLeft[2]);
     }
     if (filterInternalEdges) {
         derive_alpha_beta(pic, mbAddr, mbAddr, alphaIn, betaIn, indexAIn, ctx);
 
         // x = 4
         if (!mb8x8) {
-            ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst + 4, widthY, 1, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
+            ctx->dsp->deblock_edge_weak_luma_v(luma_base_dst + 4, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
         }
 
         // x = 8
-        ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst + 8, widthY, 1, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
-        ctx->dsp->deblock_edge_low_bs_chroma(cb_base_dst + 4, widthC, 1, alphaIn[1], betaIn[1], indexAIn[1], bS_list);
-        ctx->dsp->deblock_edge_low_bs_chroma(cr_base_dst + 4, widthC, 1, alphaIn[2], betaIn[2], indexAIn[2], bS_list);
+        ctx->dsp->deblock_edge_weak_luma_v(luma_base_dst + 8, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
+        ctx->dsp->deblock_edge_weak_chroma_v(cb_base_dst + 4, widthC, alphaIn[1], betaIn[1], indexAIn[1], bS_list);
+        ctx->dsp->deblock_edge_weak_chroma_v(cr_base_dst + 4, widthC, alphaIn[2], betaIn[2], indexAIn[2], bS_list);
 
         // x = 12
         if (!mb8x8) {
-            ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst + 12, widthY, 1, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
+            ctx->dsp->deblock_edge_weak_luma_v(luma_base_dst + 12, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
         }
     }
 
@@ -361,31 +380,33 @@ void deblock_macroblock_intra(Picture *pic, SliceHeader *sh, int mbAddr, const U
         // y = 0
         derive_alpha_beta(pic, mbAddr, mbAddr - mbWidth, alphaTop, betaTop, indexATop, ctx);
 
-        ctx->dsp->deblock_edge_high_bs_luma(luma_base_dst, 1, widthY, alphaTop[0], betaTop[0]);
-        ctx->dsp->deblock_edge_high_bs_chroma(cb_base_dst, 1, widthC, alphaTop[1], betaTop[1]);
-        ctx->dsp->deblock_edge_high_bs_chroma(cr_base_dst, 1, widthC, alphaTop[2], betaTop[2]);
+        ctx->dsp->deblock_edge_strong_luma_h(luma_base_dst, widthY, alphaTop[0], betaTop[0]);
+        ctx->dsp->deblock_edge_strong_chroma_h(cb_base_dst, widthC, alphaTop[1], betaTop[1]);
+        ctx->dsp->deblock_edge_strong_chroma_h(cr_base_dst, widthC, alphaTop[2], betaTop[2]);
     }
     if (filterInternalEdges) {
         // y = 4
         if (!mb8x8) {
-            ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst + 4*widthY, 1, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
+            ctx->dsp->deblock_edge_weak_luma_h(luma_base_dst + 4*widthY, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
         }
 
         // y = 8
-        ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst + 8*widthY, 1, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
-        ctx->dsp->deblock_edge_low_bs_chroma(cb_base_dst + 4*widthC, 1, widthC, alphaIn[1], betaIn[1], indexAIn[1], bS_list);
-        ctx->dsp->deblock_edge_low_bs_chroma(cr_base_dst + 4*widthC, 1, widthC, alphaIn[2], betaIn[2], indexAIn[2], bS_list);
+        ctx->dsp->deblock_edge_weak_luma_h(luma_base_dst + 8*widthY, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
+        ctx->dsp->deblock_edge_weak_chroma_h(cb_base_dst + 4*widthC, widthC, alphaIn[1], betaIn[1], indexAIn[1], bS_list);
+        ctx->dsp->deblock_edge_weak_chroma_h(cr_base_dst + 4*widthC, widthC, alphaIn[2], betaIn[2], indexAIn[2], bS_list);
 
         // y = 12
         if (!mb8x8) {
-            ctx->dsp->deblock_edge_low_bs_luma(luma_base_dst + 12*widthY, 1, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
+            ctx->dsp->deblock_edge_weak_luma_h(luma_base_dst + 12*widthY, widthY, alphaIn[0], betaIn[0], indexAIn[0], bS_list);
         }
     }
-
-    free(mb);
 }
 
 void deblock_slice(Picture *pic, SliceHeader *sh, const Undo264Context *ctx) {
+    if (!tc0_tables_initialized) {
+        init_tc0_tables();
+        tc0_tables_initialized = 1;
+    }
     for (unsigned i = sh->first_mb; i < sh->first_mb + ctx->current_slice->num_mbs; i++) {
         if (IS_INTRA(ctx->mb_metadata[i].mb_type)) {
             deblock_macroblock_intra(pic, sh, i, ctx);

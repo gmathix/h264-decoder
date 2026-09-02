@@ -78,6 +78,7 @@ Undo264Context *decoder_init(const uint8_t *data, size_t size, char *out_path, c
     ctx->pic_pool_initialized = false;
 
 
+    ctx->scratchMb = calloc(1, sizeof(Macroblock));
     ctx->currMb = calloc(1, sizeof(Macroblock));
     ctx->prevQPY = 0;
 

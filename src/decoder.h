@@ -110,7 +110,7 @@ typedef struct Undo264Context {
     int16_t *qpel_pass_buffers[4];
 
 
-    struct Macroblock *prevMb;
+    struct Macroblock *scratchMb;
     struct Macroblock *currMb;
     int8_t prevQPY;
 

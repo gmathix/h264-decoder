@@ -22,6 +22,7 @@
 #undef HEIGHT
 
 #include "sse4/transform_sse4.c"
+#include "sse4/deblock_edge_sse4.c"
 
 
 static void dsp_init_x86(DSPContext *dsp) {
@@ -62,5 +63,10 @@ static void dsp_init_x86(DSPContext *dsp) {
         dsp->transform_8x8    = transform_luma_8x8_sse;
         dsp->transform_16x16  = transform_luma_16x16_sse;
         dsp->transform_chroma = transform_chroma_sse;
+
+        dsp->deblock_edge_weak_luma_h = deblock_edge_weak_luma_h_sse4;
+        dsp->deblock_edge_weak_luma_v = deblock_edge_weak_luma_v_sse4;
+        dsp->deblock_edge_strong_luma_h = deblock_edge_strong_luma_h_sse4;
+        dsp->deblock_edge_strong_luma_v = deblock_edge_strong_luma_v_sse4;
     }
 }

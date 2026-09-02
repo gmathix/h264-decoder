@@ -82,14 +82,14 @@ static always_inline strided_load_t load_strided_16(uint8_t *src, int stride) {
     TRANSPOSE8x8(l4, l5, l6, l7)
 
     return (strided_load_t) {
-        /*p2*/_mm_unpacklo_epi64(l0, l4),
-        /*p1*/_mm_unpackhi_epi64(l0, l4),
-        /*p0*/_mm_unpacklo_epi64(l1, l5),
-        /*q0*/_mm_unpackhi_epi64(l1, l5),
-        /*q1*/_mm_unpacklo_epi64(l2, l6),
-        /*q2*/_mm_unpackhi_epi64(l2, l6),
-        /*l3*/_mm_unpacklo_epi64(l3, l7),
-        /*q3*/_mm_unpackhi_epi64(l3, l7),
+    _mm_unpacklo_epi64(l0, l4),
+    _mm_unpackhi_epi64(l0, l4),
+    _mm_unpacklo_epi64(l1, l5),
+    _mm_unpackhi_epi64(l1, l5),
+    _mm_unpacklo_epi64(l2, l6),
+    _mm_unpackhi_epi64(l2, l6),
+    _mm_unpacklo_epi64(l3, l7),
+    _mm_unpackhi_epi64(l3, l7),
     };
 }
 
@@ -393,12 +393,12 @@ void deblock_edge_weak_luma_v_sse4(uint8_t *dst, int stride, int alpha, int beta
         alpha_q_mask                                                                                 \
     );                                                                                               \
                                                                                                      \
-    _mm_storeu_si128(&p0, p0_res);                                                                   \
-    _mm_storeu_si128(&p1, p1_res);                                                                   \
-    _mm_storeu_si128(&p2, p2_res);                                                                   \
-    _mm_storeu_si128(&q0, q0_res);                                                                   \
-    _mm_storeu_si128(&q1, q1_res);                                                                   \
-    _mm_storeu_si128(&q2, q2_res);
+    p0 = p0_res;                                                                                     \
+    p1 = p1_res;                                                                                     \
+    p2 = p2_res;                                                                                     \
+    q0 = q0_res;                                                                                     \
+    q1 = q1_res;                                                                                     \
+    q2 = q2_res;
 
 void deblock_edge_strong_luma_h_sse4(uint8_t *dst, int stride, int alpha, int beta) {
     __m128i zero_reg = _mm_setzero_si128();

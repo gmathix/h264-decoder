@@ -297,16 +297,6 @@ static always_inline void derive_macroblock_neighbors(Macroblock *mb, int first_
         }
 }
 
-static always_inline Macroblock *make_mb(int mbAddr, const Undo264Context *ctx) {
-    Macroblock *mb = calloc(1, sizeof(Macroblock));
-
-    mb->mbAddr = mbAddr;
-    mb->mb_y   = mbAddr / ctx->ps->sps->pic_width_in_mbs;
-    mb->mb_x   = mbAddr % ctx->ps->sps->pic_width_in_mbs;
-
-    return mb;
-}
-
 static always_inline void reset_mb(Macroblock *mb, int mbAddr, const Undo264Context *ctx) {
     memset(&mb->u, 0, sizeof(mb->u));
 

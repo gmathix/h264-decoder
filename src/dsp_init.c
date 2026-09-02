@@ -60,6 +60,7 @@
 
 
 #include "dsp/transform.c"
+#include "dsp/deblock_edge.c"
 
 
 // scalar versions by default
@@ -106,6 +107,15 @@ static void dsp_init_c(DSPContext *dsp) {
     dsp->transform_8x8    = transform_luma_8x8;
     dsp->transform_16x16  = transform_luma_16x16;
     dsp->transform_chroma = transform_chroma;
+
+    dsp->deblock_edge_weak_luma_h = deblock_edge_weak_luma_h;
+    dsp->deblock_edge_weak_luma_v = deblock_edge_weak_luma_v;
+    dsp->deblock_edge_strong_luma_h = deblock_edge_strong_luma_h;
+    dsp->deblock_edge_strong_luma_v = deblock_edge_strong_luma_v;
+    dsp->deblock_edge_weak_chroma_h = deblock_edge_weak_chroma_h;
+    dsp->deblock_edge_weak_chroma_v = deblock_edge_weak_chroma_v;
+    dsp->deblock_edge_strong_chroma_h = deblock_edge_strong_chroma_h;
+    dsp->deblock_edge_strong_chroma_v = deblock_edge_strong_chroma_v;
 }
 
 

@@ -10,6 +10,8 @@
 #include <stdio.h>
 
 
+#define ABS(x) (x >= 0 ? (x) : -(x))
+#define CLIP3(min, max, x) x > max ? max : x < min ? min : x
 
 static always_inline int32_t  _abs(int32_t x)           { return x >= 0 ? x : -x; }
 static always_inline int32_t _min(int32_t x, int32_t y) { return x <= y ? x : y; }

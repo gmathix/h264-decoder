@@ -64,9 +64,13 @@ static void dsp_init_x86(DSPContext *dsp) {
         dsp->transform_16x16  = transform_luma_16x16_sse;
         dsp->transform_chroma = transform_chroma_sse;
 
-        dsp->deblock_edge_weak_luma_h = deblock_edge_weak_luma_h_sse4;
-        dsp->deblock_edge_weak_luma_v = deblock_edge_weak_luma_v_sse4;
-        dsp->deblock_edge_strong_luma_h = deblock_edge_strong_luma_h_sse4;
-        dsp->deblock_edge_strong_luma_v = deblock_edge_strong_luma_v_sse4;
+        dsp->deblock_edge_weak_luma_h     = deblock_edge_weak_luma_h_sse4;
+        dsp->deblock_edge_weak_luma_v     = deblock_edge_weak_luma_v_sse4;
+        dsp->deblock_edge_strong_luma_h   = deblock_edge_strong_luma_h_sse4;
+        dsp->deblock_edge_strong_luma_v   = deblock_edge_strong_luma_v_sse4;
+        dsp->deblock_edge_weak_chroma_h   = deblock_edge_weak_chroma_h_sse4;
+        dsp->deblock_edge_weak_chroma_v   = deblock_edge_weak_chroma_v_sse4;
+        dsp->deblock_edge_strong_chroma_h = deblock_edge_strong_chroma_h_sse4;
+        dsp->deblock_edge_strong_chroma_v = deblock_edge_strong_chroma_v_sse4;
     }
 }

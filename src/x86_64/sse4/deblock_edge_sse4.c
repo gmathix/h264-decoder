@@ -16,6 +16,7 @@
 
 // _mm_subs_epu8 saturates to 0 instead of wrapping, so whatever direction is positive is retained
 #define ABS_DIFF_epi8(r0, r1) _mm_or_si128(_mm_subs_epu8(r0, r1), _mm_subs_epu8(r1, r0))
+#define ABS_DIFF_epi16(r0, r1) _mm_or_si128(_mm_subs_epu16(r0, r1), _mm_subs_epu16(r1, r0))
 
 // 0xFF where r < thresh, else 0
 // #define THRESH_MASK_epu8(r, thresh) _mm_cmpeq_epi8(_mm_subs_epu8(r, _mm_set1_epi8(thresh-1)), _mm_setzero_si128())
@@ -26,6 +27,9 @@
 
 #define CLIP3_epi16(min, max, r) _mm_max_epi16(min, _mm_min_epi16(max, r))
 
+#define add16(a, b) _mm_add_epi16(a, b)
+#define srai16(a, b) _mm_srai_epi16(a, b)
+#define mullo16(a, b) _mm_mullo_epi16(a, b)
 
 
 #define TRANSPOSE8x8(l0, l1, l2, l3) do {                                                                \
@@ -93,11 +97,11 @@ static always_inline strided_load_t load_strided_16(uint8_t *src, int stride) {
     };
 }
 
-static always_inline void store_strided_16(uint8_t *dst, int stride, strided_load_t rows) {
-    __m128i l0 = _mm_unpacklo_epi64(rows.c0, rows.c1);
-    __m128i l1 = _mm_unpacklo_epi64(rows.c2, rows.c3);
-    __m128i l2 = _mm_unpacklo_epi64(rows.c4, rows.c5);
-    __m128i l3 = _mm_unpacklo_epi64(rows.c6, rows.c7);
+static always_inline void store_strided_16(uint8_t *dst, int stride, strided_load_t store) {
+    __m128i l0 = _mm_unpacklo_epi64(store.c0, store.c1);
+    __m128i l1 = _mm_unpacklo_epi64(store.c2, store.c3);
+    __m128i l2 = _mm_unpacklo_epi64(store.c4, store.c5);
+    __m128i l3 = _mm_unpacklo_epi64(store.c6, store.c7);
 
     TRANSPOSE8x8(l0, l1, l2, l3)
     _mm_storeu_si64(&dst[0*stride], _mm_unpacklo_epi64(l0, l0));
@@ -109,10 +113,10 @@ static always_inline void store_strided_16(uint8_t *dst, int stride, strided_loa
     _mm_storeu_si64(&dst[6*stride], _mm_unpacklo_epi64(l3, l3));
     _mm_storeu_si64(&dst[7*stride], _mm_unpackhi_epi64(l3, l3));
 
-    l0 = _mm_unpackhi_epi64(rows.c0, rows.c1);
-    l1 = _mm_unpackhi_epi64(rows.c2, rows.c3);
-    l2 = _mm_unpackhi_epi64(rows.c4, rows.c5);
-    l3 = _mm_unpackhi_epi64(rows.c6, rows.c7);
+    l0 = _mm_unpackhi_epi64(store.c0, store.c1);
+    l1 = _mm_unpackhi_epi64(store.c2, store.c3);
+    l2 = _mm_unpackhi_epi64(store.c4, store.c5);
+    l3 = _mm_unpackhi_epi64(store.c6, store.c7);
 
     TRANSPOSE8x8(l0, l1, l2, l3);
     _mm_storeu_si64(&dst[ 8*stride], _mm_unpacklo_epi64(l0, l0));
@@ -125,8 +129,45 @@ static always_inline void store_strided_16(uint8_t *dst, int stride, strided_loa
     _mm_storeu_si64(&dst[15*stride], _mm_unpackhi_epi64(l3, l3));
 }
 
+static always_inline strided_load_t load_strided_8(uint8_t *src, int stride) {
+    __m128i zero_reg = _mm_setzero_si128();
+    __m128i l0 = _mm_unpacklo_epi64(_mm_loadu_si64(&src[0*stride]), _mm_loadu_si64(&src[1*stride]));
+    __m128i l1 = _mm_unpacklo_epi64(_mm_loadu_si64(&src[2*stride]), _mm_loadu_si64(&src[3*stride]));
+    __m128i l2 = _mm_unpacklo_epi64(_mm_loadu_si64(&src[4*stride]), _mm_loadu_si64(&src[5*stride]));
+    __m128i l3 = _mm_unpacklo_epi64(_mm_loadu_si64(&src[6*stride]), _mm_loadu_si64(&src[7*stride]));
 
+    TRANSPOSE8x8(l0, l1, l2, l3)
 
+    // directly convert to epi16
+    return (strided_load_t) {
+        _mm_unpacklo_epi8(l0, zero_reg),
+        _mm_unpackhi_epi8(l0, zero_reg),
+        _mm_unpacklo_epi8(l1, zero_reg),
+        _mm_unpackhi_epi8(l1, zero_reg),
+        _mm_unpacklo_epi8(l2, zero_reg),
+        _mm_unpackhi_epi8(l2, zero_reg),
+        _mm_unpacklo_epi8(l3, zero_reg),
+        _mm_unpackhi_epi8(l3, zero_reg),
+    };
+}
+
+static always_inline void store_strided_8(uint8_t *dst, int stride, strided_load_t store) {
+    __m128i zero_reg = _mm_setzero_si128();
+    __m128i l0 = _mm_unpacklo_epi64(_mm_packus_epi16(store.c0, zero_reg), _mm_packus_epi16(store.c1, zero_reg));
+    __m128i l1 = _mm_unpacklo_epi64(_mm_packus_epi16(store.c2, zero_reg), _mm_packus_epi16(store.c3, zero_reg));
+    __m128i l2 = _mm_unpacklo_epi64(_mm_packus_epi16(store.c4, zero_reg), _mm_packus_epi16(store.c5, zero_reg));
+    __m128i l3 = _mm_unpacklo_epi64(_mm_packus_epi16(store.c6, zero_reg), _mm_packus_epi16(store.c7, zero_reg));
+
+    TRANSPOSE8x8(l0, l1, l2, l3)
+    _mm_storeu_si64(&dst[0*stride], l0);
+    _mm_storeu_si64(&dst[1*stride], _mm_unpackhi_epi64(l0, zero_reg));
+    _mm_storeu_si64(&dst[2*stride], l1);
+    _mm_storeu_si64(&dst[3*stride], _mm_unpackhi_epi64(l1, zero_reg));
+    _mm_storeu_si64(&dst[4*stride], l2);
+    _mm_storeu_si64(&dst[5*stride], _mm_unpackhi_epi64(l2, zero_reg));
+    _mm_storeu_si64(&dst[6*stride], l3);
+    _mm_storeu_si64(&dst[7*stride], _mm_unpackhi_epi64(l3, zero_reg));
+}
 
 
 #define HELPER_DEBLOCK_8_PIX_WEAK_LUMA(p0, p1, p2, q0, q1, q2, aP, aQ, threshold, threshold_neg, tc0, tc0_neg) \
@@ -347,10 +388,6 @@ void deblock_edge_weak_luma_v_sse4(uint8_t *dst, int stride, int alpha, int beta
 
 
 
-
-
-#define add16(a, b) _mm_add_epi16(a, b)
-#define srai16(a, b) _mm_srai_epi16(a, b)
 #define HELPER_DEBLOCK_8_PIX_STRONG_LUMA(p0, p1, p2, p3, q0, q1, q2, q3, alpha_p_mask, alpha_q_mask) \
     p0m2 = _mm_mullo_epi16(p0, reg_2);                                                               \
     p1m2 = _mm_mullo_epi16(p1, reg_2);                                                               \
@@ -586,3 +623,129 @@ void deblock_edge_strong_luma_v_sse4(uint8_t *dst, int stride, int alpha, int be
     store_strided_16(&dst[-4], stride, store);
 }
 
+
+
+
+void deblock_edge_weak_chroma_h_sse4(uint8_t *dst, int stride, int alpha, int beta, int indexA, int *bS) {
+    __m128i zero_reg = _mm_setzero_si128();
+
+    __m128i p0 = _mm_cvtepu8_epi16(_mm_loadu_si64(&dst[-1*stride]));
+    __m128i p1 = _mm_cvtepu8_epi16(_mm_loadu_si64(&dst[-2*stride]));
+    __m128i q0 = _mm_cvtepu8_epi16(_mm_loadu_si64(&dst[ 0*stride]));
+    __m128i q1 = _mm_cvtepu8_epi16(_mm_loadu_si64(&dst[ 1*stride]));
+
+    __m128i tc0 = _mm_load_si128((__m128i*)get_tc0_table(bS, indexA));
+    tc0 = _mm_and_si128(tc0, _mm_set_epi8(0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF,
+                                                0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF));
+    __m128i skip = _mm_cmplt_epi16(tc0, _mm_set1_epi16(0x0080));
+
+    __m128i alpha_reg = _mm_set1_epi16(alpha);
+    __m128i beta_reg = _mm_set1_epi16(beta);
+
+    __m128i p0q0_mask = _mm_cmplt_epi16(ABS_DIFF_epi16(p0, q0), alpha_reg);
+    __m128i p1p0_mask = _mm_cmplt_epi16(ABS_DIFF_epi16(p1, p0), beta_reg);
+    __m128i q1q0_mask = _mm_cmplt_epi16(ABS_DIFF_epi16(q1, q0), beta_reg);
+    __m128i filter_cond = _mm_and_si128(p0q0_mask, _mm_and_si128(p1p0_mask, _mm_and_si128(q1q0_mask, skip)));
+
+    __m128i treshold = _mm_add_epi16(tc0, _mm_set1_epi16(1));
+    __m128i delta = _mm_mullo_epi16(_mm_sub_epi16(q0, p0), _mm_set1_epi16(1 << 2));
+    delta = _mm_add_epi16(delta, _mm_add_epi16(_mm_sub_epi16(p1, q1), _mm_set1_epi16(4)));
+    delta = CLIP3_epi16(_mm_sub_epi16(zero_reg, treshold), treshold, _mm_srai_epi16(delta, 3));
+
+    p0 = _mm_blendv_epi8(p0, _mm_add_epi16(p0, delta), filter_cond);
+    q0 = _mm_blendv_epi8(q0, _mm_sub_epi16(q0, delta), filter_cond);
+
+    _mm_storeu_si64(&dst[-1*stride], _mm_packus_epi16(p0, zero_reg));
+    _mm_storeu_si64(&dst[ 0*stride], _mm_packus_epi16(q0, zero_reg));
+}
+
+void deblock_edge_weak_chroma_v_sse4(uint8_t *dst, int stride, int alpha, int beta, int indexA, int *bS) {
+    __m128i zero_reg = _mm_setzero_si128();
+
+    __m128i p0, p1, q0, q1;
+    strided_load_t load = load_strided_8(&dst[-2], stride);
+    p1 = load.c0;
+    p0 = load.c1;
+    q0 = load.c2;
+    q1 = load.c3;
+
+    __m128i tc0 = _mm_load_si128((__m128i*)get_tc0_table(bS, indexA));
+    tc0 = _mm_and_si128(tc0, _mm_set_epi8(0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF,
+                                                0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF, 0x00, 0xFF));
+    __m128i skip = _mm_cmplt_epi16(tc0, _mm_set1_epi16(0x0080));
+
+    __m128i alpha_reg = _mm_set1_epi16(alpha);
+    __m128i beta_reg = _mm_set1_epi16(beta);
+
+    __m128i p0q0_mask = _mm_cmplt_epi16(ABS_DIFF_epi16(p0, q0), alpha_reg);
+    __m128i p1p0_mask = _mm_cmplt_epi16(ABS_DIFF_epi16(p1, p0), beta_reg);
+    __m128i q1q0_mask = _mm_cmplt_epi16(ABS_DIFF_epi16(q1, q0), beta_reg);
+    __m128i filter_cond = _mm_and_si128(p0q0_mask, _mm_and_si128(p1p0_mask, _mm_and_si128(q1q0_mask, skip)));
+
+    __m128i treshold = _mm_add_epi16(tc0, _mm_set1_epi16(1));
+    __m128i delta = _mm_mullo_epi16(_mm_sub_epi16(q0, p0), _mm_set1_epi16(1 << 2));
+    delta = _mm_add_epi16(delta, _mm_add_epi16(_mm_sub_epi16(p1, q1), _mm_set1_epi16(4)));
+    delta = CLIP3_epi16(_mm_sub_epi16(zero_reg, treshold), treshold, _mm_srai_epi16(delta, 3));
+
+    p0 = _mm_blendv_epi8(p0, _mm_add_epi16(p0, delta), filter_cond);
+    q0 = _mm_blendv_epi8(q0, _mm_sub_epi16(q0, delta), filter_cond);
+
+    strided_load_t store = (strided_load_t) {p1, p0, q0, q1, load.c4, load.c5, load.c6, load.c7};
+    store_strided_8(&dst[-2], stride, store);
+}
+
+void deblock_edge_strong_chroma_h_sse4(uint8_t *dst, int stride, int alpha, int beta) {
+    __m128i zero_reg = _mm_setzero_si128();
+
+    __m128i p0 = _mm_unpacklo_epi8(_mm_loadu_si64(&dst[-1*stride]), zero_reg);
+    __m128i p1 = _mm_unpacklo_epi8(_mm_loadu_si64(&dst[-2*stride]), zero_reg);
+    __m128i q0 = _mm_unpacklo_epi8(_mm_loadu_si64(&dst[ 0*stride]), zero_reg);
+    __m128i q1 = _mm_unpacklo_epi8(_mm_loadu_si64(&dst[ 1*stride]), zero_reg);
+
+    __m128i alpha_reg = _mm_set1_epi16(alpha);
+    __m128i beta_reg = _mm_set1_epi16(beta);
+
+    __m128i p0q0_mask = _mm_cmplt_epi16(ABS_DIFF_epi16(p0, q0), alpha_reg);
+    __m128i p1p0_mask = _mm_cmplt_epi16(ABS_DIFF_epi16(p1, p0), beta_reg);
+    __m128i q1q0_mask = _mm_cmplt_epi16(ABS_DIFF_epi16(q1, q0), beta_reg);
+    __m128i filter_cond = _mm_and_si128(p0q0_mask, _mm_and_si128(p1p0_mask, q1q0_mask));
+
+    __m128i reg_2 = _mm_set1_epi16(2);
+    __m128i p0_res = srai16(add16(mullo16(reg_2,p1), add16(p0, add16(q1, reg_2))), 2);
+    __m128i q0_res = srai16(add16(mullo16(reg_2,q1), add16(q0, add16(p1, reg_2))), 2);
+
+    p0 = _mm_blendv_epi8(p0, p0_res, filter_cond);
+    q0 = _mm_blendv_epi8(q0, q0_res, filter_cond);
+
+    _mm_storeu_si64(&dst[-1*stride], _mm_packus_epi16(p0, zero_reg));
+    _mm_storeu_si64(&dst[ 0*stride], _mm_packus_epi16(q0, zero_reg));
+}
+
+void deblock_edge_strong_chroma_v_sse4(uint8_t *dst, int stride, int alpha, int beta) {
+    __m128i zero_reg = _mm_setzero_si128();
+
+    __m128i p0, p1, q0, q1;
+    strided_load_t load = load_strided_8(&dst[-2], stride);
+    p1 = load.c0;
+    p0 = load.c1;
+    q0 = load.c2;
+    q1 = load.c3;
+
+    __m128i alpha_reg = _mm_set1_epi16(alpha);
+    __m128i beta_reg = _mm_set1_epi16(beta);
+
+    __m128i p0q0_mask = _mm_cmplt_epi16(ABS_DIFF_epi16(p0, q0), alpha_reg);
+    __m128i p1p0_mask = _mm_cmplt_epi16(ABS_DIFF_epi16(p1, p0), beta_reg);
+    __m128i q1q0_mask = _mm_cmplt_epi16(ABS_DIFF_epi16(q1, q0), beta_reg);
+    __m128i filter_cond = _mm_and_si128(p0q0_mask, _mm_and_si128(p1p0_mask, q1q0_mask));
+
+    __m128i reg_2 = _mm_set1_epi16(2);
+    __m128i p0_res = srai16(add16(mullo16(reg_2,p1), add16(p0, add16(q1, reg_2))), 2);
+    __m128i q0_res = srai16(add16(mullo16(reg_2,q1), add16(q0, add16(p1, reg_2))), 2);
+
+    p0 = _mm_blendv_epi8(p0, p0_res, filter_cond);
+    q0 = _mm_blendv_epi8(q0, q0_res, filter_cond);
+
+    strided_load_t store = (strided_load_t) {p1, p0, q0, q1, load.c4, load.c5, load.c6, load.c7};
+    store_strided_8(&dst[-2], stride, store);
+}
